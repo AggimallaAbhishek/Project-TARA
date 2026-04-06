@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import SystemInputForm from '../components/SystemInputForm';
+import { motion } from 'framer-motion';
+import { 
+  Sparkles, AlertCircle, User, Edit3, FileX, 
+  Eye, Wifi, Shield, Clock, History, ArrowRight 
+} from 'lucide-react';
 import { analyzeSystem } from '../services/api';
+import { FullPageLoader } from '../components/LoadingSpinner';
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = async (title, description) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim()) return;
+    
     setIsLoading(true);
     setError(null);
     
@@ -19,71 +29,192 @@ export default function HomePage() {
       console.error('Analysis failed:', err);
       setError(
         err.response?.data?.detail || 
-        'Failed to analyze system. Please check if the backend is running and your API key is configured.'
+        'Failed to analyze system. Please check if the backend is running.'
       );
-    } finally {
       setIsLoading(false);
     }
   };
 
+  const examples = [
+    {
+      title: 'E-Commerce Platform',
+      description: 'Online shopping platform with user authentication, product catalog, shopping cart, payment processing via Stripe, and order management. Uses React frontend, Node.js backend, PostgreSQL database.',
+    },
+    {
+      title: 'Healthcare Portal',
+      description: 'Patient portal for viewing medical records, scheduling appointments, messaging doctors. Integrates with hospital EHR via HL7 FHIR API. OAuth 2.0 authentication, encrypted database for PHI.',
+    },
+    {
+      title: 'Banking Mobile App',
+      description: 'Mobile banking app with biometric login, account management, fund transfers, bill payments. REST API backend with 2FA, transaction signing, real-time fraud detection.',
+    },
+  ];
+
+  const strideCategories = [
+    { letter: 'S', name: 'Spoofing', icon: User, color: 'text-purple-400' },
+    { letter: 'T', name: 'Tampering', icon: Edit3, color: 'text-blue-400' },
+    { letter: 'R', name: 'Repudiation', icon: FileX, color: 'text-pink-400' },
+    { letter: 'I', name: 'Info Disclosure', icon: Eye, color: 'text-cyan-400' },
+    { letter: 'D', name: 'Denial of Service', icon: Wifi, color: 'text-amber-400' },
+    { letter: 'E', name: 'Elevation of Privilege', icon: Shield, color: 'text-red-400' },
+  ];
+
+  if (isLoading) {
+    return <FullPageLoader text="Analyzing system threats..." />;
+  }
+
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-10"
+      >
+        <h1 className="text-4xl font-bold font-display text-text-primary mb-3">
           Threat Analysis & Risk Assessment
         </h1>
-        <p className="text-gray-600">
-          Describe your system architecture and let AI identify potential security threats using the STRIDE methodology.
+        <p className="text-text-secondary text-lg">
+          Describe your system architecture and let AI identify potential security threats
         </p>
-      </div>
+      </motion.div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Main Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="lg:col-span-2"
+        >
+          <form onSubmit={handleSubmit} className="card-dark p-6">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-risk-critical/10 border border-risk-critical/30 rounded-lg flex items-start gap-3"
+              >
+                <AlertCircle className="w-5 h-5 text-risk-critical flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-risk-critical">{error}</p>
+              </motion.div>
+            )}
+
+            {/* Title Input */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                Analysis Title
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Healthcare Patient Portal"
+                className="input-dark"
+                required
+              />
+            </div>
+
+            {/* Description Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                System Architecture Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your system's components, technologies, data flows, and security mechanisms..."
+                rows={8}
+                className="textarea-dark"
+                required
+              />
+              <p className="mt-2 text-xs text-text-muted">
+                The more detail you provide, the more accurate the threat analysis will be.
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <motion.button
+              type="submit"
+              disabled={!title.trim() || !description.trim()}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full btn-cyber flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Sparkles className="w-5 h-5" />
+              Analyze System Threats
+            </motion.button>
+          </form>
+
+          {/* Quick Examples */}
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-text-secondary mb-3">Quick Examples</h3>
+            <div className="flex flex-wrap gap-2">
+              {examples.map((example) => (
+                <motion.button
+                  key={example.title}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setTitle(example.title);
+                    setDescription(example.description);
+                  }}
+                  className="px-3 py-1.5 text-sm bg-dark-tertiary text-text-secondary rounded-lg border border-dark-border hover:border-cyber-cyan/50 hover:text-cyber-cyan transition-all"
+                >
+                  {example.title}
+                </motion.button>
+              ))}
             </div>
           </div>
-        )}
-        
-        <SystemInputForm onSubmit={handleSubmit} isLoading={isLoading} />
-      </div>
+        </motion.div>
 
-      <div className="mt-8 bg-indigo-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-indigo-900 mb-3">About STRIDE</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-          <div className="bg-white rounded p-3">
-            <span className="font-medium text-purple-700">S</span>
-            <span className="text-gray-600"> - Spoofing</span>
+        {/* Sidebar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-6"
+        >
+          {/* STRIDE Info */}
+          <div className="card-dark p-5">
+            <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-cyber-cyan" />
+              STRIDE Model
+            </h3>
+            <div className="space-y-2">
+              {strideCategories.map((cat) => (
+                <div
+                  key={cat.letter}
+                  className="flex items-center gap-3 p-2 rounded-lg bg-dark-tertiary/50"
+                >
+                  <span className={`font-bold ${cat.color}`}>{cat.letter}</span>
+                  <cat.icon className={`w-4 h-4 ${cat.color}`} />
+                  <span className="text-sm text-text-secondary">{cat.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="bg-white rounded p-3">
-            <span className="font-medium text-blue-700">T</span>
-            <span className="text-gray-600"> - Tampering</span>
+
+          {/* Quick Actions */}
+          <div className="card-dark p-5">
+            <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-cyber-cyan" />
+              Quick Actions
+            </h3>
+            <div className="space-y-3">
+              <motion.button
+                whileHover={{ x: 5 }}
+                onClick={() => navigate('/history')}
+                className="w-full flex items-center justify-between p-3 rounded-lg bg-dark-tertiary text-text-secondary hover:text-text-primary transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  View History
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
+            </div>
           </div>
-          <div className="bg-white rounded p-3">
-            <span className="font-medium text-pink-700">R</span>
-            <span className="text-gray-600"> - Repudiation</span>
-          </div>
-          <div className="bg-white rounded p-3">
-            <span className="font-medium text-cyan-700">I</span>
-            <span className="text-gray-600"> - Info Disclosure</span>
-          </div>
-          <div className="bg-white rounded p-3">
-            <span className="font-medium text-amber-700">D</span>
-            <span className="text-gray-600"> - Denial of Service</span>
-          </div>
-          <div className="bg-white rounded p-3">
-            <span className="font-medium text-red-700">E</span>
-            <span className="text-gray-600"> - Elevation of Privilege</span>
-          </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
