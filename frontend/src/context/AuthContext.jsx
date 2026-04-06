@@ -5,37 +5,37 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
-      if (token) {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
         try {
           const userData = await getMe();
           setUser(userData);
+          setToken(storedToken);
         } catch (error) {
-          // Token invalid, clear it
+          console.error('Auth init error:', error);
           localStorage.removeItem('token');
           setToken(null);
+          setUser(null);
         }
       }
       setLoading(false);
     };
 
     initAuth();
-  }, [token]);
+  }, []);
 
   const login = async (googleCredential) => {
-    try {
-      const response = await googleAuth(googleCredential);
-      localStorage.setItem('token', response.access_token);
-      setToken(response.access_token);
-      setUser(response.user);
-      return response;
-    } catch (error) {
-      throw error;
-    }
+    const response = await googleAuth(googleCredential);
+    const newToken = response.access_token;
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setUser(response.user);
+    return response;
   };
 
   const logout = () => {
@@ -44,8 +44,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const isAuthenticated = !!user && !!token;
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

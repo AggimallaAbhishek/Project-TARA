@@ -1,26 +1,46 @@
 import { GoogleLogin } from '@react-oauth/google';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login, isAuthenticated, loading } = useAuth();
   const [error, setError] = useState(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Redirect if already logged in
+  if (!loading && isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSuccess = async (credentialResponse) => {
+    setIsLoggingIn(true);
+    setError(null);
     try {
       await login(credentialResponse.credential);
-      navigate('/');
+      // Use window.location for a full page reload to ensure clean state
+      window.location.replace('/');
     } catch (err) {
       setError('Login failed. Please try again.');
       console.error('Login error:', err);
+      setIsLoggingIn(false);
     }
   };
 
   const handleError = () => {
     setError('Google login failed. Please try again.');
   };
+
+  if (loading || isLoggingIn) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-2 text-gray-500">{isLoggingIn ? 'Signing you in...' : 'Loading...'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
