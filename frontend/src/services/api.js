@@ -7,25 +7,45 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 120000, // 2 minutes for LLM analysis
 });
 
 // Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Handle 401 responses
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Handle responses and errors
+api.interceptors.response.use(
+  (response) => {
+    console.log(`API Response: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+    
+    console.error(`API Error: ${status} ${url}`, error.response?.data);
+    
+    // Only redirect to login on 401 if NOT already on auth endpoints
+    if (status === 401 && !url.includes('/auth/')) {
+      console.log('Unauthorized - clearing token and redirecting to login');
+      localStorage.removeItem('token');
+      // Use replace to prevent back button issues
+      window.location.replace('/login');
+    }
+    
     return Promise.reject(error);
   }
 );

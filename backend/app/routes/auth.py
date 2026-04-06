@@ -25,8 +25,8 @@ async def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db))
     # Get or create user
     user = get_or_create_user(db, google_data)
     
-    # Create JWT token
-    access_token = create_access_token(data={"sub": user.id})
+    # Create JWT token - sub must be a string per JWT spec
+    access_token = create_access_token(data={"sub": str(user.id)})
     
     return TokenResponse(
         access_token=access_token,
