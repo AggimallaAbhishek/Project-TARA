@@ -95,6 +95,9 @@ export default function HistoryPage() {
                   Risk Score
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -126,6 +129,9 @@ export default function HistoryPage() {
                       level={getRiskBadgeLevel(analysis.total_risk_score)} 
                       score={analysis.total_risk_score.toFixed(1)} 
                     />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {analysis.analysis_time ? `${analysis.analysis_time.toFixed(1)}s` : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(analysis.created_at).toLocaleDateString()}

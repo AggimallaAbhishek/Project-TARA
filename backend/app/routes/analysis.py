@@ -107,7 +107,8 @@ async def list_analyses(
             created_at=analysis.created_at,
             total_risk_score=analysis.total_risk_score,
             threat_count=len(analysis.threats),
-            high_risk_count=high_risk_count
+            high_risk_count=high_risk_count,
+            analysis_time=analysis.analysis_time or 0.0
         ))
     
     return summaries

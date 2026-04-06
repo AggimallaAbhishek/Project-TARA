@@ -66,6 +66,11 @@ export default function AnalysisPage() {
             <h1 className="text-2xl font-bold text-gray-900">{analysis.title}</h1>
             <p className="text-sm text-gray-500 mt-1">
               Created: {new Date(analysis.created_at).toLocaleString()}
+              {analysis.analysis_time > 0 && (
+                <span className="ml-2 text-indigo-600">
+                  • Analyzed in {analysis.analysis_time.toFixed(1)}s
+                </span>
+              )}
             </p>
           </div>
           <div className="text-right">
