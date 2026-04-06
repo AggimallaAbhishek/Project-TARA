@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Plus, Clock, AlertTriangle, Trash2, 
+  Eye, Calendar, TrendingUp, FileSearch 
+} from 'lucide-react';
 import { getAnalyses, deleteAnalysis } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
@@ -8,6 +13,7 @@ export default function HistoryPage() {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     fetchAnalyses();
@@ -24,12 +30,11 @@ export default function HistoryPage() {
     }
   };
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Delete analysis "${title}"?`)) return;
-    
+  const handleDelete = async (id) => {
     try {
       await deleteAnalysis(id);
       setAnalyses(analyses.filter(a => a.id !== id));
+      setDeleteConfirm(null);
     } catch (err) {
       alert('Failed to delete analysis');
     }
@@ -43,119 +48,208 @@ export default function HistoryPage() {
   };
 
   if (loading) {
-    return <LoadingSpinner text="Loading history..." />;
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <LoadingSpinner text="Loading history..." />
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-500 text-lg">{error}</div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-risk-critical text-lg">{error}</div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Analysis History</h1>
-        <Link
-          to="/"
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm"
-        >
-          + New Analysis
+    <div className="max-w-5xl mx-auto">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex justify-between items-center mb-8"
+      >
+        <div>
+          <h1 className="text-3xl font-bold font-display text-text-primary">
+            Analysis History
+          </h1>
+          <p className="text-text-secondary mt-1">
+            {analyses.length} {analyses.length === 1 ? 'analysis' : 'analyses'} performed
+          </p>
+        </div>
+        <Link to="/">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-cyber flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            New Analysis
+          </motion.button>
         </Link>
-      </div>
+      </motion.div>
 
+      {/* Empty State */}
       {analyses.length === 0 ? (
-        <div className="bg-white shadow rounded-lg p-12 text-center">
-          <div className="text-gray-400 text-5xl mb-4">📋</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No analyses yet</h3>
-          <p className="text-gray-500 mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-dark p-12 text-center"
+        >
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary">
+            <FileSearch className="w-8 h-8 text-text-muted" />
+          </div>
+          <h3 className="text-lg font-medium text-text-primary mb-2">No analyses yet</h3>
+          <p className="text-text-secondary mb-6">
             Start by analyzing your first system architecture
           </p>
-          <Link
-            to="/"
-            className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            Create Analysis
+          <Link to="/">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="btn-cyber inline-flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Create Analysis
+            </motion.button>
           </Link>
-        </div>
+        </motion.div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Analysis
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Threats
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Risk Score
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Time
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {analyses.map((analysis) => (
-                <tr key={analysis.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
+        /* Analysis Cards */
+        <div className="space-y-4">
+          <AnimatePresence>
+            {analyses.map((analysis, index) => (
+              <motion.div
+                key={analysis.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ delay: index * 0.05 }}
+                className="card-dark p-5 hover:border-cyber-cyan/30 transition-colors"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  {/* Left: Title and Meta */}
+                  <div className="flex-1 min-w-0">
                     <Link
                       to={`/analysis/${analysis.id}`}
-                      className="text-indigo-600 hover:text-indigo-900 font-medium"
+                      className="text-lg font-semibold text-text-primary hover:text-cyber-cyan transition-colors truncate block"
                     >
                       {analysis.title}
                     </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-gray-900">{analysis.threat_count}</span>
-                    {analysis.high_risk_count > 0 && (
-                      <span className="ml-2 text-red-600 text-sm">
-                        ({analysis.high_risk_count} high/critical)
+                    <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-text-secondary">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {new Date(analysis.created_at).toLocaleDateString()}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <RiskBadge 
-                      level={getRiskBadgeLevel(analysis.total_risk_score)} 
-                      score={analysis.total_risk_score.toFixed(1)} 
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {analysis.analysis_time ? `${analysis.analysis_time.toFixed(1)}s` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(analysis.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <Link
-                      to={`/analysis/${analysis.id}`}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      View
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(analysis.id, analysis.title)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      {analysis.analysis_time > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {analysis.analysis_time.toFixed(1)}s
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4" />
+                        {analysis.threat_count} threats
+                        {analysis.high_risk_count > 0 && (
+                          <span className="text-risk-critical">
+                            ({analysis.high_risk_count} critical)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right: Risk Score and Actions */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="text-center px-3 py-1 bg-dark-tertiary rounded-lg">
+                        <div className="text-lg font-bold text-cyber-cyan">
+                          {analysis.total_risk_score.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-text-muted">Score</div>
+                      </div>
+                      <RiskBadge 
+                        level={getRiskBadgeLevel(analysis.total_risk_score)} 
+                        showIcon={false}
+                        size="small"
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <Link to={`/analysis/${analysis.id}`}>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-cyber-cyan transition-colors"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </motion.button>
+                      </Link>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setDeleteConfirm(analysis)}
+                        className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-risk-critical transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-dark-primary/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="card-dark p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-text-primary mb-2">
+                Delete Analysis?
+              </h3>
+              <p className="text-text-secondary mb-6">
+                Are you sure you want to delete "{deleteConfirm.title}"? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setDeleteConfirm(null)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleDelete(deleteConfirm.id)}
+                  className="px-4 py-2 bg-risk-critical text-white font-medium rounded-lg hover:bg-risk-critical/80 transition-colors"
+                >
+                  Delete
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
