@@ -3,20 +3,27 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.models.analysis import Analysis, Threat
+from app.models.user import User
 from app.schemas.analysis import (
     AnalysisCreate, AnalysisResponse, AnalysisSummary
 )
 from app.services.llm_service import llm_service
 from app.services.risk_service import risk_service
+from app.services.auth_service import get_current_user
 
 router = APIRouter()
 
 
 @router.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
-async def create_analysis(request: AnalysisCreate, db: Session = Depends(get_db)):
+async def create_analysis(
+    request: AnalysisCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Create a new threat analysis for the given system description.
     Uses STRIDE methodology to identify and categorize threats.
+    Requires authentication.
     """
     try:
         # Get threats from LLM
@@ -24,6 +31,7 @@ async def create_analysis(request: AnalysisCreate, db: Session = Depends(get_db)
         
         # Create analysis record
         analysis = Analysis(
+            user_id=current_user.id,
             title=request.title,
             system_description=request.system_description
         )
@@ -75,11 +83,19 @@ async def create_analysis(request: AnalysisCreate, db: Session = Depends(get_db)
 
 
 @router.get("/analyses", response_model=List[AnalysisSummary])
-async def list_analyses(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+async def list_analyses(
+    skip: int = 0, 
+    limit: int = 20, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    List all analyses with summary information.
+    List user's analyses with summary information.
+    Requires authentication.
     """
-    analyses = db.query(Analysis).order_by(Analysis.created_at.desc()).offset(skip).limit(limit).all()
+    analyses = db.query(Analysis).filter(
+        Analysis.user_id == current_user.id
+    ).order_by(Analysis.created_at.desc()).offset(skip).limit(limit).all()
     
     summaries = []
     for analysis in analyses:
@@ -97,11 +113,19 @@ async def list_analyses(skip: int = 0, limit: int = 20, db: Session = Depends(ge
 
 
 @router.get("/analyses/{analysis_id}", response_model=AnalysisResponse)
-async def get_analysis(analysis_id: int, db: Session = Depends(get_db)):
+async def get_analysis(
+    analysis_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Get a specific analysis with all threats.
+    Requires authentication. Users can only access their own analyses.
     """
-    analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.user_id == current_user.id
+    ).first()
     
     if not analysis:
         raise HTTPException(
@@ -113,11 +137,19 @@ async def get_analysis(analysis_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/analyses/{analysis_id}/summary")
-async def get_analysis_summary(analysis_id: int, db: Session = Depends(get_db)):
+async def get_analysis_summary(
+    analysis_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Get risk summary for a specific analysis.
+    Requires authentication.
     """
-    analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.user_id == current_user.id
+    ).first()
     
     if not analysis:
         raise HTTPException(
@@ -142,11 +174,19 @@ async def get_analysis_summary(analysis_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/analyses/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_analysis(analysis_id: int, db: Session = Depends(get_db)):
+async def delete_analysis(
+    analysis_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     Delete an analysis and all associated threats.
+    Requires authentication. Users can only delete their own analyses.
     """
-    analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.user_id == current_user.id
+    ).first()
     
     if not analysis:
         raise HTTPException(

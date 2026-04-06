@@ -25,6 +25,7 @@ class Analysis(Base):
     __tablename__ = "analyses"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=False)
     system_description = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -32,6 +33,7 @@ class Analysis(Base):
     total_risk_score = Column(Float, default=0.0)
     
     # Relationships
+    user = relationship("User", backref="analyses")
     threats = relationship("Threat", back_populates="analysis", cascade="all, delete-orphan")
 
 
