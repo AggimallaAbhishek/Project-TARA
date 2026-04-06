@@ -38,7 +38,7 @@ export default function Navbar() {
           </div>
           <div className="flex items-center">
             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              Powered by Gemini AI
+              Powered by Ollama AI
             </span>
           </div>
         </div>

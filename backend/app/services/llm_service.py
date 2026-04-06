@@ -1,5 +1,4 @@
-from google import genai
-from google.genai import types
+import ollama
 import json
 import re
 from typing import List, Dict, Any
@@ -32,7 +31,7 @@ For each threat identified, provide:
 7. Impact score (1-5, where 1=minimal, 5=catastrophic)
 8. Specific mitigation recommendation
 
-IMPORTANT: Return ONLY a valid JSON array with the following structure, no additional text:
+IMPORTANT: Return ONLY a valid JSON array with the following structure, no additional text before or after:
 [
   {{
     "name": "Threat Name",
@@ -46,35 +45,45 @@ IMPORTANT: Return ONLY a valid JSON array with the following structure, no addit
   }}
 ]
 
-Identify at least 5-8 relevant threats. Be specific to the system described."""
+Identify at least 5-8 relevant threats. Be specific to the system described. Output ONLY the JSON array."""
 
 
-class GeminiService:
+class LLMService:
     def __init__(self):
-        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.model = settings.ollama_model
     
     async def analyze_system(self, system_description: str) -> List[Dict[str, Any]]:
         """
-        Analyze a system description and return identified threats.
+        Analyze a system description and return identified threats using Ollama.
         """
         prompt = STRIDE_PROMPT.format(system_description=system_description)
         
         try:
-            response = self.client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.3,
-                    max_output_tokens=4096,
-                )
+            response = ollama.chat(
+                model=self.model,
+                messages=[
+                    {
+                        'role': 'system',
+                        'content': 'You are a cybersecurity expert. Always respond with valid JSON only.'
+                    },
+                    {
+                        'role': 'user',
+                        'content': prompt
+                    }
+                ],
+                options={
+                    'temperature': 0.3,
+                    'num_predict': 4096,
+                }
             )
             
             # Extract JSON from response
-            threats = self._parse_response(response.text)
+            response_text = response['message']['content']
+            threats = self._parse_response(response_text)
             return threats
             
         except Exception as e:
-            raise Exception(f"Gemini API error: {str(e)}")
+            raise Exception(f"Ollama API error: {str(e)}")
     
     def _parse_response(self, response_text: str) -> List[Dict[str, Any]]:
         """
@@ -145,4 +154,4 @@ class GeminiService:
 
 
 # Singleton instance
-gemini_service = GeminiService()
+llm_service = LLMService()

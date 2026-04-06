@@ -4,7 +4,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     app_name: str = "TARA - Threat Analysis & Risk Assessment"
-    gemini_api_key: str = ""
+    ollama_model: str = "qwen3-coder:480b-cloud"
     database_url: str = "sqlite:///./tara.db"
     
     class Config:

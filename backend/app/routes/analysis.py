@@ -6,7 +6,7 @@ from app.models.analysis import Analysis, Threat
 from app.schemas.analysis import (
     AnalysisCreate, AnalysisResponse, AnalysisSummary
 )
-from app.services.llm_service import gemini_service
+from app.services.llm_service import llm_service
 from app.services.risk_service import risk_service
 
 router = APIRouter()
@@ -20,7 +20,7 @@ async def create_analysis(request: AnalysisCreate, db: Session = Depends(get_db)
     """
     try:
         # Get threats from LLM
-        threat_data = await gemini_service.analyze_system(request.system_description)
+        threat_data = await llm_service.analyze_system(request.system_description)
         
         # Create analysis record
         analysis = Analysis(
