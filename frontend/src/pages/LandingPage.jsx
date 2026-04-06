@@ -1,8 +1,11 @@
+// motion is used in JSX as motion.div, motion.h1, motion.p, etc.
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Zap, Target, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
+/* eslint-disable react-hooks/purity */
 export default function LandingPage() {
   const features = [
     {
@@ -28,7 +31,6 @@ export default function LandingPage() {
   ];
 
   // Generate particles once on mount to avoid impure render
-  // eslint-disable-next-line react-hooks/purity
   const particles = useMemo(() => {
     return [...Array(20)].map((_, i) => ({
       id: i,
