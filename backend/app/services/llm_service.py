@@ -1,13 +1,11 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import json
 import re
 from typing import List, Dict, Any
 from app.config import get_settings
 
 settings = get_settings()
-
-# Configure Gemini
-genai.configure(api_key=settings.gemini_api_key)
 
 STRIDE_PROMPT = """You are a cybersecurity expert performing threat analysis using the STRIDE methodology.
 
@@ -53,7 +51,7 @@ Identify at least 5-8 relevant threats. Be specific to the system described."""
 
 class GeminiService:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.client = genai.Client(api_key=settings.gemini_api_key)
     
     async def analyze_system(self, system_description: str) -> List[Dict[str, Any]]:
         """
@@ -62,10 +60,11 @@ class GeminiService:
         prompt = STRIDE_PROMPT.format(system_description=system_description)
         
         try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,  # Lower temperature for consistent output
+            response = self.client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.3,
                     max_output_tokens=4096,
                 )
             )
