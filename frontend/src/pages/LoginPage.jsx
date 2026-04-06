@@ -1,10 +1,11 @@
 import { GoogleLogin } from '@react-oauth/google';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
 export default function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -17,11 +18,14 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     setError(null);
     try {
+      console.log('Starting login with Google credential...');
       await login(credentialResponse.credential);
-      // Use window.location for a full page reload to ensure clean state
-      window.location.replace('/');
+      console.log('Login successful, redirecting...');
+      // Use React Router navigate instead of window.location
+      navigate('/', { replace: true });
     } catch (err) {
-      setError('Login failed. Please try again.');
+      const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
+      setError(errorMessage);
       console.error('Login error:', err);
       setIsLoggingIn(false);
     }
