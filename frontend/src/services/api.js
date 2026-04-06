@@ -9,6 +9,39 @@ const api = axios.create({
   },
 });
 
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth endpoints
+export const googleAuth = async (credential) => {
+  const response = await api.post('/auth/google', { credential });
+  return response.data;
+};
+
+export const getMe = async () => {
+  const response = await api.get('/auth/me');
+  return response.data;
+};
+
+// Analysis endpoints
 export const analyzeSystem = async (title, systemDescription) => {
   const response = await api.post('/analyze', {
     title,

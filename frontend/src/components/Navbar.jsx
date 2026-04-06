@@ -1,9 +1,25 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const location = useLocation();
+  const { user, logout, isAuthenticated } = useAuth();
   
   const isActive = (path) => location.pathname === path;
+  
+  if (!isAuthenticated) {
+    return (
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <span className="text-2xl font-bold text-indigo-600">🛡️ TARA</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
   
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -36,10 +52,23 @@ export default function Navbar() {
               </Link>
             </div>
           </div>
-          <div className="flex items-center">
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              Powered by Ollama AI
-            </span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              {user?.picture && (
+                <img 
+                  src={user.picture} 
+                  alt={user.name} 
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+              <span className="text-sm text-gray-700 hidden sm:block">{user?.name}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
