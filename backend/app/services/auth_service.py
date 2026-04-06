@@ -23,19 +23,36 @@ def verify_google_token(token: str) -> dict:
             settings.google_client_id
         )
         
-        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+        # Validate issuer
+        issuer = idinfo.get('iss', '')
+        if issuer not in ['accounts.google.com', 'https://accounts.google.com']:
             raise ValueError('Invalid issuer')
+        
+        # Validate required fields exist
+        if 'sub' not in idinfo or 'email' not in idinfo:
+            raise ValueError('Missing required fields in Google token')
+        
+        # Extract and validate name
+        name = idinfo.get('name', '')
+        if not name:
+            # Fallback to email username
+            name = idinfo['email'].split('@')[0] if idinfo['email'] else 'User'
         
         return {
             'google_id': idinfo['sub'],
             'email': idinfo['email'],
-            'name': idinfo.get('name', idinfo['email'].split('@')[0]),
+            'name': name,
             'picture': idinfo.get('picture')
         }
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid Google token: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Failed to verify Google token: {str(e)}"
         )
 
 
@@ -62,8 +79,13 @@ def get_current_user(
     
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         if user_id is None:
+            raise credentials_exception
+        # Convert to int safely
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
             raise credentials_exception
     except JWTError:
         raise credentials_exception

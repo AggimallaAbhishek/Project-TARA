@@ -42,13 +42,18 @@ async def create_analysis(
         # Process and store threats
         threats = []
         for t in threat_data:
+            # Validate required fields exist
+            if not all(k in t for k in ['name', 'description', 'stride_category', 
+                                          'affected_component', 'likelihood', 'impact', 'mitigation']):
+                continue  # Skip malformed threats
+            
             # Calculate risk score
             risk_score = risk_service.calculate_risk_score(
                 t['likelihood'], 
                 t['impact']
             )
             
-            # Optionally override risk level based on calculated score
+            # Calculate risk level based on score
             calculated_risk_level = risk_service.get_risk_level_from_score(risk_score)
             
             threat = Threat(
@@ -57,7 +62,7 @@ async def create_analysis(
                 description=t['description'],
                 stride_category=t['stride_category'],
                 affected_component=t['affected_component'],
-                risk_level=calculated_risk_level,  # Use calculated level
+                risk_level=calculated_risk_level,
                 likelihood=t['likelihood'],
                 impact=t['impact'],
                 risk_score=risk_score,
@@ -65,6 +70,13 @@ async def create_analysis(
             )
             db.add(threat)
             threats.append(threat)
+        
+        if not threats:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Analysis failed: No valid threats could be generated"
+            )
         
         # Calculate total risk score
         threat_dicts = [{'risk_score': t.risk_score} for t in threats]
@@ -74,7 +86,16 @@ async def create_analysis(
         db.refresh(analysis)
         
         return analysis
-        
+    
+    except HTTPException:
+        db.rollback()
+        raise
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Analysis failed: {str(e)}"
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(

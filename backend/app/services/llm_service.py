@@ -1,8 +1,13 @@
-import ollama
 import json
 import re
 import time
 from typing import List, Dict, Any, Tuple
+
+try:
+    import ollama
+except ImportError:
+    raise ImportError("ollama package not installed. Run: pip install ollama")
+
 from app.config import get_settings
 
 settings = get_settings()
@@ -59,15 +64,32 @@ class LLMService:
             
             elapsed_time = time.time() - start_time
             
-            # Extract JSON from response
-            response_text = response['message']['content']
+            # Safely extract response content
+            if not response or 'message' not in response:
+                raise ValueError("Invalid response from Ollama: missing 'message' field")
+            
+            message = response.get('message', {})
+            response_text = message.get('content', '')
+            
+            if not response_text:
+                raise ValueError("Empty response from Ollama")
+            
             threats = self._parse_response(response_text)
+            
+            if not threats:
+                raise ValueError("No valid threats parsed from LLM response")
             
             return threats, round(elapsed_time, 2)
             
-        except Exception as e:
+        except ollama.ResponseError as e:
             elapsed_time = time.time() - start_time
             raise Exception(f"Ollama API error after {elapsed_time:.1f}s: {str(e)}")
+        except ValueError as e:
+            elapsed_time = time.time() - start_time
+            raise Exception(f"Response parsing error after {elapsed_time:.1f}s: {str(e)}")
+        except Exception as e:
+            elapsed_time = time.time() - start_time
+            raise Exception(f"Ollama error after {elapsed_time:.1f}s: {str(e)}")
     
     def _parse_response(self, response_text: str) -> List[Dict[str, Any]]:
         """
@@ -130,9 +152,19 @@ class LLMService:
                     threat['risk_level'] = r
                     break
         
-        # Ensure likelihood and impact are integers in range
-        threat['likelihood'] = max(1, min(5, int(threat.get('likelihood', 3))))
-        threat['impact'] = max(1, min(5, int(threat.get('impact', 3))))
+        # Safely convert likelihood and impact to integers
+        try:
+            likelihood = int(threat.get('likelihood', 3))
+        except (ValueError, TypeError):
+            likelihood = 3
+        
+        try:
+            impact = int(threat.get('impact', 3))
+        except (ValueError, TypeError):
+            impact = 3
+        
+        threat['likelihood'] = max(1, min(5, likelihood))
+        threat['impact'] = max(1, min(5, impact))
         
         return threat
 
