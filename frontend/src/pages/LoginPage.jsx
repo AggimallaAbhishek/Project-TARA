@@ -1,7 +1,10 @@
 import { GoogleLogin } from '@react-oauth/google';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Shield, Zap, Target, Lock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
@@ -21,7 +24,6 @@ export default function LoginPage() {
       console.log('Starting login with Google credential...');
       await login(credentialResponse.credential);
       console.log('Login successful, redirecting...');
-      // Use React Router navigate instead of window.location
       navigate('/', { replace: true });
     } catch (err) {
       const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
@@ -35,37 +37,62 @@ export default function LoginPage() {
     setError('Google login failed. Please try again.');
   };
 
+  const features = [
+    { icon: Zap, text: 'AI-powered threat analysis' },
+    { icon: Target, text: 'STRIDE methodology' },
+    { icon: Shield, text: 'Risk scoring & assessment' },
+    { icon: Lock, text: 'Mitigation recommendations' },
+  ];
+
   if (loading || isLoggingIn) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-2 text-gray-500">{isLoggingIn ? 'Signing you in...' : 'Loading...'}</p>
-        </div>
+        <LoadingSpinner text={isLoggingIn ? 'Signing you in...' : 'Loading...'} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="bg-white shadow-lg rounded-lg p-8 max-w-md w-full text-center">
-        <div className="mb-6">
-          <span className="text-5xl">🛡️</span>
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">Welcome to TARA</h1>
-          <p className="text-gray-600 mt-2">
-            Threat Analysis & Risk Assessment
+    <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="card-dark p-8 max-w-md w-full"
+      >
+        {/* Header */}
+        <div className="text-center mb-8">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-gradient-to-br from-cyber-cyan/20 to-cyber-purple/20 border border-cyber-cyan/30"
+          >
+            <Shield className="w-8 h-8 text-cyber-cyan" />
+          </motion.div>
+          
+          <h1 className="text-2xl font-bold font-display text-text-primary">
+            Welcome to <span className="text-gradient">TARA</span>
+          </h1>
+          <p className="text-text-secondary mt-2">
+            AI-Powered Threat Analysis
           </p>
         </div>
 
-        <div className="mb-6">
-          <p className="text-sm text-gray-500 mb-4">
+        {/* Google Login */}
+        <div className="mb-8">
+          <p className="text-sm text-text-muted text-center mb-4">
             Sign in with your Google account to continue
           </p>
           
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-risk-critical text-sm"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
 
           <div className="flex justify-center">
@@ -73,36 +100,38 @@ export default function LoginPage() {
               onSuccess={handleSuccess}
               onError={handleError}
               useOneTap
-              theme="outline"
+              theme="filled_black"
               size="large"
               text="signin_with"
               shape="rectangular"
+              width="300"
             />
           </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">What you can do:</h3>
-          <ul className="text-sm text-gray-600 space-y-2 text-left">
-            <li className="flex items-center">
-              <span className="text-green-500 mr-2">✓</span>
-              Analyze system architectures for threats
-            </li>
-            <li className="flex items-center">
-              <span className="text-green-500 mr-2">✓</span>
-              Get STRIDE-based threat classification
-            </li>
-            <li className="flex items-center">
-              <span className="text-green-500 mr-2">✓</span>
-              View risk scores and mitigations
-            </li>
-            <li className="flex items-center">
-              <span className="text-green-500 mr-2">✓</span>
-              Save and review analysis history
-            </li>
+        {/* Features */}
+        <div className="border-t border-dark-border pt-6">
+          <h3 className="text-sm font-medium text-text-secondary mb-4 text-center">
+            What you can do
+          </h3>
+          <ul className="space-y-3">
+            {features.map((feature, index) => (
+              <motion.li
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
+                className="flex items-center gap-3 text-sm text-text-primary"
+              >
+                <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-cyber-cyan/10">
+                  <feature.icon className="w-3.5 h-3.5 text-cyber-cyan" />
+                </span>
+                {feature.text}
+              </motion.li>
+            ))}
           </ul>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
