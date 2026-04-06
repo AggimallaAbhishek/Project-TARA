@@ -1,5 +1,6 @@
 import { GoogleLogin } from '@react-oauth/google';
 import { Navigate, useNavigate } from 'react-router-dom';
+/* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { Shield, Zap, Target, Lock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';

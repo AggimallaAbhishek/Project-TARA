@@ -35,7 +35,8 @@ export default function HistoryPage() {
       await deleteAnalysis(id);
       setAnalyses(analyses.filter(a => a.id !== id));
       setDeleteConfirm(null);
-    } catch (err) {
+    } catch (error) {
+      console.error('Failed to delete analysis:', error);
       alert('Failed to delete analysis');
     }
   };

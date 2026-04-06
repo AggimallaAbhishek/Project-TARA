@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+/* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { Shield, LayoutDashboard, History, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';

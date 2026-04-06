@@ -1,3 +1,4 @@
+/* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { User, Edit3, FileX, Eye, Wifi, Shield } from 'lucide-react';
 

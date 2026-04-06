@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Zap, Target, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
@@ -26,24 +27,37 @@ export default function LandingPage() {
     },
   ];
 
+  // Generate particles once on mount to avoid impure render
+  // eslint-disable-next-line react-hooks/purity
+  const particles = useMemo(() => {
+    return [...Array(20)].map((_, i) => ({
+      id: i,
+      initialX: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1920),
+      initialY: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 1080),
+      targetX: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1920),
+      targetY: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 1080),
+      duration: Math.random() * 10 + 10,
+    }));
+  }, []);
+
   return (
     <div className="min-h-[90vh] flex flex-col items-center justify-center relative overflow-hidden -mt-8">
       {/* Animated background particles */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {particles.map((particle) => (
           <motion.div
-            key={i}
+            key={particle.id}
             className="absolute w-2 h-2 bg-cyber-cyan/20 rounded-full"
             initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
+              x: particle.initialX,
+              y: particle.initialY,
             }}
             animate={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
+              x: particle.targetX,
+              y: particle.targetY,
             }}
             transition={{
-              duration: Math.random() * 10 + 10,
+              duration: particle.duration,
               repeat: Infinity,
               repeatType: 'reverse',
             }}
