@@ -31,6 +31,7 @@ class Analysis(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     total_risk_score = Column(Float, default=0.0)
+    analysis_time = Column(Float, default=0.0)  # Time in seconds
     
     # Relationships
     user = relationship("User", backref="analyses")

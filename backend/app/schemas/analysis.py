@@ -59,6 +59,7 @@ class AnalysisResponse(AnalysisBase):
     created_at: datetime
     updated_at: datetime
     total_risk_score: float
+    analysis_time: float = 0.0
     threats: List[ThreatResponse] = []
     
     class Config:
@@ -72,6 +73,7 @@ class AnalysisSummary(BaseModel):
     total_risk_score: float
     threat_count: int
     high_risk_count: int
+    analysis_time: float = 0.0
     
     class Config:
         from_attributes = True

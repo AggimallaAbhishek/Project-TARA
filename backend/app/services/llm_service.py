@@ -1,62 +1,42 @@
 import ollama
 import json
 import re
-from typing import List, Dict, Any
+import time
+from typing import List, Dict, Any, Tuple
 from app.config import get_settings
 
 settings = get_settings()
 
-STRIDE_PROMPT = """You are a cybersecurity expert performing threat analysis using the STRIDE methodology.
+# Optimized prompt - more concise for faster response
+STRIDE_PROMPT = """Analyze this system for security threats using STRIDE. Return JSON only.
 
-STRIDE Categories:
-- Spoofing: Pretending to be someone/something else
-- Tampering: Modifying data or code
-- Repudiation: Denying actions performed
-- Information Disclosure: Exposing information to unauthorized users
-- Denial of Service: Making system unavailable
-- Elevation of Privilege: Gaining unauthorized access levels
+System: {system_description}
 
-Analyze the following system and identify potential security threats.
+Return a JSON array with 5 threats. Each threat must have:
+- name: short threat name
+- description: brief description (1-2 sentences)
+- stride_category: one of [Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege]
+- affected_component: component name
+- risk_level: Low/Medium/High/Critical
+- likelihood: 1-5
+- impact: 1-5
+- mitigation: brief fix (1-2 sentences)
 
-SYSTEM DESCRIPTION:
-{system_description}
-
-For each threat identified, provide:
-1. A clear threat name
-2. Detailed description of the threat
-3. STRIDE category (exactly one of: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
-4. Affected component in the system
-5. Risk level (Low, Medium, High, or Critical)
-6. Likelihood score (1-5, where 1=rare, 5=almost certain)
-7. Impact score (1-5, where 1=minimal, 5=catastrophic)
-8. Specific mitigation recommendation
-
-IMPORTANT: Return ONLY a valid JSON array with the following structure, no additional text before or after:
-[
-  {{
-    "name": "Threat Name",
-    "description": "Detailed description",
-    "stride_category": "STRIDE Category",
-    "affected_component": "Component Name",
-    "risk_level": "High",
-    "likelihood": 4,
-    "impact": 5,
-    "mitigation": "Specific mitigation steps"
-  }}
-]
-
-Identify at least 5-8 relevant threats. Be specific to the system described. Output ONLY the JSON array."""
+Output ONLY valid JSON array, no other text:"""
 
 
 class LLMService:
     def __init__(self):
         self.model = settings.ollama_model
     
-    async def analyze_system(self, system_description: str) -> List[Dict[str, Any]]:
+    async def analyze_system(self, system_description: str) -> Tuple[List[Dict[str, Any]], float]:
         """
-        Analyze a system description and return identified threats using Ollama.
+        Analyze a system description and return identified threats with timing.
+        Returns: (threats, analysis_time_seconds)
         """
         prompt = STRIDE_PROMPT.format(system_description=system_description)
+        
+        start_time = time.time()
         
         try:
             response = ollama.chat(
@@ -64,7 +44,7 @@ class LLMService:
                 messages=[
                     {
                         'role': 'system',
-                        'content': 'You are a cybersecurity expert. Always respond with valid JSON only.'
+                        'content': 'You are a security expert. Output valid JSON only, no explanations.'
                     },
                     {
                         'role': 'user',
@@ -72,18 +52,22 @@ class LLMService:
                     }
                 ],
                 options={
-                    'temperature': 0.3,
-                    'num_predict': 4096,
+                    'temperature': 0.2,  # Lower for faster, more deterministic output
+                    'num_predict': 2048,  # Reduced from 4096 - 5 threats don't need more
                 }
             )
+            
+            elapsed_time = time.time() - start_time
             
             # Extract JSON from response
             response_text = response['message']['content']
             threats = self._parse_response(response_text)
-            return threats
+            
+            return threats, round(elapsed_time, 2)
             
         except Exception as e:
-            raise Exception(f"Ollama API error: {str(e)}")
+            elapsed_time = time.time() - start_time
+            raise Exception(f"Ollama API error after {elapsed_time:.1f}s: {str(e)}")
     
     def _parse_response(self, response_text: str) -> List[Dict[str, Any]]:
         """

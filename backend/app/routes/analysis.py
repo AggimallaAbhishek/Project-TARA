@@ -26,14 +26,15 @@ async def create_analysis(
     Requires authentication.
     """
     try:
-        # Get threats from LLM
-        threat_data = await llm_service.analyze_system(request.system_description)
+        # Get threats from LLM with timing
+        threat_data, analysis_time = await llm_service.analyze_system(request.system_description)
         
         # Create analysis record
         analysis = Analysis(
             user_id=current_user.id,
             title=request.title,
-            system_description=request.system_description
+            system_description=request.system_description,
+            analysis_time=analysis_time
         )
         db.add(analysis)
         db.flush()  # Get the ID
