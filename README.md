@@ -1,6 +1,6 @@
 # 🛡️ Project TARA - Threat Analysis & Risk Assessment
 
-AI-powered security threat analysis using STRIDE methodology, powered by Google Gemini.
+AI-powered security threat analysis using STRIDE methodology, powered by Ollama (local LLM).
 
 ## Features
 
@@ -8,32 +8,36 @@ AI-powered security threat analysis using STRIDE methodology, powered by Google 
 - **Risk Scoring**: Calculates risk scores (Likelihood × Impact) with prioritization
 - **Modern UI**: Clean React interface with filtering and visualization
 - **Analysis History**: Save and review past security analyses
-- **AI-Powered**: Uses Google Gemini for intelligent threat detection
+- **Local AI**: Uses Ollama for private, offline threat detection (no API costs!)
 
 ## Tech Stack
 
 - **Backend**: FastAPI (Python)
 - **Frontend**: React + Vite + Tailwind CSS
 - **Database**: SQLite
-- **AI**: Google Gemini API
+- **AI**: Ollama (local LLM)
 
 ## Quick Start
+
+### Prerequisites
+- [Ollama](https://ollama.ai) installed and running
+- A model pulled (e.g., `ollama pull llama3.2` or use cloud models)
 
 ### 1. Backend Setup
 
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
+# Create virtual environment (use Python 3.12 if available)
+python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
+# Configure environment (optional - defaults work)
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# Edit .env to change OLLAMA_MODEL if needed
 
 # Run server
 uvicorn app.main:app --reload
@@ -55,14 +59,14 @@ npm run dev
 
 Frontend runs at: http://localhost:5173
 
-## Getting a Gemini API Key
+## Configuration
 
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key
-3. Add it to `backend/.env`:
-   ```
-   GEMINI_API_KEY=your_key_here
-   ```
+Edit `backend/.env` to change the Ollama model:
+
+```env
+OLLAMA_MODEL=qwen3-coder:480b-cloud  # or llama3.2, mistral, etc.
+DATABASE_URL=sqlite:///./tara.db
+```
 
 ## API Endpoints
 
