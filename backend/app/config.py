@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     # Google OAuth
     google_client_id: str = ""
+    # Legacy compatibility: accepted for older .env files, not used by auth flow.
+    google_client_secret: str = ""
 
     # JWT
     secret_key: str = "change-me-in-production"
