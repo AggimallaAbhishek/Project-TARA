@@ -76,6 +76,7 @@ OLLAMA_CACHE_TTL_SECONDS=600
 OLLAMA_CACHE_MAX_ENTRIES=128
 DATABASE_URL=sqlite:///./tara.db
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+ALLOWED_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1)(:\d+)?$
 GOOGLE_CLIENT_ID=your-google-client-id
 SECRET_KEY=replace-with-a-long-random-secret
 ACCESS_TOKEN_EXPIRE_MINUTES=1440

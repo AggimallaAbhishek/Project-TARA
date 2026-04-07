@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ollama_cache_max_entries: int = 128
     database_url: str = "sqlite:///./tara.db"
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    allowed_origin_regex: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
     # Google OAuth
     google_client_id: str = ""
@@ -33,6 +34,12 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        if self.is_production:
+            return None
+        return self.allowed_origin_regex
 
     @property
     def is_production(self) -> bool:
