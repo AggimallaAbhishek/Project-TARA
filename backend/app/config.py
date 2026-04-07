@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     ollama_num_ctx: int = 4096
     ollama_request_timeout_seconds: int = 120
     ollama_keep_alive: str = "10m"
+    ollama_retry_on_invalid_response: bool = True
+    ollama_retry_num_predict: int = 4096
     ollama_enable_cache: bool = True
     ollama_cache_ttl_seconds: int = 600
     ollama_cache_max_entries: int = 128

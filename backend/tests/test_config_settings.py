@@ -21,6 +21,11 @@ class SettingsConfigTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Settings(unknown_setting="value")
 
+    def test_retry_settings_defaults_are_available(self):
+        settings = Settings()
+        self.assertTrue(settings.ollama_retry_on_invalid_response)
+        self.assertEqual(settings.ollama_retry_num_predict, 4096)
+
 
 if __name__ == "__main__":
     unittest.main()

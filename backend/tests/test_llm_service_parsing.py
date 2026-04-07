@@ -65,6 +65,70 @@ class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(threat["mitigation"], "Mitigation not provided.")
         self.assertEqual(threat["risk_level"], "High")  # 5*2=10 -> High per risk_service
 
+    async def test_retry_succeeds_after_empty_content_response(self):
+        service = LLMService(
+            enable_cache=False,
+            request_timeout_seconds=2,
+            num_predict=768,
+            retry_on_invalid_response=True,
+            retry_num_predict=4096,
+        )
+        invalid_response = {"message": {"content": "", "thinking": "analysis chain"}}
+        valid_response = {"message": {"content": json.dumps([minimal_threat()])}}
+
+        with patch(
+            "app.services.llm_service.ollama.chat",
+            side_effect=[invalid_response, valid_response],
+        ) as mock_chat:
+            threats, _elapsed = await service.analyze_system("desc")
+
+        self.assertEqual(len(threats), 1)
+        self.assertEqual(mock_chat.call_count, 2)
+        first_call = mock_chat.call_args_list[0].kwargs
+        second_call = mock_chat.call_args_list[1].kwargs
+        self.assertNotIn("format", first_call)
+        self.assertEqual(second_call.get("format"), "json")
+        self.assertEqual(first_call["options"]["num_predict"], 768)
+        self.assertEqual(second_call["options"]["num_predict"], 4096)
+
+    async def test_retry_succeeds_after_truncated_json_response(self):
+        service = LLMService(
+            enable_cache=False,
+            request_timeout_seconds=2,
+            retry_on_invalid_response=True,
+            retry_num_predict=4096,
+        )
+        invalid_json_response = {"message": {"content": '[{"name":"broken"}'}}
+        valid_response = {"message": {"content": json.dumps([minimal_threat()])}}
+
+        with patch(
+            "app.services.llm_service.ollama.chat",
+            side_effect=[invalid_json_response, valid_response],
+        ) as mock_chat:
+            threats, _elapsed = await service.analyze_system("desc")
+
+        self.assertEqual(len(threats), 1)
+        self.assertEqual(mock_chat.call_count, 2)
+
+    async def test_both_attempts_invalid_raise_same_runtime_error(self):
+        service = LLMService(
+            enable_cache=False,
+            request_timeout_seconds=2,
+            retry_on_invalid_response=True,
+            retry_num_predict=4096,
+        )
+        invalid_response = {"message": {"content": ""}}
+
+        with patch(
+            "app.services.llm_service.ollama.chat",
+            side_effect=[invalid_response, invalid_response],
+        ) as mock_chat:
+            with self.assertRaises(RuntimeError) as context:
+                await service.analyze_system("desc")
+
+        self.assertEqual(mock_chat.call_count, 2)
+        self.assertIn("Threat analysis response was invalid", str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

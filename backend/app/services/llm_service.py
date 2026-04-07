@@ -85,6 +85,8 @@ class LLMService:
         num_ctx: int | None = None,
         request_timeout_seconds: int | None = None,
         keep_alive: str | None = None,
+        retry_on_invalid_response: bool | None = None,
+        retry_num_predict: int | None = None,
         enable_cache: bool | None = None,
         cache_ttl_seconds: int | None = None,
         cache_max_entries: int | None = None,
@@ -100,6 +102,14 @@ class LLMService:
             else request_timeout_seconds
         )
         self.keep_alive = settings.ollama_keep_alive if keep_alive is None else keep_alive
+        self.retry_on_invalid_response = (
+            settings.ollama_retry_on_invalid_response
+            if retry_on_invalid_response is None
+            else retry_on_invalid_response
+        )
+        self.retry_num_predict = (
+            settings.ollama_retry_num_predict if retry_num_predict is None else retry_num_predict
+        )
         self.enable_cache = settings.ollama_enable_cache if enable_cache is None else enable_cache
         cache_ttl = settings.ollama_cache_ttl_seconds if cache_ttl_seconds is None else cache_ttl_seconds
         cache_size = settings.ollama_cache_max_entries if cache_max_entries is None else cache_max_entries
@@ -120,6 +130,37 @@ class LLMService:
     @staticmethod
     def _build_cache_key(normalized_description: str) -> str:
         return hashlib.sha256(normalized_description.encode("utf-8")).hexdigest()
+
+    async def _request_threats(
+        self,
+        prompt: str,
+        *,
+        num_predict: int,
+        force_json: bool,
+    ) -> dict[str, Any]:
+        request_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a security expert. Output valid JSON only, no explanations.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": num_predict,
+                "num_ctx": self.num_ctx,
+            },
+            "keep_alive": self.keep_alive,
+        }
+        if force_json:
+            request_kwargs["format"] = "json"
+
+        return await asyncio.wait_for(
+            asyncio.to_thread(ollama.chat, **request_kwargs),
+            timeout=self.request_timeout_seconds,
+        )
 
     def _extract_json_payload(self, response_text: str) -> Any:
         cleaned = response_text.strip()
@@ -170,59 +211,106 @@ class LLMService:
                 return cached_threats, round(elapsed, 2)
 
         prompt = STRIDE_PROMPT.format(system_description=system_description)
-        llm_start = time.perf_counter()
+        attempts: list[tuple[int, bool]] = [(self.num_predict, False)]
+        if self.retry_on_invalid_response:
+            attempts.append((max(self.num_predict, self.retry_num_predict), True))
 
         try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    ollama.chat,
-                    model=self.model,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a security expert. Output valid JSON only, no explanations.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    options={
-                        "temperature": self.temperature,
-                        "num_predict": self.num_predict,
-                        "num_ctx": self.num_ctx,
-                    },
-                    keep_alive=self.keep_alive,
-                ),
-                timeout=self.request_timeout_seconds,
-            )
-            llm_elapsed = time.perf_counter() - llm_start
+            total_attempts = len(attempts)
+            for attempt_index, (attempt_num_predict, force_json) in enumerate(attempts, start=1):
+                llm_start = time.perf_counter()
+                content_len = 0
+                thinking_len = 0
 
-            if not response or "message" not in response:
-                raise ValueError("Invalid response from Ollama: missing 'message' field")
+                try:
+                    response = await self._request_threats(
+                        prompt,
+                        num_predict=attempt_num_predict,
+                        force_json=force_json,
+                    )
+                    llm_elapsed = time.perf_counter() - llm_start
 
-            response_text = response.get("message", {}).get("content", "")
-            if not response_text:
-                raise ValueError("Empty response from Ollama")
+                    if not response or "message" not in response:
+                        raise ValueError("Invalid response from Ollama: missing 'message' field")
 
-            parse_start = time.perf_counter()
-            threats = self._parse_response(response_text)
-            parse_elapsed = time.perf_counter() - parse_start
+                    message = response.get("message", {})
+                    response_text = str(message.get("content", "") or "").strip()
+                    content_len = len(response_text)
+                    thinking_len = len(str(message.get("thinking", "") or ""))
 
-            if not threats:
-                raise ValueError("No valid threats parsed from LLM response")
+                    if not response_text:
+                        raise ValueError("Empty response from Ollama")
 
-            if self.enable_cache:
-                self.cache.set(cache_key, threats)
+                    parse_start = time.perf_counter()
+                    threats = self._parse_response(response_text)
+                    parse_elapsed = time.perf_counter() - parse_start
 
-            total_elapsed = time.perf_counter() - overall_start
-            logger.info(
-                "Threat analysis completed model=%s chars=%d threats=%d llm=%.2fs parse=%.2fs total=%.2fs",
-                self.model,
-                len(system_description),
-                len(threats),
-                llm_elapsed,
-                parse_elapsed,
-                total_elapsed,
-            )
-            return threats, round(total_elapsed, 2)
+                    if not threats:
+                        raise ValueError("No valid threats parsed from LLM response")
+                except ValueError as exc:
+                    if attempt_index < total_attempts:
+                        logger.warning(
+                            "Threat analysis parse failure model=%s attempt=%d/%d num_predict=%d "
+                            "force_json=%s content_len=%d thinking_len=%d error=%s",
+                            self.model,
+                            attempt_index,
+                            total_attempts,
+                            attempt_num_predict,
+                            force_json,
+                            content_len,
+                            thinking_len,
+                            str(exc),
+                        )
+                        continue
+
+                    logger.error(
+                        "Threat analysis parse failure after retries model=%s attempt=%d/%d num_predict=%d "
+                        "force_json=%s content_len=%d thinking_len=%d error=%s",
+                        self.model,
+                        attempt_index,
+                        total_attempts,
+                        attempt_num_predict,
+                        force_json,
+                        content_len,
+                        thinking_len,
+                        str(exc),
+                    )
+                    raise
+
+                if attempt_index > 1:
+                    logger.info(
+                        "Threat analysis retry succeeded model=%s attempt=%d/%d num_predict=%d "
+                        "force_json=%s llm=%.2fs parse=%.2fs content_len=%d thinking_len=%d",
+                        self.model,
+                        attempt_index,
+                        total_attempts,
+                        attempt_num_predict,
+                        force_json,
+                        llm_elapsed,
+                        parse_elapsed,
+                        content_len,
+                        thinking_len,
+                    )
+
+                if self.enable_cache:
+                    self.cache.set(cache_key, threats)
+
+                total_elapsed = time.perf_counter() - overall_start
+                logger.info(
+                    "Threat analysis completed model=%s chars=%d threats=%d llm=%.2fs parse=%.2fs total=%.2fs "
+                    "attempt=%d/%d",
+                    self.model,
+                    len(system_description),
+                    len(threats),
+                    llm_elapsed,
+                    parse_elapsed,
+                    total_elapsed,
+                    attempt_index,
+                    total_attempts,
+                )
+                return threats, round(total_elapsed, 2)
+
+            raise ValueError("No valid threats parsed from LLM response")
 
         except asyncio.TimeoutError as exc:
             elapsed = time.perf_counter() - overall_start
