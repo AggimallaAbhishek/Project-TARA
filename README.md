@@ -76,7 +76,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 Configure frontend in `frontend/.env`:
 
 ```env
+# Required
 VITE_API_BASE_URL=http://localhost:8000/api
+
+# Optional (frontend env takes precedence; backend /api/auth/config is fallback)
 VITE_GOOGLE_CLIENT_ID=your-google-client-id
 VITE_DEBUG_API=false
 ```
@@ -86,6 +89,7 @@ VITE_DEBUG_API=false
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/auth/google` | Exchange Google credential for JWT |
+| GET | `/api/auth/config` | Get auth client configuration |
 | GET | `/api/auth/me` | Get current user |
 | POST | `/api/analyze` | Create new threat analysis |
 | GET | `/api/analyses` | List all analyses |

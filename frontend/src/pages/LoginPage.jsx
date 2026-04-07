@@ -2,12 +2,12 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Navigate, useNavigate } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { Shield, Zap, Target, Lock, CheckCircle } from 'lucide-react';
+import { Shield, Zap, Target, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function LoginPage({ isGoogleConfigured = false }) {
+export default function LoginPage({ isGoogleConfigured = false, googleConfigSource = 'frontend-env' }) {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
@@ -108,7 +108,12 @@ export default function LoginPage({ isGoogleConfigured = false }) {
               />
             ) : (
               <div className="w-full max-w-[300px] p-3 bg-risk-medium/10 border border-risk-medium/30 rounded-lg text-sm text-risk-medium">
-                Google login is not configured. Set <code>VITE_GOOGLE_CLIENT_ID</code> in frontend env.
+                Google login is not configured.
+                {googleConfigSource === 'backend-config' ? (
+                  <> Set <code>GOOGLE_CLIENT_ID</code> in backend env.</>
+                ) : (
+                  <> Set <code>VITE_GOOGLE_CLIENT_ID</code> in frontend env.</>
+                )}
               </div>
             )}
           </div>

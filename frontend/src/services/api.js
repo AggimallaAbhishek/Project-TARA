@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { runtimeConfig } from '../config/runtimeConfig';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-const DEBUG_API = import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true';
+const API_BASE_URL = runtimeConfig.apiBaseUrl;
+const DEBUG_API = import.meta.env.DEV && runtimeConfig.debugApi;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

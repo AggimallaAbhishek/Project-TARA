@@ -9,12 +9,16 @@ import {
 import { analyzeSystem } from '../services/api';
 import { FullPageLoader } from '../components/LoadingSpinner';
 
+const TITLE_MAX_LENGTH = 255;
+const DESCRIPTION_MAX_LENGTH = 5000;
+
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const navigate = useNavigate();
+  const remainingDescriptionChars = DESCRIPTION_MAX_LENGTH - description.length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -110,6 +114,7 @@ export default function HomePage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Healthcare Patient Portal"
+                maxLength={TITLE_MAX_LENGTH}
                 className="input-dark"
                 required
               />
@@ -125,11 +130,15 @@ export default function HomePage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your system's components, technologies, data flows, and security mechanisms..."
                 rows={8}
+                maxLength={DESCRIPTION_MAX_LENGTH}
                 className="textarea-dark"
                 required
               />
-              <p className="mt-2 text-xs text-text-muted">
+              <p className="mt-2 text-xs text-text-muted flex items-center justify-between">
                 The more detail you provide, the more accurate the threat analysis will be.
+                <span className={remainingDescriptionChars < 200 ? 'text-risk-medium' : ''}>
+                  {remainingDescriptionChars} characters left
+                </span>
               </p>
             </div>
 

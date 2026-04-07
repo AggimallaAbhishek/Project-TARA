@@ -18,7 +18,9 @@ import { resolveGoogleClientId } from './services/authConfig';
 
 function App() {
   const [googleClientId, setGoogleClientId] = useState('');
-  const [authConfigLoading, setAuthConfigLoading] = useState(true);
+  const [authConfigLoading, setAuthConfigLoading] = useState(
+    runtimeConfig.startupConfigErrors.length === 0,
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -37,9 +39,6 @@ function App() {
     };
 
     if (runtimeConfig.startupConfigErrors.length > 0) {
-      if (isMounted) {
-        setAuthConfigLoading(false);
-      }
       return () => {
         isMounted = false;
       };
