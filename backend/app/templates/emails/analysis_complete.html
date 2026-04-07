@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analysis Complete</title>
+</head>
+<body style="margin:0; padding:0; background-color:#0d1117; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#0d1117;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color:#161b22; border:1px solid #30363d; border-radius:12px; overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%); padding:32px 40px; text-align:center;">
+              <h1 style="margin:0; color:#58a6ff; font-size:24px; font-weight:700; letter-spacing:0.5px;">
+                🛡️ {{ app_name }}
+              </h1>
+              <p style="margin:8px 0 0; color:#8b949e; font-size:14px;">Threat Analysis &amp; Risk Assessment</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 40px;">
+              <p style="color:#c9d1d9; font-size:16px; margin:0 0 20px; line-height:1.6;">
+                Hi <strong>{{ user_name }}</strong>,
+              </p>
+              <p style="color:#c9d1d9; font-size:16px; margin:0 0 24px; line-height:1.6;">
+                Your threat analysis <strong style="color:#58a6ff;">"{{ analysis_title }}"</strong> has been completed successfully.
+              </p>
+
+              <!-- Risk Score Badge -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellspacing="0" cellpadding="0" style="background-color:#21262d; border:1px solid #30363d; border-radius:8px; width:100%;">
+                      <tr>
+                        <td style="padding:20px; text-align:center;">
+                          <p style="color:#8b949e; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin:0 0 8px;">Overall Risk Score</p>
+                          <p style="font-size:36px; font-weight:800; margin:0; color:{% if risk_level == 'Critical' %}#f85149{% elif risk_level == 'High' %}#f0883e{% elif risk_level == 'Medium' %}#d29922{% else %}#3fb950{% endif %};">
+                            {{ total_risk_score }}
+                          </p>
+                          <p style="font-size:14px; margin:8px 0 0; padding:4px 16px; display:inline-block; border-radius:20px; color:#ffffff; background-color:{% if risk_level == 'Critical' %}#f851494d{% elif risk_level == 'High' %}#f0883e4d{% elif risk_level == 'Medium' %}#d299224d{% else %}#3fb9504d{% endif %};">
+                            {{ risk_level }} Risk
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Threat Summary -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#21262d; border:1px solid #30363d; border-radius:8px; margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px; border-bottom:1px solid #30363d;">
+                    <p style="color:#c9d1d9; font-size:14px; font-weight:600; margin:0;">Threat Breakdown</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="color:#c9d1d9; font-size:14px; padding:4px 0;">Total Threats</td>
+                        <td align="right" style="color:#58a6ff; font-size:14px; font-weight:600; padding:4px 0;">{{ threat_count }}</td>
+                      </tr>
+                      {% if critical_count > 0 %}
+                      <tr>
+                        <td style="padding:4px 0;">
+                          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#f85149; margin-right:8px;"></span>
+                          <span style="color:#c9d1d9; font-size:14px;">Critical</span>
+                        </td>
+                        <td align="right" style="color:#f85149; font-size:14px; font-weight:600; padding:4px 0;">{{ critical_count }}</td>
+                      </tr>
+                      {% endif %}
+                      {% if high_count > 0 %}
+                      <tr>
+                        <td style="padding:4px 0;">
+                          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#f0883e; margin-right:8px;"></span>
+                          <span style="color:#c9d1d9; font-size:14px;">High</span>
+                        </td>
+                        <td align="right" style="color:#f0883e; font-size:14px; font-weight:600; padding:4px 0;">{{ high_count }}</td>
+                      </tr>
+                      {% endif %}
+                      {% if medium_count > 0 %}
+                      <tr>
+                        <td style="padding:4px 0;">
+                          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#d29922; margin-right:8px;"></span>
+                          <span style="color:#c9d1d9; font-size:14px;">Medium</span>
+                        </td>
+                        <td align="right" style="color:#d29922; font-size:14px; font-weight:600; padding:4px 0;">{{ medium_count }}</td>
+                      </tr>
+                      {% endif %}
+                      {% if low_count > 0 %}
+                      <tr>
+                        <td style="padding:4px 0;">
+                          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#3fb950; margin-right:8px;"></span>
+                          <span style="color:#c9d1d9; font-size:14px;">Low</span>
+                        </td>
+                        <td align="right" style="color:#3fb950; font-size:14px; font-weight:600; padding:4px 0;">{{ low_count }}</td>
+                      </tr>
+                      {% endif %}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="padding:8px 0 16px;">
+                    <a href="{{ analysis_url }}" style="display:inline-block; padding:14px 32px; background:linear-gradient(135deg,#238636 0%,#2ea043 100%); color:#ffffff; text-decoration:none; font-size:15px; font-weight:600; border-radius:8px; letter-spacing:0.3px;">
+                      View Full Analysis →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 40px; border-top:1px solid #30363d; text-align:center;">
+              <p style="color:#484f58; font-size:12px; margin:0; line-height:1.5;">
+                This is an automated notification from {{ app_name }}.<br>
+                Analysis ID: #{{ analysis_id }}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

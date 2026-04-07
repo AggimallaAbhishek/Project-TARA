@@ -38,6 +38,8 @@ Output only valid JSON array, no markdown or extra text."""
 
 
 class ThreatCache:
+    """In-memory LRU threat cache (fallback)."""
+
     def __init__(self, ttl_seconds: int, max_entries: int, now_fn: Callable[[], float] | None = None):
         self.ttl_seconds = ttl_seconds
         self.max_entries = max_entries
@@ -73,6 +75,38 @@ class ThreatCache:
     def clear(self) -> None:
         with self._lock:
             self._entries.clear()
+
+
+class HybridThreatCache:
+    """Threat cache that tries Redis first, falls back to in-memory."""
+
+    def __init__(self, ttl_seconds: int, max_entries: int, now_fn: Callable[[], float] | None = None):
+        self.ttl_seconds = ttl_seconds
+        self._fallback = ThreatCache(
+            ttl_seconds=ttl_seconds, max_entries=max_entries, now_fn=now_fn
+        )
+
+    def get(self, key: str) -> list[dict[str, Any]] | None:
+        try:
+            from app.services.redis_service import redis_service
+            result = redis_service.get_threat_cache(key)
+            if result is not None:
+                return result
+        except Exception:
+            pass
+        return self._fallback.get(key)
+
+    def set(self, key: str, threats: list[dict[str, Any]]) -> None:
+        try:
+            from app.services.redis_service import redis_service
+            redis_service.set_threat_cache(key, threats, self.ttl_seconds)
+        except Exception:
+            pass
+        self._fallback.set(key, threats)
+
+    def clear(self) -> None:
+        self._fallback.clear()
+
 
 
 class LLMService:
@@ -113,7 +147,7 @@ class LLMService:
         self.enable_cache = settings.ollama_enable_cache if enable_cache is None else enable_cache
         cache_ttl = settings.ollama_cache_ttl_seconds if cache_ttl_seconds is None else cache_ttl_seconds
         cache_size = settings.ollama_cache_max_entries if cache_max_entries is None else cache_max_entries
-        self.cache = ThreatCache(ttl_seconds=cache_ttl, max_entries=cache_size, now_fn=now_fn)
+        self.cache = HybridThreatCache(ttl_seconds=cache_ttl, max_entries=cache_size, now_fn=now_fn)
 
         model_lower = self.model.lower()
         if any(marker in model_lower for marker in ("480b", "405b", "70b")):

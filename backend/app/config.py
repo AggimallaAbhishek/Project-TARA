@@ -17,9 +17,14 @@ class Settings(BaseSettings):
     ollama_enable_cache: bool = True
     ollama_cache_ttl_seconds: int = 600
     ollama_cache_max_entries: int = 128
-    database_url: str = "sqlite:///./tara.db"
+    database_url: str = "postgresql+psycopg2://tara:tara@localhost:5432/tara"
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     allowed_origin_regex: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
 
     # Google OAuth
     google_client_id: str = ""
@@ -30,6 +35,16 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24  # 24 hours
+
+    # SMTP Email Notifications
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_use_tls: bool = True
+    email_notifications_enabled: bool = False
+    frontend_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env")
 

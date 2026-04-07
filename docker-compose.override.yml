@@ -1,0 +1,17 @@
+# Development overrides — volume mounts for hot reload
+version: "3.8"
+
+services:
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - /app/venv  # Exclude venv from mount
+    environment:
+      APP_ENV: development
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes: []  # In dev, run frontend with `npm run dev` locally instead

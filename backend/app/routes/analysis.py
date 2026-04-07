@@ -2,7 +2,7 @@ import logging
 from datetime import date, datetime, time, timedelta
 from time import perf_counter
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
@@ -19,6 +19,7 @@ from app.schemas.analysis import (
 )
 from app.services.audit_service import audit_service
 from app.services.auth_service import get_current_user
+from app.services.email_service import email_service
 from app.services.llm_service import llm_service
 from app.services.pdf_service import pdf_report_service
 from app.services.rate_limit_service import analyze_rate_limiter
@@ -100,6 +101,7 @@ def _sanitize_filename(value: str) -> str:
 )
 async def create_analysis(
     request: AnalysisCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(enforce_analyze_rate_limit),
 ):
@@ -185,6 +187,28 @@ async def create_analysis(
             analysis_time,
             total_elapsed,
         )
+
+        # Send email notification in the background
+        risk_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+        for t in threats:
+            if t.risk_level in risk_counts:
+                risk_counts[t.risk_level] += 1
+        overall_risk = risk_service.get_risk_level_from_score(analysis.total_risk_score)
+        background_tasks.add_task(
+            email_service.send_analysis_complete,
+            user_email=current_user.email,
+            user_name=current_user.name,
+            analysis_id=analysis.id,
+            analysis_title=analysis.title,
+            total_risk_score=analysis.total_risk_score,
+            threat_count=len(threats),
+            risk_level=overall_risk,
+            critical_count=risk_counts["Critical"],
+            high_count=risk_counts["High"],
+            medium_count=risk_counts["Medium"],
+            low_count=risk_counts["Low"],
+        )
+
         return analysis
 
     except HTTPException:

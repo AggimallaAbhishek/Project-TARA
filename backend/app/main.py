@@ -6,7 +6,7 @@ from sqlalchemy import text
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, engine
-from app.routes import analysis, audit, auth
+from app.routes import analysis, audit, auth, comparison
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(analysis.router, prefix="/api", tags=["Analysis"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
+app.include_router(comparison.router, prefix="/api", tags=["Comparison"])
 
 
 @app.get("/")
@@ -64,9 +65,20 @@ async def health_check():
         logger.exception("Health check failed: database unavailable")
         db_status = "unhealthy"
 
+    # Redis health check
+    redis_status = "unavailable"
+    try:
+        from app.services.redis_service import redis_service
+        redis_status = redis_service.health_check()
+    except Exception:
+        logger.debug("Redis health check failed")
+
     overall_status = "healthy" if db_status == "healthy" else "degraded"
     return {
         "status": overall_status,
         "service": settings.app_name,
-        "checks": {"database": db_status},
+        "checks": {
+            "database": db_status,
+            "redis": redis_status,
+        },
     }

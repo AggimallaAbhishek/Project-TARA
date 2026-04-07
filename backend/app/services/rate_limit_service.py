@@ -1,11 +1,16 @@
+import logging
 import math
 import time
 from collections import deque
 from threading import Lock
 from typing import Callable
 
+logger = logging.getLogger(__name__)
+
 
 class InMemoryRateLimiter:
+    """In-memory fallback rate limiter using sliding window."""
+
     def __init__(
         self,
         max_requests: int,
@@ -39,4 +44,40 @@ class InMemoryRateLimiter:
             self._buckets.clear()
 
 
-analyze_rate_limiter = InMemoryRateLimiter(max_requests=5, window_seconds=60)
+class HybridRateLimiter:
+    """Rate limiter that tries Redis first, falls back to in-memory."""
+
+    def __init__(
+        self,
+        max_requests: int,
+        window_seconds: int,
+        now_fn: Callable[[], float] | None = None,
+    ):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._fallback = InMemoryRateLimiter(
+            max_requests=max_requests,
+            window_seconds=window_seconds,
+            now_fn=now_fn,
+        )
+
+    def is_allowed(self, key: str) -> tuple[bool, int]:
+        try:
+            from app.services.redis_service import redis_service
+
+            if redis_service.is_available:
+                return redis_service.rate_limit_check(
+                    key,
+                    max_requests=self.max_requests,
+                    window_seconds=self.window_seconds,
+                )
+        except Exception:
+            logger.debug("Redis rate limit unavailable, using in-memory fallback")
+
+        return self._fallback.is_allowed(key)
+
+    def clear(self) -> None:
+        self._fallback.clear()
+
+
+analyze_rate_limiter = HybridRateLimiter(max_requests=5, window_seconds=60)
