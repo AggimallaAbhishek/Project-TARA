@@ -95,7 +95,7 @@ async def create_analysis(
     except RuntimeError as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Analysis failed: {str(e)}"
         )
     except Exception:

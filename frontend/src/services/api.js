@@ -5,19 +5,16 @@ const DEBUG_API = import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'tru
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 120000, // 2 minutes for LLM analysis
 });
 
-// Add auth token to requests
+// Request interceptor for optional diagnostics
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
     if (DEBUG_API) {
       console.debug(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     }
@@ -45,7 +42,6 @@ api.interceptors.response.use(
     
     // Only redirect to login on 401 if NOT already on auth endpoints
     if (status === 401 && !url.includes('/auth/')) {
-      localStorage.removeItem('token');
       // Use replace to prevent back button issues
       window.location.replace('/login');
     }
@@ -62,6 +58,11 @@ export const googleAuth = async (credential) => {
 
 export const getMe = async () => {
   const response = await api.get('/auth/me');
+  return response.data;
+};
+
+export const logoutRequest = async () => {
+  const response = await api.post('/auth/logout');
   return response.data;
 };
 

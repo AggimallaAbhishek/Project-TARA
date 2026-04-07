@@ -1,34 +1,23 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { googleAuth, getMe } from '../services/api';
+import { googleAuth, getMe, logoutRequest } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
-        try {
-          const userData = await getMe();
-          setUser(userData);
-          setToken(storedToken);
-        } catch (error) {
+      try {
+        const userData = await getMe();
+        setUser(userData);
+      } catch (error) {
+        // 401 is expected when no active cookie exists.
+        if (error.response?.status !== 401) {
           console.error('Auth init error:', error);
-          // Only clear token on 401 (invalid/expired token)
-          // Don't clear on network errors or other issues
-          if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            setToken(null);
-            setUser(null);
-          } else {
-            // Network error or other issue - keep token, retry might work
-            setToken(storedToken);
-          }
         }
+        setUser(null);
       }
       setLoading(false);
     };
@@ -38,24 +27,23 @@ export function AuthProvider({ children }) {
 
   const login = async (googleCredential) => {
     const response = await googleAuth(googleCredential);
-    const newToken = response.access_token;
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
     setUser(response.user);
     return response;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
+  const logout = async () => {
+    try {
+      await logoutRequest();
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    }
     setUser(null);
   };
 
-  const isAuthenticated = !!user && !!token;
+  const isAuthenticated = !!user;
 
   const value = {
     user,
-    token,
     loading,
     login,
     logout,
