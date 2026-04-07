@@ -39,6 +39,7 @@ describe('HistoryPage', () => {
     await waitFor(() => {
       expect(getAnalyses).toHaveBeenCalledTimes(1)
     })
+    await screen.findByLabelText('Risk Level')
 
     fireEvent.change(screen.getByLabelText('Risk Level'), { target: { value: 'High' } })
     fireEvent.change(screen.getByLabelText('STRIDE Category'), { target: { value: 'Tampering' } })

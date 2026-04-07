@@ -48,6 +48,15 @@ describe('AnalysisPage PDF export', () => {
       threats: [],
     })
 
+    const nativeCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
+      const element = nativeCreateElement(tagName, options)
+      if (tagName === 'a') {
+        element.click = vi.fn()
+      }
+      return element
+    })
+
     if (!window.URL.createObjectURL) {
       window.URL.createObjectURL = vi.fn(() => 'blob:test-url')
     } else {

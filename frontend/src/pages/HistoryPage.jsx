@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 // motion is used in JSX as motion.div
 // eslint-disable-next-line no-unused-vars
@@ -51,11 +51,14 @@ export default function HistoryPage() {
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const hasLoadedOnceRef = useRef(false);
 
   useEffect(() => {
     const loadAnalyses = async () => {
       try {
-        setLoading(true);
+        if (!hasLoadedOnceRef.current) {
+          setLoading(true);
+        }
         const data = await getAnalyses({
           skip,
           limit,
@@ -73,6 +76,7 @@ export default function HistoryPage() {
         setError(err.response?.data?.detail || 'Failed to load analyses');
       } finally {
         setLoading(false);
+        hasLoadedOnceRef.current = true;
       }
     };
 
