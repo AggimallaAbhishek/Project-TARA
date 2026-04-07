@@ -4,10 +4,10 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
-  ArrowLeft, Clock, Shield, AlertTriangle, 
-  TrendingUp, FileText, ChevronRight 
+  ArrowLeft, Clock, Shield, AlertTriangle, Download,
+  TrendingUp, FileText
 } from 'lucide-react';
-import { getAnalysis } from '../services/api';
+import { downloadAnalysisPdf, getAnalysis } from '../services/api';
 import ThreatCard from '../components/ThreatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -16,6 +16,8 @@ export default function AnalysisPage() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -31,6 +33,40 @@ export default function AnalysisPage() {
 
     fetchAnalysis();
   }, [id]);
+
+  const parseFilenameFromHeader = (contentDisposition) => {
+    if (!contentDisposition) return null;
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match) {
+      return decodeURIComponent(utf8Match[1]);
+    }
+    const standardMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+    return standardMatch ? standardMatch[1] : null;
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isDownloadingPdf) return;
+    setPdfError(null);
+    setIsDownloadingPdf(true);
+    try {
+      const response = await downloadAnalysisPdf(id);
+      const filename =
+        parseFilenameFromHeader(response.headers?.['content-disposition']) || `analysis-${id}.pdf`;
+      const blobUrl = window.URL.createObjectURL(response.data);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (downloadError) {
+      console.error('Failed to download PDF report:', downloadError);
+      setPdfError(downloadError.response?.data?.detail || 'Failed to download PDF report');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -95,6 +131,22 @@ export default function AnalysisPage() {
         animate={{ opacity: 1, y: 0 }}
         className="card-dark p-6 mb-6"
       >
+        <div className="flex justify-end mb-4">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isDownloadingPdf}
+            className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            {isDownloadingPdf ? 'Downloading...' : 'Download PDF Report'}
+          </button>
+        </div>
+        {pdfError && (
+          <div className="mb-4 p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+            {pdfError}
+          </div>
+        )}
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex-1">
             <h1 className="text-2xl font-bold font-display text-text-primary mb-2">

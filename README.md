@@ -92,10 +92,12 @@ VITE_DEBUG_API=false
 | GET | `/api/auth/config` | Get auth client configuration |
 | GET | `/api/auth/me` | Get current user |
 | POST | `/api/analyze` | Create new threat analysis |
-| GET | `/api/analyses` | List all analyses |
+| GET | `/api/analyses` | List analyses (pagination + search/filter) |
 | GET | `/api/analyses/{id}` | Get specific analysis |
 | GET | `/api/analyses/{id}/summary` | Get risk summary |
+| GET | `/api/analyses/{id}/export.pdf` | Download analysis report PDF |
 | DELETE | `/api/analyses/{id}` | Delete analysis |
+| GET | `/api/audit/logs` | List audit events for current user |
 
 ## STRIDE Categories
 
