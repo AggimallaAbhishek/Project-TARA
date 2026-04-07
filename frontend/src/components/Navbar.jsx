@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { Shield, LayoutDashboard, History, LogOut, Menu, X } from 'lucide-react';
+import { Shield, LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
@@ -15,6 +15,7 @@ export default function Navbar() {
   const navLinks = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/history', label: 'History', icon: History },
+    { path: '/compare', label: 'Compare', icon: GitCompareArrows },
   ];
 
   // Public navbar (not logged in)

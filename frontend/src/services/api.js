@@ -120,4 +120,9 @@ export const downloadAnalysisPdf = async (id) => {
   });
 };
 
+export const compareAnalyses = async (analysisIds) => {
+  const response = await api.post('/compare', { analysis_ids: analysisIds });
+  return response.data;
+};
+
 export default api;

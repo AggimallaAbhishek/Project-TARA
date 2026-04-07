@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import AnalysisPage from './pages/AnalysisPage';
 import HistoryPage from './pages/HistoryPage';
+import ComparePage from './pages/ComparePage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { runtimeConfig } from './config/runtimeConfig';
@@ -119,6 +120,11 @@ function App() {
                   <Route path="/history" element={
                     <ProtectedRoute>
                       <HistoryPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/compare" element={
+                    <ProtectedRoute>
+                      <ComparePage />
                     </ProtectedRoute>
                   } />
                   <Route path="*" element={<NotFoundPage />} />
