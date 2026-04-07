@@ -61,6 +61,11 @@ export const getMe = async () => {
   return response.data;
 };
 
+export const getAuthConfig = async () => {
+  const response = await api.get('/auth/config');
+  return response.data;
+};
+
 export const logoutRequest = async () => {
   const response = await api.post('/auth/logout');
   return response.data;

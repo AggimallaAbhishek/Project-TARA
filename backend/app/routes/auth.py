@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
-from app.schemas.auth import GoogleAuthRequest, TokenResponse, UserResponse
+from app.schemas.auth import AuthConfigResponse, GoogleAuthRequest, TokenResponse, UserResponse
 from app.services.auth_service import (
     ACCESS_TOKEN_COOKIE_NAME,
     verify_google_token, 
@@ -48,6 +48,12 @@ async def google_auth(
     return TokenResponse(
         user=UserResponse.model_validate(user)
     )
+
+
+@router.get("/config", response_model=AuthConfigResponse)
+async def get_auth_config():
+    """Get auth-related client configuration."""
+    return AuthConfigResponse(google_client_id=settings.google_client_id)
 
 
 @router.get("/me", response_model=UserResponse)

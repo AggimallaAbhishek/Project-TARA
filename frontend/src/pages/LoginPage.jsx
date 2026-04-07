@@ -7,10 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function LoginPage() {
+export default function LoginPage({ isGoogleConfigured = false }) {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
-  const isGoogleConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const [error, setError] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 

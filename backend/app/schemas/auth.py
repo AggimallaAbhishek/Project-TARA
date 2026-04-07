@@ -20,3 +20,7 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     user: UserResponse
+
+
+class AuthConfigResponse(BaseModel):
+    google_client_id: str
