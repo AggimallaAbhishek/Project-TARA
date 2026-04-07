@@ -1,24 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
-from datetime import datetime
-import enum
+from datetime import datetime, timezone
 from app.database import Base
-
-
-class RiskLevel(str, enum.Enum):
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    CRITICAL = "Critical"
-
-
-class StrideCategory(str, enum.Enum):
-    SPOOFING = "Spoofing"
-    TAMPERING = "Tampering"
-    REPUDIATION = "Repudiation"
-    INFORMATION_DISCLOSURE = "Information Disclosure"
-    DENIAL_OF_SERVICE = "Denial of Service"
-    ELEVATION_OF_PRIVILEGE = "Elevation of Privilege"
 
 
 class Analysis(Base):
@@ -28,8 +11,8 @@ class Analysis(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     system_description = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     total_risk_score = Column(Float, default=0.0)
     analysis_time = Column(Float, default=0.0)  # Time in seconds
     
@@ -58,7 +41,7 @@ class Threat(Base):
     # Mitigation
     mitigation = Column(Text, nullable=False)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     analysis = relationship("Analysis", back_populates="threats")
