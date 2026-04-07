@@ -16,9 +16,11 @@ describe('resolveGoogleClientId', () => {
   })
 
   it('returns empty string when backend config load fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const loader = vi.fn().mockRejectedValue(new Error('network error'))
     const clientId = await resolveGoogleClientId('', loader)
     expect(clientId).toBe('')
     expect(loader).toHaveBeenCalledTimes(1)
+    consoleSpy.mockRestore()
   })
 })
