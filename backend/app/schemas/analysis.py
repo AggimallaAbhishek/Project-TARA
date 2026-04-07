@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
@@ -23,7 +23,23 @@ class StrideCategory(str, Enum):
 # Request Schemas
 class AnalysisCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255, description="Title for the analysis")
-    system_description: str = Field(..., min_length=10, description="Detailed description of the system architecture")
+    system_description: str = Field(
+        ...,
+        min_length=10,
+        max_length=5000,
+        description="Detailed description of the system architecture"
+    )
+
+    @field_validator("title", "system_description")
+    @classmethod
+    def trim_and_validate_not_blank(cls, value: str, info) -> str:
+        cleaned = value.strip()
+        field_name = info.field_name.replace("_", " ")
+        if not cleaned:
+            raise ValueError(f"{field_name} cannot be blank")
+        if info.field_name == "system_description" and len(cleaned) < 10:
+            raise ValueError("system description must be at least 10 characters")
+        return cleaned
 
 
 # Threat Schemas

@@ -11,16 +11,34 @@ from app.schemas.analysis import (
 from app.services.llm_service import llm_service
 from app.services.risk_service import risk_service
 from app.services.auth_service import get_current_user
+from app.services.rate_limit_service import analyze_rate_limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def enforce_analyze_rate_limit(current_user: User = Depends(get_current_user)) -> User:
+    key = f"user:{current_user.id}"
+    is_allowed, retry_after = analyze_rate_limiter.is_allowed(key)
+    if not is_allowed:
+        logger.warning(
+            "Rate limit exceeded for /api/analyze user_id=%s retry_after=%s",
+            current_user.id,
+            retry_after,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Maximum 5 analyze requests per minute.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    return current_user
 
 
 @router.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
 async def create_analysis(
     request: AnalysisCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(enforce_analyze_rate_limit)
 ):
     """
     Create a new threat analysis for the given system description.

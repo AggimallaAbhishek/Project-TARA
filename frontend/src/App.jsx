@@ -12,40 +12,67 @@ import AnalysisPage from './pages/AnalysisPage';
 import HistoryPage from './pages/HistoryPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import { runtimeConfig } from './config/runtimeConfig';
 import { getAuthConfig } from './services/api';
-
-const ENV_GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+import { resolveGoogleClientId } from './services/authConfig';
 
 function App() {
-  const [googleClientId, setGoogleClientId] = useState(ENV_GOOGLE_CLIENT_ID);
-  const [authConfigLoading, setAuthConfigLoading] = useState(!ENV_GOOGLE_CLIENT_ID);
+  const [googleClientId, setGoogleClientId] = useState('');
+  const [authConfigLoading, setAuthConfigLoading] = useState(true);
 
   useEffect(() => {
-    if (ENV_GOOGLE_CLIENT_ID) {
-      return;
-    }
-
     let isMounted = true;
+
     const loadAuthConfig = async () => {
-      try {
-        const config = await getAuthConfig();
-        if (isMounted && config.google_client_id) {
-          setGoogleClientId(config.google_client_id);
-        }
-      } catch (error) {
-        console.error('Failed to load auth configuration:', error);
-      } finally {
-        if (isMounted) {
-          setAuthConfigLoading(false);
-        }
+      const resolvedClientId = await resolveGoogleClientId(
+        runtimeConfig.envGoogleClientId,
+        getAuthConfig,
+      );
+      if (isMounted) {
+        setGoogleClientId(resolvedClientId);
+      }
+      if (isMounted) {
+        setAuthConfigLoading(false);
       }
     };
+
+    if (runtimeConfig.startupConfigErrors.length > 0) {
+      if (isMounted) {
+        setAuthConfigLoading(false);
+      }
+      return () => {
+        isMounted = false;
+      };
+    }
 
     loadAuthConfig();
     return () => {
       isMounted = false;
     };
   }, []);
+
+  if (runtimeConfig.startupConfigErrors.length > 0) {
+    return (
+      <div className="min-h-screen bg-dark-primary bg-cyber-pattern flex items-center justify-center px-4">
+        <div className="card-dark p-8 max-w-xl w-full border border-risk-critical/30">
+          <h1 className="text-2xl font-bold font-display text-text-primary mb-3">
+            Startup Configuration Error
+          </h1>
+          <p className="text-text-secondary mb-4">
+            Required frontend environment variables are missing:
+          </p>
+          <ul className="list-disc list-inside text-risk-critical text-sm space-y-1 mb-4">
+            {runtimeConfig.startupConfigErrors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+          <p className="text-text-muted text-sm">
+            Add missing values to <code>frontend/.env</code> and restart the frontend dev server.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (authConfigLoading) {
     return (
@@ -67,7 +94,14 @@ function App() {
                   <Route path="/welcome" element={<LandingPage />} />
                   <Route
                     path="/login"
-                    element={<LoginPage isGoogleConfigured={Boolean(googleClientId)} />}
+                    element={
+                      <LoginPage
+                        isGoogleConfigured={Boolean(googleClientId)}
+                        googleConfigSource={
+                          runtimeConfig.envGoogleClientId ? 'frontend-env' : 'backend-config'
+                        }
+                      />
+                    }
                   />
                   <Route path="/" element={
                     <ProtectedRoute>
