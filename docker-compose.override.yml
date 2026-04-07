@@ -1,5 +1,4 @@
 # Development overrides — volume mounts for hot reload
-version: "3.8"
 
 services:
   backend:
