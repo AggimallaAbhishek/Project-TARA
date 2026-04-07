@@ -81,9 +81,24 @@ export const analyzeSystem = async (title, systemDescription) => {
   return response.data;
 };
 
-export const getAnalyses = async (skip = 0, limit = 20) => {
+export const getAnalyses = async ({
+  skip = 0,
+  limit = 20,
+  q = '',
+  risk_level = '',
+  stride_category = '',
+  date_from = '',
+  date_to = '',
+} = {}) => {
+  const params = { skip, limit };
+  if (q.trim()) params.q = q.trim();
+  if (risk_level) params.risk_level = risk_level;
+  if (stride_category) params.stride_category = stride_category;
+  if (date_from) params.date_from = date_from;
+  if (date_to) params.date_to = date_to;
+
   const response = await api.get('/analyses', {
-    params: { skip, limit },
+    params,
   });
   return response.data;
 };
@@ -100,6 +115,12 @@ export const getAnalysisSummary = async (id) => {
 
 export const deleteAnalysis = async (id) => {
   await api.delete(`/analyses/${id}`);
+};
+
+export const downloadAnalysisPdf = async (id) => {
+  return api.get(`/analyses/${id}/export.pdf`, {
+    responseType: 'blob',
+  });
 };
 
 export default api;

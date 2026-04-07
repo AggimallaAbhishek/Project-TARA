@@ -1,17 +1,27 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from datetime import date, datetime, time, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, selectinload
-from typing import List
+
 from app.database import get_db
 from app.models.analysis import Analysis, Threat
 from app.models.user import User
 from app.schemas.analysis import (
-    AnalysisCreate, AnalysisResponse, AnalysisRiskSummary, AnalysisSummary
+    AnalysisCreate,
+    AnalysisListResponse,
+    AnalysisResponse,
+    AnalysisRiskSummary,
+    AnalysisSummary,
+    RiskLevel,
+    StrideCategory,
 )
-from app.services.llm_service import llm_service
-from app.services.risk_service import risk_service
+from app.services.audit_service import audit_service
 from app.services.auth_service import get_current_user
+from app.services.llm_service import llm_service
+from app.services.pdf_service import pdf_report_service
 from app.services.rate_limit_service import analyze_rate_limiter
+from app.services.risk_service import risk_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -34,227 +44,336 @@ def enforce_analyze_rate_limit(current_user: User = Depends(get_current_user)) -
     return current_user
 
 
-@router.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
+def _build_analysis_summary(analysis: Analysis) -> AnalysisSummary:
+    high_risk_count = sum(1 for threat in analysis.threats if threat.risk_level in ["High", "Critical"])
+    return AnalysisSummary(
+        id=analysis.id,
+        title=analysis.title,
+        created_at=analysis.created_at,
+        total_risk_score=analysis.total_risk_score,
+        threat_count=len(analysis.threats),
+        high_risk_count=high_risk_count,
+        analysis_time=analysis.analysis_time or 0.0,
+    )
+
+
+def _apply_risk_level_filter(query, risk_level: RiskLevel):
+    if risk_level == RiskLevel.CRITICAL:
+        return query.filter(Analysis.total_risk_score >= 16)
+    if risk_level == RiskLevel.HIGH:
+        return query.filter(Analysis.total_risk_score >= 10, Analysis.total_risk_score < 16)
+    if risk_level == RiskLevel.MEDIUM:
+        return query.filter(Analysis.total_risk_score >= 5, Analysis.total_risk_score < 10)
+    return query.filter(Analysis.total_risk_score < 5)
+
+
+def _get_user_analysis(
+    db: Session,
+    *,
+    analysis_id: int,
+    user_id: int,
+    include_threats: bool = True,
+) -> Analysis | None:
+    query = db.query(Analysis)
+    if include_threats:
+        query = query.options(selectinload(Analysis.threats))
+    return query.filter(Analysis.id == analysis_id, Analysis.user_id == user_id).first()
+
+
+def _sanitize_filename(value: str) -> str:
+    normalized = "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in value.strip())
+    normalized = normalized.strip("-")
+    return normalized[:50] or "analysis"
+
+
+@router.post(
+    "/analyze",
+    response_model=AnalysisResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create threat analysis",
+    response_description="Created analysis with generated threats",
+    responses={
+        401: {"description": "Authentication required"},
+        429: {"description": "Analyze rate limit exceeded"},
+    },
+)
 async def create_analysis(
-    request: AnalysisCreate, 
+    request: AnalysisCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(enforce_analyze_rate_limit)
+    current_user: User = Depends(enforce_analyze_rate_limit),
 ):
-    """
-    Create a new threat analysis for the given system description.
-    Uses STRIDE methodology to identify and categorize threats.
-    Requires authentication.
-    """
+    """Create a threat analysis using STRIDE methodology."""
     try:
-        # Get threats from LLM with timing
         threat_data, analysis_time = await llm_service.analyze_system(request.system_description)
-        
-        # Create analysis record
+
         analysis = Analysis(
             user_id=current_user.id,
             title=request.title,
             system_description=request.system_description,
-            analysis_time=analysis_time
+            analysis_time=analysis_time,
         )
         db.add(analysis)
-        db.flush()  # Get the ID
-        
-        # Process and store threats
-        threats = []
-        for t in threat_data:
-            # Validate required fields exist
-            if not all(k in t for k in ['name', 'description', 'stride_category', 
-                                          'affected_component', 'likelihood', 'impact', 'mitigation']):
-                continue  # Skip malformed threats
-            
-            # Calculate risk score
+        db.flush()
+
+        threats: list[Threat] = []
+        for threat_item in threat_data:
+            required_keys = {
+                "name",
+                "description",
+                "stride_category",
+                "affected_component",
+                "likelihood",
+                "impact",
+                "mitigation",
+            }
+            if not required_keys.issubset(threat_item):
+                continue
+
             risk_score = risk_service.calculate_risk_score(
-                t['likelihood'], 
-                t['impact']
+                threat_item["likelihood"],
+                threat_item["impact"],
             )
-            
-            # Calculate risk level based on score
             calculated_risk_level = risk_service.get_risk_level_from_score(risk_score)
-            
+
             threat = Threat(
                 analysis_id=analysis.id,
-                name=t['name'],
-                description=t['description'],
-                stride_category=t['stride_category'],
-                affected_component=t['affected_component'],
+                name=threat_item["name"],
+                description=threat_item["description"],
+                stride_category=threat_item["stride_category"],
+                affected_component=threat_item["affected_component"],
                 risk_level=calculated_risk_level,
-                likelihood=t['likelihood'],
-                impact=t['impact'],
+                likelihood=threat_item["likelihood"],
+                impact=threat_item["impact"],
                 risk_score=risk_score,
-                mitigation=t['mitigation']
+                mitigation=threat_item["mitigation"],
             )
             db.add(threat)
             threats.append(threat)
-        
+
         if not threats:
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Analysis failed: No valid threats could be generated"
+                detail="Analysis failed: No valid threats could be generated",
             )
-        
-        # Calculate total risk score
-        threat_dicts = [{'risk_score': t.risk_score} for t in threats]
+
+        threat_dicts = [{"risk_score": threat.risk_score} for threat in threats]
         analysis.total_risk_score = risk_service.calculate_total_risk_score(threat_dicts)
-        
+
+        audit_service.record_event(
+            db,
+            user_id=current_user.id,
+            action="analysis_created",
+            analysis_id=analysis.id,
+            event_metadata={
+                "title": analysis.title,
+                "threat_count": len(threats),
+                "total_risk_score": analysis.total_risk_score,
+            },
+        )
+
         db.commit()
         db.refresh(analysis)
-        
         return analysis
-    
+
     except HTTPException:
         db.rollback()
         raise
-    except RuntimeError as e:
+    except RuntimeError as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Analysis failed: {str(e)}"
+            detail=f"Analysis failed: {str(exc)}",
         )
     except Exception:
         db.rollback()
         logger.exception("Unexpected error while creating analysis")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Analysis failed due to an internal server error"
+            detail="Analysis failed due to an internal server error",
         )
 
 
-@router.get("/analyses", response_model=List[AnalysisSummary])
+@router.get(
+    "/analyses",
+    response_model=AnalysisListResponse,
+    summary="List analyses",
+    response_description="Paginated analyses matching filters",
+    responses={401: {"description": "Authentication required"}},
+)
 async def list_analyses(
+    q: str | None = Query(default=None, description="Case-insensitive search by analysis title"),
+    risk_level: RiskLevel | None = Query(default=None, description="Analysis risk bucket filter"),
+    stride_category: StrideCategory | None = Query(default=None, description="STRIDE category filter"),
+    date_from: date | None = Query(default=None, description="Start date (inclusive), YYYY-MM-DD"),
+    date_to: date | None = Query(default=None, description="End date (inclusive), YYYY-MM-DD"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    List user's analyses with summary information.
-    Requires authentication.
-    """
+    """List user's analyses with pagination and filters."""
+    query = db.query(Analysis).filter(Analysis.user_id == current_user.id)
+
+    if q and q.strip():
+        query = query.filter(Analysis.title.ilike(f"%{q.strip()}%"))
+
+    if risk_level:
+        query = _apply_risk_level_filter(query, risk_level)
+
+    if stride_category:
+        query = query.filter(Analysis.threats.any(Threat.stride_category == stride_category.value))
+
+    if date_from:
+        start_datetime = datetime.combine(date_from, time.min)
+        query = query.filter(Analysis.created_at >= start_datetime)
+
+    if date_to:
+        end_exclusive = datetime.combine(date_to + timedelta(days=1), time.min)
+        query = query.filter(Analysis.created_at < end_exclusive)
+
+    total = query.count()
     analyses = (
-        db.query(Analysis)
-        .options(selectinload(Analysis.threats))
-        .filter(Analysis.user_id == current_user.id)
+        query.options(selectinload(Analysis.threats))
         .order_by(Analysis.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
-    
-    summaries = []
-    for analysis in analyses:
-        high_risk_count = sum(1 for t in analysis.threats if t.risk_level in ['High', 'Critical'])
-        summaries.append(AnalysisSummary(
-            id=analysis.id,
-            title=analysis.title,
-            created_at=analysis.created_at,
-            total_risk_score=analysis.total_risk_score,
-            threat_count=len(analysis.threats),
-            high_risk_count=high_risk_count,
-            analysis_time=analysis.analysis_time or 0.0
-        ))
-    
-    return summaries
+
+    items = [_build_analysis_summary(analysis) for analysis in analyses]
+    has_more = (skip + len(items)) < total
+    return AnalysisListResponse(items=items, total=total, skip=skip, limit=limit, has_more=has_more)
 
 
-@router.get("/analyses/{analysis_id}", response_model=AnalysisResponse)
+@router.get(
+    "/analyses/{analysis_id}",
+    response_model=AnalysisResponse,
+    summary="Get analysis",
+    response_description="Analysis details with threats",
+    responses={401: {"description": "Authentication required"}, 404: {"description": "Analysis not found"}},
+)
 async def get_analysis(
-    analysis_id: int, 
+    analysis_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Get a specific analysis with all threats.
-    Requires authentication. Users can only access their own analyses.
-    """
-    analysis = (
-        db.query(Analysis)
-        .options(selectinload(Analysis.threats))
-        .filter(
-            Analysis.id == analysis_id,
-            Analysis.user_id == current_user.id
-        )
-        .first()
-    )
-    
+    """Get a specific analysis with all threats for current user."""
+    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Analysis with id {analysis_id} not found"
+            detail=f"Analysis with id {analysis_id} not found",
         )
-    
     return analysis
 
 
-@router.get("/analyses/{analysis_id}/summary", response_model=AnalysisRiskSummary)
+@router.get(
+    "/analyses/{analysis_id}/summary",
+    response_model=AnalysisRiskSummary,
+    summary="Get analysis risk summary",
+    response_description="Aggregated risk and STRIDE distribution for one analysis",
+    responses={401: {"description": "Authentication required"}, 404: {"description": "Analysis not found"}},
+)
 async def get_analysis_summary(
-    analysis_id: int, 
+    analysis_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Get risk summary for a specific analysis.
-    Requires authentication.
-    """
-    analysis = (
-        db.query(Analysis)
-        .options(selectinload(Analysis.threats))
-        .filter(
-            Analysis.id == analysis_id,
-            Analysis.user_id == current_user.id
-        )
-        .first()
-    )
-    
+    """Get risk summary for a specific analysis."""
+    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Analysis with id {analysis_id} not found"
+            detail=f"Analysis with id {analysis_id} not found",
         )
-    
+
     threats = [
         {
-            'risk_level': t.risk_level,
-            'risk_score': t.risk_score,
-            'stride_category': t.stride_category
+            "risk_level": threat.risk_level,
+            "risk_score": threat.risk_score,
+            "stride_category": threat.stride_category,
         }
-        for t in analysis.threats
+        for threat in analysis.threats
     ]
-    
+
     summary = risk_service.get_risk_summary(threats)
-    summary['analysis_id'] = analysis_id
-    summary['title'] = analysis.title
-    
+    summary["analysis_id"] = analysis_id
+    summary["title"] = analysis.title
     return summary
 
 
-@router.delete("/analyses/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_analysis(
-    analysis_id: int, 
+@router.get(
+    "/analyses/{analysis_id}/export.pdf",
+    summary="Export analysis as PDF",
+    response_description="PDF report for selected analysis",
+    responses={
+        200: {"content": {"application/pdf": {}}},
+        401: {"description": "Authentication required"},
+        404: {"description": "Analysis not found"},
+    },
+)
+async def export_analysis_pdf(
+    analysis_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Delete an analysis and all associated threats.
-    Requires authentication. Users can only delete their own analyses.
-    """
-    analysis = db.query(Analysis).filter(
-        Analysis.id == analysis_id,
-        Analysis.user_id == current_user.id
-    ).first()
-    
+    """Download an analysis report as PDF."""
+    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Analysis with id {analysis_id} not found"
+            detail=f"Analysis with id {analysis_id} not found",
         )
-    
+
+    try:
+        pdf_bytes = pdf_report_service.build_analysis_pdf(analysis)
+    except RuntimeError as exc:
+        logger.exception("PDF generation failed for analysis_id=%s", analysis_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+    filename = f"{_sanitize_filename(analysis.title)}-{analysis.id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.delete(
+    "/analyses/{analysis_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete analysis",
+    response_description="Analysis deleted",
+    responses={401: {"description": "Authentication required"}, 404: {"description": "Analysis not found"}},
+)
+async def delete_analysis(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete an analysis and related threats for current user."""
+    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Analysis with id {analysis_id} not found",
+        )
+
+    audit_service.record_event(
+        db,
+        user_id=current_user.id,
+        action="analysis_deleted",
+        analysis_id=analysis.id,
+        event_metadata={
+            "title": analysis.title,
+            "threat_count": len(analysis.threats),
+            "total_risk_score": analysis.total_risk_score,
+        },
+    )
     db.delete(analysis)
     db.commit()
-    
     return None

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 from enum import Enum
 
@@ -93,6 +93,14 @@ class AnalysisSummary(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class AnalysisListResponse(BaseModel):
+    items: List[AnalysisSummary]
+    total: int
+    skip: int
+    limit: int
+    has_more: bool
 
 
 class AnalysisRiskSummary(BaseModel):
