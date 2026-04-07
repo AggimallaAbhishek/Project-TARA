@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from typing import Optional
 from jose import JWTError, jwt
@@ -70,7 +70,7 @@ def verify_google_token(token: str) -> dict:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT access token."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
@@ -118,7 +118,7 @@ def get_or_create_user(db: Session, google_data: dict) -> User:
     
     if user:
         # Update last login and any changed info
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         user.name = google_data['name']
         user.picture = google_data.get('picture')
         db.commit()

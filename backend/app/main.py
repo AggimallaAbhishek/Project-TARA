@@ -25,6 +25,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CSRF protection strategy:
+# - Primary: JWT cookie has SameSite=Lax, blocking cross-origin POST requests
+# - Secondary: CORS middleware restricts allowed origins
+# - Note: For production, ensure SameSite=Lax or Strict and Secure=True on cookies
 # Configure CORS for frontend
 app.add_middleware(
     CORSMiddleware,

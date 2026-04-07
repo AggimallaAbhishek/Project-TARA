@@ -1,4 +1,3 @@
-import React from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { AlertTriangle, AlertCircle, AlertOctagon, CheckCircle } from 'lucide-react';

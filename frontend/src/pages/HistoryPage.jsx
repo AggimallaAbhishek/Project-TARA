@@ -1,4 +1,3 @@
-import React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 // motion is used in JSX as motion.div
@@ -351,7 +350,7 @@ export default function HistoryPage() {
                         <Calendar className="w-4 h-4" />
                         {new Date(analysis.created_at).toLocaleDateString()}
                       </span>
-                      {analysis.analysis_time > 0 && (
+                      {analysis.analysis_time != null && analysis.analysis_time > 0 && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           {analysis.analysis_time.toFixed(1)}s

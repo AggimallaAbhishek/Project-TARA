@@ -2,7 +2,7 @@ import { useState } from 'react';
 // motion is used in JSX as motion.div, motion.button
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Target, Shield, Lightbulb } from 'lucide-react';
+import { ChevronDown, Target, Shield, Lightbulb } from 'lucide-react';
 import RiskBadge from './RiskBadge';
 import StrideBadge from './StrideBadge';
 

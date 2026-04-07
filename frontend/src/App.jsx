@@ -81,8 +81,12 @@ function App() {
     );
   }
 
+  if (!googleClientId && import.meta.env.DEV) {
+    console.warn('Google Client ID not configured. Google login will not work.');
+  }
+
   return (
-    <GoogleOAuthProvider clientId={googleClientId || 'missing-google-client-id'}>
+    <GoogleOAuthProvider clientId={googleClientId || ''}>
       <AuthProvider>
         <BrowserRouter>
           <div className="min-h-screen bg-dark-primary bg-cyber-pattern">

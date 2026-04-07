@@ -237,7 +237,8 @@ async def list_analyses(
     query = db.query(Analysis).filter(Analysis.user_id == current_user.id)
 
     if q and q.strip():
-        query = query.filter(Analysis.title.ilike(f"%{q.strip()}%"))
+        safe_q = q.strip().replace("%", r"\%").replace("_", r"\_")
+        query = query.filter(Analysis.title.ilike(f"%{safe_q}%", escape="\\"))
 
     if risk_level:
         query = _apply_risk_level_filter(query, risk_level)

@@ -39,12 +39,9 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url || '';
     
-    console.error(`API Error: ${status} ${url}`, error.response?.data);
-    
-    // Only redirect to login on 401 if NOT already on auth endpoints
-    if (status === 401 && !url.includes('/auth/')) {
-      // Use replace to prevent back button issues
-      window.location.replace('/login');
+    // Only log non-401 errors or 401s on auth endpoints to avoid noise
+    if (status !== 401 || url.includes('/auth/')) {
+      console.error(`API Error: ${status} ${url}`, error.response?.data);
     }
     
     return Promise.reject(error);
