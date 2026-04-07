@@ -1,3 +1,3 @@
-from . import analysis, audit, auth
+from . import analysis, audit, auth, comparison
 
-__all__ = ["analysis", "auth", "audit"]
+__all__ = ["analysis", "auth", "audit", "comparison"]
