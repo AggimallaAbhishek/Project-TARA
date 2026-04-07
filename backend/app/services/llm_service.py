@@ -15,6 +15,7 @@ except ImportError:
     raise ImportError("ollama package not installed. Run: pip install ollama")
 
 from app.config import get_settings
+from app.services.risk_service import risk_service
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -272,19 +273,20 @@ class LLMService:
         if not isinstance(threat, dict):
             return None
 
-        required_fields = [
-            "name",
-            "description",
-            "stride_category",
-            "affected_component",
-            "risk_level",
-            "likelihood",
-            "impact",
-            "mitigation",
-        ]
-        for field in required_fields:
-            if field not in threat:
-                return None
+        def _as_str(value: Any, default: str) -> str:
+            if value is None:
+                return default
+            text = str(value).strip()
+            return text or default
+
+        normalized: dict[str, Any] = {}
+        normalized["name"] = _as_str(threat.get("name"), "Untitled threat")
+        normalized["description"] = _as_str(threat.get("description"), "No description provided.")
+        normalized["affected_component"] = _as_str(
+            threat.get("affected_component"),
+            "Unspecified component",
+        )
+        normalized["mitigation"] = _as_str(threat.get("mitigation"), "Mitigation not provided.")
 
         valid_categories = [
             "Spoofing",
@@ -294,20 +296,15 @@ class LLMService:
             "Denial of Service",
             "Elevation of Privilege",
         ]
-        stride = str(threat.get("stride_category", "")).strip()
+        stride = _as_str(threat.get("stride_category"), "")
         if stride not in valid_categories:
             for category in valid_categories:
                 if category.lower() in stride.lower() or stride.lower() in category.lower():
-                    threat["stride_category"] = category
+                    stride = category
                     break
-
-        valid_risks = ["Low", "Medium", "High", "Critical"]
-        risk = str(threat.get("risk_level", "")).strip()
-        if risk not in valid_risks:
-            for valid_risk in valid_risks:
-                if valid_risk.lower() in risk.lower():
-                    threat["risk_level"] = valid_risk
-                    break
+        if stride not in valid_categories:
+            stride = "Information Disclosure"
+        normalized["stride_category"] = stride
 
         try:
             likelihood = int(threat.get("likelihood", 3))
@@ -319,10 +316,18 @@ class LLMService:
         except (TypeError, ValueError):
             impact = 3
 
-        threat["likelihood"] = max(1, min(5, likelihood))
-        threat["impact"] = max(1, min(5, impact))
+        normalized["likelihood"] = max(1, min(5, likelihood))
+        normalized["impact"] = max(1, min(5, impact))
 
-        return threat
+        valid_risks = ["Low", "Medium", "High", "Critical"]
+        risk = _as_str(threat.get("risk_level"), "")
+        if risk in valid_risks:
+            normalized["risk_level"] = risk
+        else:
+            derived_score = risk_service.calculate_risk_score(normalized["likelihood"], normalized["impact"])
+            normalized["risk_level"] = risk_service.get_risk_level_from_score(derived_score)
+
+        return normalized
 
 
 llm_service = LLMService()
