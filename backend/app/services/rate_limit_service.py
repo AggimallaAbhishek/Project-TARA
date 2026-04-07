@@ -54,12 +54,29 @@ class HybridRateLimiter:
         now_fn: Callable[[], float] | None = None,
     ):
         self.max_requests = max_requests
-        self.window_seconds = window_seconds
+        self._window_seconds = window_seconds
         self._fallback = InMemoryRateLimiter(
             max_requests=max_requests,
             window_seconds=window_seconds,
             now_fn=now_fn,
         )
+
+    @property
+    def now_fn(self) -> Callable[[], float]:
+        return self._fallback.now_fn
+
+    @now_fn.setter
+    def now_fn(self, value: Callable[[], float]) -> None:
+        self._fallback.now_fn = value
+
+    @property
+    def window_seconds(self) -> int:
+        return self._window_seconds
+
+    @window_seconds.setter
+    def window_seconds(self, value: int) -> None:
+        self._window_seconds = value
+        self._fallback.window_seconds = value
 
     def is_allowed(self, key: str) -> tuple[bool, int]:
         try:
@@ -69,7 +86,7 @@ class HybridRateLimiter:
                 return redis_service.rate_limit_check(
                     key,
                     max_requests=self.max_requests,
-                    window_seconds=self.window_seconds,
+                    window_seconds=self._window_seconds,
                 )
         except Exception:
             logger.debug("Redis rate limit unavailable, using in-memory fallback")
