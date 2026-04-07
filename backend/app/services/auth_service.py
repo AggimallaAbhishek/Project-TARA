@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 from typing import Optional
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
@@ -12,10 +13,17 @@ from app.models.user import User
 
 settings = get_settings()
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
 
 def verify_google_token(token: str) -> dict:
     """Verify Google ID token and return user info."""
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google authentication is not configured"
+        )
+
     try:
         idinfo = id_token.verify_oauth2_token(
             token, 
@@ -45,14 +53,16 @@ def verify_google_token(token: str) -> dict:
             'picture': idinfo.get('picture')
         }
     except ValueError as e:
+        logger.warning("Google token validation failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Google token: {str(e)}"
+            detail="Invalid Google token"
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to verify Google token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Failed to verify Google token: {str(e)}"
+            detail="Failed to verify Google token"
         )
 
 

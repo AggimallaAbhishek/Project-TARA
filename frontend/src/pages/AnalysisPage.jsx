@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { getAnalysis } from '../services/api';
 import ThreatCard from '../components/ThreatCard';
-import RiskBadge from '../components/RiskBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function AnalysisPage() {
@@ -71,6 +70,7 @@ export default function AnalysisPage() {
   ].filter(d => d.count > 0);
 
   const highRiskCount = analysis.threats.filter(t => ['Critical', 'High'].includes(t.risk_level)).length;
+  const sortedThreats = [...analysis.threats].sort((a, b) => b.risk_score - a.risk_score);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -244,11 +244,9 @@ export default function AnalysisPage() {
         </h2>
         
         <div className="space-y-4">
-          {analysis.threats
-            .sort((a, b) => b.risk_score - a.risk_score)
-            .map((threat, index) => (
-              <ThreatCard key={threat.id} threat={threat} index={index} />
-            ))}
+          {sortedThreats.map((threat, index) => (
+            <ThreatCard key={threat.id} threat={threat} index={index} />
+          ))}
         </div>
       </motion.div>
     </div>

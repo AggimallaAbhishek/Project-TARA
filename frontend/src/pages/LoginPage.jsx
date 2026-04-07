@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 export default function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const isGoogleConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const [error, setError] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -22,9 +23,7 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     setError(null);
     try {
-      console.log('Starting login with Google credential...');
       await login(credentialResponse.credential);
-      console.log('Login successful, redirecting...');
       navigate('/', { replace: true });
     } catch (err) {
       const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
@@ -97,16 +96,22 @@ export default function LoginPage() {
           )}
 
           <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleSuccess}
-              onError={handleError}
-              useOneTap
-              theme="filled_black"
-              size="large"
-              text="signin_with"
-              shape="rectangular"
-              width="300"
-            />
+            {isGoogleConfigured ? (
+              <GoogleLogin
+                onSuccess={handleSuccess}
+                onError={handleError}
+                useOneTap
+                theme="filled_black"
+                size="large"
+                text="signin_with"
+                shape="rectangular"
+                width="300"
+              />
+            ) : (
+              <div className="w-full max-w-[300px] p-3 bg-risk-medium/10 border border-risk-medium/30 rounded-lg text-sm text-risk-medium">
+                Google login is not configured. Set <code>VITE_GOOGLE_CLIENT_ID</code> in frontend env.
+              </div>
+            )}
           </div>
         </div>
 

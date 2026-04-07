@@ -1,17 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session, selectinload
 from typing import List
 from app.database import get_db
 from app.models.analysis import Analysis, Threat
 from app.models.user import User
 from app.schemas.analysis import (
-    AnalysisCreate, AnalysisResponse, AnalysisSummary
+    AnalysisCreate, AnalysisResponse, AnalysisRiskSummary, AnalysisSummary
 )
 from app.services.llm_service import llm_service
 from app.services.risk_service import risk_service
 from app.services.auth_service import get_current_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
@@ -90,24 +92,25 @@ async def create_analysis(
     except HTTPException:
         db.rollback()
         raise
-    except ValueError as e:
+    except RuntimeError as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Analysis failed: {str(e)}"
         )
-    except Exception as e:
+    except Exception:
         db.rollback()
+        logger.exception("Unexpected error while creating analysis")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis failed: {str(e)}"
+            detail="Analysis failed due to an internal server error"
         )
 
 
 @router.get("/analyses", response_model=List[AnalysisSummary])
 async def list_analyses(
-    skip: int = 0, 
-    limit: int = 20, 
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -115,9 +118,15 @@ async def list_analyses(
     List user's analyses with summary information.
     Requires authentication.
     """
-    analyses = db.query(Analysis).filter(
-        Analysis.user_id == current_user.id
-    ).order_by(Analysis.created_at.desc()).offset(skip).limit(limit).all()
+    analyses = (
+        db.query(Analysis)
+        .options(selectinload(Analysis.threats))
+        .filter(Analysis.user_id == current_user.id)
+        .order_by(Analysis.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     
     summaries = []
     for analysis in analyses:
@@ -145,10 +154,15 @@ async def get_analysis(
     Get a specific analysis with all threats.
     Requires authentication. Users can only access their own analyses.
     """
-    analysis = db.query(Analysis).filter(
-        Analysis.id == analysis_id,
-        Analysis.user_id == current_user.id
-    ).first()
+    analysis = (
+        db.query(Analysis)
+        .options(selectinload(Analysis.threats))
+        .filter(
+            Analysis.id == analysis_id,
+            Analysis.user_id == current_user.id
+        )
+        .first()
+    )
     
     if not analysis:
         raise HTTPException(
@@ -159,7 +173,7 @@ async def get_analysis(
     return analysis
 
 
-@router.get("/analyses/{analysis_id}/summary")
+@router.get("/analyses/{analysis_id}/summary", response_model=AnalysisRiskSummary)
 async def get_analysis_summary(
     analysis_id: int, 
     db: Session = Depends(get_db),
@@ -169,10 +183,15 @@ async def get_analysis_summary(
     Get risk summary for a specific analysis.
     Requires authentication.
     """
-    analysis = db.query(Analysis).filter(
-        Analysis.id == analysis_id,
-        Analysis.user_id == current_user.id
-    ).first()
+    analysis = (
+        db.query(Analysis)
+        .options(selectinload(Analysis.threats))
+        .filter(
+            Analysis.id == analysis_id,
+            Analysis.user_id == current_user.id
+        )
+        .first()
+    )
     
     if not analysis:
         raise HTTPException(

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const DEBUG_API = import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === 'true';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -17,7 +18,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    if (DEBUG_API) {
+      console.debug(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
     return config;
   },
   (error) => {
@@ -29,7 +32,9 @@ api.interceptors.request.use(
 // Handle responses and errors
 api.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`);
+    if (DEBUG_API) {
+      console.debug(`API Response: ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   (error) => {
@@ -40,7 +45,6 @@ api.interceptors.response.use(
     
     // Only redirect to login on 401 if NOT already on auth endpoints
     if (status === 401 && !url.includes('/auth/')) {
-      console.log('Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('token');
       // Use replace to prevent back button issues
       window.location.replace('/login');

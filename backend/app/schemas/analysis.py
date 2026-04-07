@@ -79,6 +79,19 @@ class AnalysisSummary(BaseModel):
         from_attributes = True
 
 
+class AnalysisRiskSummary(BaseModel):
+    analysis_id: int
+    title: str
+    total_threats: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    average_risk_score: float
+    max_risk_score: float
+    stride_distribution: dict[str, int]
+
+
 # LLM Response Schema (for parsing)
 class LLMThreatResponse(BaseModel):
     name: str

@@ -17,9 +17,11 @@ export default function ThreatCard({ threat, index = 0 }) {
       className="card-dark overflow-hidden"
     >
       {/* Card Header - Always visible */}
-      <div
+      <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="p-5 cursor-pointer hover:bg-dark-tertiary/50 transition-colors"
+        aria-expanded={isExpanded}
+        className="w-full text-left p-5 cursor-pointer hover:bg-dark-tertiary/50 transition-colors"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
@@ -42,14 +44,14 @@ export default function ThreatCard({ threat, index = 0 }) {
           </div>
 
           {/* Expand Button */}
-          <motion.button
+          <motion.span
             animate={{ rotate: isExpanded ? 180 : 0 }}
-            className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-cyber-cyan transition-colors"
+            className="p-2 rounded-lg bg-dark-tertiary text-text-secondary"
           >
             <ChevronDown className="w-5 h-5" />
-          </motion.button>
+          </motion.span>
         </div>
-      </div>
+      </button>
 
       {/* Expandable Content */}
       <AnimatePresence>

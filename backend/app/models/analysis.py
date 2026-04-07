@@ -25,10 +25,10 @@ class Analysis(Base):
     __tablename__ = "analyses"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     system_description = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     total_risk_score = Column(Float, default=0.0)
     analysis_time = Column(Float, default=0.0)  # Time in seconds
@@ -42,7 +42,7 @@ class Threat(Base):
     __tablename__ = "threats"
     
     id = Column(Integer, primary_key=True, index=True)
-    analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=False)
+    analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=False, index=True)
     
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)

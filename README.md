@@ -1,4 +1,4 @@
-# 🛡️ Project TARA - Threat Analysis & Risk Assessment
+# Project TARA - Threat Analysis & Risk Assessment
 
 AI-powered security threat analysis using STRIDE methodology, powered by Ollama (local LLM).
 
@@ -35,9 +35,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment (optional - defaults work)
+# Configure environment
 cp .env.example .env
-# Edit .env to change OLLAMA_MODEL if needed
+# Edit .env with your secrets and model preferences
 
 # Run server
 uvicorn app.main:app --reload
@@ -61,17 +61,32 @@ Frontend runs at: http://localhost:5173
 
 ## Configuration
 
-Edit `backend/.env` to change the Ollama model:
+Configure backend in `backend/.env`:
 
 ```env
-OLLAMA_MODEL=qwen3-coder:480b-cloud  # or llama3.2, mistral, etc.
+APP_ENV=development
+OLLAMA_MODEL=llama3.2
 DATABASE_URL=sqlite:///./tara.db
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+GOOGLE_CLIENT_ID=your-google-client-id
+SECRET_KEY=replace-with-a-long-random-secret
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+```
+
+Configure frontend in `frontend/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+VITE_DEBUG_API=false
 ```
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/api/auth/google` | Exchange Google credential for JWT |
+| GET | `/api/auth/me` | Get current user |
 | POST | `/api/analyze` | Create new threat analysis |
 | GET | `/api/analyses` | List all analyses |
 | GET | `/api/analyses/{id}` | Get specific analysis |

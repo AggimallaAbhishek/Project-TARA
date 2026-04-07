@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import time
 from typing import List, Dict, Any, Tuple
@@ -11,6 +12,7 @@ except ImportError:
 from app.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # Optimized prompt - more concise for faster response
 STRIDE_PROMPT = """Analyze this system for security threats using STRIDE. Return JSON only.
@@ -83,13 +85,16 @@ class LLMService:
             
         except ollama.ResponseError as e:
             elapsed_time = time.time() - start_time
-            raise Exception(f"Ollama API error after {elapsed_time:.1f}s: {str(e)}")
+            logger.exception("Ollama API error after %.1fs", elapsed_time)
+            raise RuntimeError("Threat analysis provider error") from e
         except ValueError as e:
             elapsed_time = time.time() - start_time
-            raise Exception(f"Response parsing error after {elapsed_time:.1f}s: {str(e)}")
+            logger.warning("LLM response parsing error after %.1fs: %s", elapsed_time, str(e))
+            raise RuntimeError("Threat analysis response was invalid") from e
         except Exception as e:
             elapsed_time = time.time() - start_time
-            raise Exception(f"Ollama error after {elapsed_time:.1f}s: {str(e)}")
+            logger.exception("Unexpected Ollama error after %.1fs", elapsed_time)
+            raise RuntimeError("Threat analysis request failed") from e
     
     def _parse_response(self, response_text: str) -> List[Dict[str, Any]]:
         """
@@ -117,7 +122,7 @@ class LLMService:
         
         return validated_threats
     
-    def _validate_threat(self, threat: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_threat(self, threat: Dict[str, Any]) -> Dict[str, Any] | None:
         """
         Validate and normalize a threat object.
         """

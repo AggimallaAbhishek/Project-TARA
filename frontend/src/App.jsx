@@ -9,8 +9,9 @@ import HomePage from './pages/HomePage';
 import AnalysisPage from './pages/AnalysisPage';
 import HistoryPage from './pages/HistoryPage';
 import LoginPage from './pages/LoginPage';
+import NotFoundPage from './pages/NotFoundPage';
 
-const GOOGLE_CLIENT_ID = '893011727616-7dqrvkhu5bcbr0epr9uu67lomedak98l.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'missing-google-client-id';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
                       <HistoryPage />
                     </ProtectedRoute>
                   } />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </main>
             </AnimatePresence>

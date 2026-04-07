@@ -15,6 +15,7 @@ export default function HistoryPage() {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
@@ -35,11 +36,12 @@ export default function HistoryPage() {
   const handleDelete = async (id) => {
     try {
       await deleteAnalysis(id);
-      setAnalyses(analyses.filter(a => a.id !== id));
+      setAnalyses(analyses.filter((a) => a.id !== id));
       setDeleteConfirm(null);
-    } catch (error) {
-      console.error('Failed to delete analysis:', error);
-      alert('Failed to delete analysis');
+      setActionError(null);
+    } catch (deleteError) {
+      console.error('Failed to delete analysis:', deleteError);
+      setActionError(deleteError.response?.data?.detail || 'Failed to delete analysis');
     }
   };
 
@@ -122,6 +124,11 @@ export default function HistoryPage() {
       ) : (
         /* Analysis Cards */
         <div className="space-y-4">
+          {actionError && (
+            <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+              {actionError}
+            </div>
+          )}
           <AnimatePresence>
             {analyses.map((analysis, index) => (
               <motion.div
@@ -186,6 +193,7 @@ export default function HistoryPage() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
+                          aria-label={`View analysis ${analysis.title}`}
                           className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-cyber-cyan transition-colors"
                         >
                           <Eye className="w-5 h-5" />
@@ -195,6 +203,7 @@ export default function HistoryPage() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setDeleteConfirm(analysis)}
+                        aria-label={`Delete analysis ${analysis.title}`}
                         className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-risk-critical transition-colors"
                       >
                         <Trash2 className="w-5 h-5" />
