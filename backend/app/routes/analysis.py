@@ -1,5 +1,6 @@
 import logging
 from datetime import date, datetime, time, timedelta
+from time import perf_counter
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, selectinload
@@ -103,6 +104,7 @@ async def create_analysis(
     current_user: User = Depends(enforce_analyze_rate_limit),
 ):
     """Create a threat analysis using STRIDE methodology."""
+    request_start = perf_counter()
     try:
         threat_data, analysis_time = await llm_service.analyze_system(request.system_description)
 
@@ -174,6 +176,15 @@ async def create_analysis(
 
         db.commit()
         db.refresh(analysis)
+        total_elapsed = perf_counter() - request_start
+        logger.info(
+            "Analysis created user_id=%s analysis_id=%s threats=%s llm_time=%.2fs total=%.2fs",
+            current_user.id,
+            analysis.id,
+            len(threats),
+            analysis_time,
+            total_elapsed,
+        )
         return analysis
 
     except HTTPException:
@@ -181,13 +192,23 @@ async def create_analysis(
         raise
     except RuntimeError as exc:
         db.rollback()
+        logger.warning(
+            "Analysis runtime error user_id=%s elapsed=%.2fs error=%s",
+            current_user.id,
+            perf_counter() - request_start,
+            str(exc),
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Analysis failed: {str(exc)}",
         )
     except Exception:
         db.rollback()
-        logger.exception("Unexpected error while creating analysis")
+        logger.exception(
+            "Unexpected error while creating analysis user_id=%s elapsed=%.2fs",
+            current_user.id,
+            perf_counter() - request_start,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Analysis failed due to an internal server error",

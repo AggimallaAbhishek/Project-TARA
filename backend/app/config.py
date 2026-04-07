@@ -6,7 +6,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "TARA - Threat Analysis & Risk Assessment"
-    ollama_model: str = "qwen3-coder:480b-cloud"
+    ollama_model: str = "llama3.2"
+    ollama_temperature: float = 0.1
+    ollama_num_predict: int = 768
+    ollama_num_ctx: int = 4096
+    ollama_request_timeout_seconds: int = 120
+    ollama_keep_alive: str = "10m"
+    ollama_enable_cache: bool = True
+    ollama_cache_ttl_seconds: int = 600
+    ollama_cache_max_entries: int = 128
     database_url: str = "sqlite:///./tara.db"
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
