@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ollama_enable_cache: bool = True
     ollama_cache_ttl_seconds: int = 600
     ollama_cache_max_entries: int = 128
+    ollama_vision_model: str = ""
     database_url: str = "postgresql+psycopg2://tara:tara@localhost:5432/tara"
     database_pool_size: int = 5
     database_max_overflow: int = 10
@@ -45,6 +46,9 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     email_notifications_enabled: bool = False
     frontend_url: str = "http://localhost:5173"
+    diagram_max_upload_mb: int = 10
+    diagram_pdf_max_pages: int = 3
+    diagram_extract_ttl_seconds: int = 1800
 
     model_config = SettingsConfigDict(env_file=".env")
 

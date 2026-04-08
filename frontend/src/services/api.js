@@ -39,15 +39,12 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url || '';
     
-    // Auto-logout on 401 for non-auth endpoints (token expired mid-session)
+    console.error(`API Error: ${status} ${url}`, error.response?.data);
+    
+    // Only redirect to login on 401 if NOT already on auth endpoints
     if (status === 401 && !url.includes('/auth/')) {
-      window.location.href = '/login';
-      return Promise.reject(error);
-    }
-
-    // Only log non-401 errors or 401s on auth endpoints to avoid noise
-    if (status !== 401 || url.includes('/auth/')) {
-      console.error(`API Error: ${status} ${url}`, error.response?.data);
+      // Use replace to prevent back button issues
+      window.location.replace('/login');
     }
     
     return Promise.reject(error);
@@ -124,11 +121,6 @@ export const downloadAnalysisPdf = async (id) => {
   return api.get(`/analyses/${id}/export.pdf`, {
     responseType: 'blob',
   });
-};
-
-export const compareAnalyses = async (analysisIds) => {
-  const response = await api.post('/compare', { analysis_ids: analysisIds });
-  return response.data;
 };
 
 export default api;
