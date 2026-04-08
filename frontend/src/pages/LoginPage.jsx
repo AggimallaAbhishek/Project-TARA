@@ -141,7 +141,9 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
                 <GoogleLogin
                   onSuccess={handleSuccess}
                   onError={handleError}
-                  useOneTap
+                  useOneTap={false}
+                  auto_select={false}
+                  type="standard"
                   theme="filled_black"
                   size="large"
                   text="signin_with"
