@@ -9,6 +9,12 @@ export default function Navbar() {
   const location = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState('');
+
+  const userDisplayName = (user?.name || 'User').trim() || 'User';
+  const userInitial = userDisplayName.charAt(0).toUpperCase();
+  const avatarUrl = (user?.picture || '').trim();
+  const shouldShowAvatarImage = Boolean(avatarUrl && failedAvatarUrl !== avatarUrl);
   
   const isActive = (path) => location.pathname === path;
   
@@ -83,20 +89,26 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {/* User Info */}
             <div className="hidden sm:flex items-center gap-3">
-              {user?.picture ? (
+              {shouldShowAvatarImage ? (
                 <img
-                  src={user.picture}
-                  alt={user.name}
+                  src={avatarUrl}
+                  alt={userDisplayName}
+                  data-testid="navbar-avatar-image"
+                  onError={() => setFailedAvatarUrl(avatarUrl)}
+                  referrerPolicy="no-referrer"
                   className="w-8 h-8 rounded-full ring-2 ring-dark-border"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-cyber-cyan/20 flex items-center justify-center">
+                <div
+                  className="w-8 h-8 rounded-full bg-cyber-cyan/20 flex items-center justify-center"
+                  data-testid="navbar-avatar-fallback"
+                >
                   <span className="text-sm font-medium text-cyber-cyan">
-                    {user?.name?.charAt(0) || 'U'}
+                    {userInitial}
                   </span>
                 </div>
               )}
-              <span className="text-sm text-text-secondary">{user?.name}</span>
+              <span className="text-sm text-text-secondary max-w-[180px] truncate">{userDisplayName}</span>
             </div>
 
             {/* Logout Button */}
