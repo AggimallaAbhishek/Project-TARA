@@ -6,7 +6,7 @@ from sqlalchemy import text
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, engine
-from app.routes import analysis, audit, auth, comparison
+from app.routes import analysis, audit, auth, comparison, diagram
 
 # Configure logging before anything else
 logging.basicConfig(
@@ -48,6 +48,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(analysis.router, prefix="/api", tags=["Analysis"])
+app.include_router(diagram.router, prefix="/api", tags=["Diagram"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
 app.include_router(comparison.router, prefix="/api", tags=["Comparison"])
 

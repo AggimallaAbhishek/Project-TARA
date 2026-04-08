@@ -98,3 +98,5 @@ class HybridRateLimiter:
 
 
 analyze_rate_limiter = HybridRateLimiter(max_requests=5, window_seconds=60)
+diagram_extract_rate_limiter = HybridRateLimiter(max_requests=10, window_seconds=60)
+diagram_analyze_rate_limiter = HybridRateLimiter(max_requests=5, window_seconds=60)

@@ -81,6 +81,29 @@ export const analyzeSystem = async (title, systemDescription) => {
   return response.data;
 };
 
+export const extractDiagram = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/diagram/extract', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const analyzeFromDiagram = async (title, extractId, editedDescription = '') => {
+  const payload = {
+    title,
+    extract_id: extractId,
+  };
+  if (editedDescription.trim()) {
+    payload.system_description = editedDescription.trim();
+  }
+  const response = await api.post('/diagram/analyze', payload);
+  return response.data;
+};
+
 export const getAnalyses = async ({
   skip = 0,
   limit = 20,
@@ -115,6 +138,13 @@ export const getAnalysisSummary = async (id) => {
 
 export const deleteAnalysis = async (id) => {
   await api.delete(`/analyses/${id}`);
+};
+
+export const compareAnalyses = async (analysisIds) => {
+  const response = await api.post('/compare', {
+    analysis_ids: analysisIds,
+  });
+  return response.data;
 };
 
 export const downloadAnalysisPdf = async (id) => {
