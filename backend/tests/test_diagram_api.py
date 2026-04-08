@@ -195,13 +195,18 @@ class DiagramApiTest(unittest.TestCase):
         with patch.object(
             diagram_extract_service,
             "extract_from_upload",
-            new=AsyncMock(side_effect=RuntimeError("OLLAMA_VISION_MODEL is not configured.")),
+            new=AsyncMock(
+                side_effect=RuntimeError(
+                    "Ollama vision model is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
+                )
+            ),
         ):
             response = self.client.post(
                 "/api/diagram/extract",
                 files={"file": ("architecture.png", b"\x89PNG\r\n\x1a\n", "image/png")},
             )
         self.assertEqual(response.status_code, 503)
+        self.assertIn("Ollama vision model is unreachable", response.json()["detail"])
 
 
 if __name__ == "__main__":

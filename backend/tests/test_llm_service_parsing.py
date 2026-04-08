@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.services.llm_service import LLMService
+from app.services.llm_service import ollama
 
 
 def minimal_threat(name="Threat"):
@@ -128,6 +129,33 @@ class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(mock_chat.call_count, 2)
         self.assertIn("Threat analysis response was invalid", str(context.exception))
+
+    async def test_connection_error_maps_to_actionable_runtime_message(self):
+        service = LLMService(enable_cache=False, request_timeout_seconds=2)
+        with patch(
+            "app.services.llm_service.ollama.chat",
+            side_effect=ConnectionError("Failed to connect to Ollama."),
+        ):
+            with self.assertRaises(RuntimeError) as context:
+                await service.analyze_system("desc")
+
+        self.assertIn("Ollama is unreachable", str(context.exception))
+
+    async def test_model_not_found_maps_to_actionable_runtime_message(self):
+        service = LLMService(
+            enable_cache=False,
+            request_timeout_seconds=2,
+            model="missing-model",
+        )
+        with patch(
+            "app.services.llm_service.ollama.chat",
+            side_effect=ollama.ResponseError("model not found", status_code=404),
+        ):
+            with self.assertRaises(RuntimeError) as context:
+                await service.analyze_system("desc")
+
+        self.assertIn("missing-model", str(context.exception))
+        self.assertIn("unavailable", str(context.exception).lower())
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -291,6 +292,26 @@ class AnalysisFeaturePassTest(unittest.TestCase):
         delete_entry = next(entry for entry in logs_after_delete.json() if entry["action"] == "analysis_deleted")
         self.assertEqual(delete_entry["analysis_id"], created_analysis_id)
         self.assertEqual(delete_entry["event_metadata"]["title"], "Audit Tracked Analysis")
+
+    def test_analyze_returns_actionable_502_on_provider_unreachable(self):
+        payload = {
+            "title": "Provider Unreachable",
+            "system_description": "System with API gateway and identity provider.",
+        }
+
+        with patch.object(
+            llm_service,
+            "analyze_system",
+            new=AsyncMock(
+                side_effect=RuntimeError(
+                    "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
+                )
+            ),
+        ):
+            response = self.client.post("/api/analyze", json=payload)
+
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("Ollama is unreachable", response.json()["detail"])
 
 
 if __name__ == "__main__":

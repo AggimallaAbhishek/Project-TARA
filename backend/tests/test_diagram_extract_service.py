@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.config import get_settings
 from app.services.diagram_extract_service import DiagramExtractionError, DiagramExtractService
+from app.services.diagram_extract_service import ollama
 
 
 class DiagramExtractServiceTest(unittest.IsolatedAsyncioTestCase):
@@ -102,6 +103,33 @@ class DiagramExtractServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(pages_processed, settings.diagram_pdf_max_pages)
         self.assertEqual(extract_mock.await_count, settings.diagram_pdf_max_pages)
         self.assertIn("Page 1", extracted)
+
+    async def test_image_extraction_connection_error_maps_to_runtime_error(self):
+        settings = get_settings()
+        service = DiagramExtractService()
+        with patch.object(settings, "ollama_vision_model", "llava"):
+            with patch(
+                "app.services.diagram_extract_service.ollama.chat",
+                side_effect=ConnectionError("Failed to connect to Ollama."),
+            ):
+                with self.assertRaises(RuntimeError) as context:
+                    await service._extract_from_image(b"\x89PNG\r\n\x1a\nmock")
+
+        self.assertIn("Ollama vision model is unreachable", str(context.exception))
+
+    async def test_image_extraction_model_not_found_maps_to_runtime_error(self):
+        settings = get_settings()
+        service = DiagramExtractService()
+        with patch.object(settings, "ollama_vision_model", "missing-vision"):
+            with patch(
+                "app.services.diagram_extract_service.ollama.chat",
+                side_effect=ollama.ResponseError("model not found", status_code=404),
+            ):
+                with self.assertRaises(RuntimeError) as context:
+                    await service._extract_from_image(b"\x89PNG\r\n\x1a\nmock")
+
+        self.assertIn("missing-vision", str(context.exception))
+        self.assertIn("unavailable", str(context.exception).lower())
 
 
 if __name__ == "__main__":

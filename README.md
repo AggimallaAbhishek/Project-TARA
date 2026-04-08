@@ -24,6 +24,7 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 - [Ollama](https://ollama.ai) installed and running
 - A text model pulled (e.g., `ollama pull llama3.2`)
 - A vision model pulled for diagram extraction (e.g., `ollama pull llava`)
+- Ollama API reachable from backend runtime at `OLLAMA_HOST` (default local host: `http://127.0.0.1:11434`)
 
 ### 1. Docker Dev Startup (Recommended)
 
@@ -94,6 +95,7 @@ Configure backend in `backend/.env`:
 
 ```env
 APP_ENV=development
+OLLAMA_HOST=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3.2
 OLLAMA_TEMPERATURE=0.1
 OLLAMA_NUM_PREDICT=768
@@ -116,6 +118,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 DIAGRAM_MAX_UPLOAD_MB=10
 DIAGRAM_PDF_MAX_PAGES=3
 DIAGRAM_EXTRACT_TTL_SECONDS=1800
+```
+
+For Docker backend, Compose sets `OLLAMA_HOST=http://host.docker.internal:11434` by default.
+Override it if your Ollama runs on a different host/port:
+
+```bash
+OLLAMA_HOST=http://host.docker.internal:11435 ./scripts/dev-up.sh
 ```
 
 ### Local PostgreSQL Notes
@@ -157,6 +166,17 @@ docker compose up -d --build backend
 docker compose ps backend
 curl -fsS http://localhost:8000/health
 ```
+
+If analysis requests fail with Ollama connectivity or model errors, verify from backend runtime:
+
+```bash
+docker compose exec -T backend python scripts/check_ollama.py
+```
+
+Common fixes:
+- Start/restart Ollama on host machine.
+- Set `OLLAMA_HOST` so backend can reach Ollama (`http://host.docker.internal:11434` in Docker mode).
+- Pull or switch to an installed model (`OLLAMA_MODEL`, `OLLAMA_VISION_MODEL`).
 
 Configure frontend in `frontend/.env`:
 

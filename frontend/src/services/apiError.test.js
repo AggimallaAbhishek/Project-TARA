@@ -2,6 +2,7 @@ import {
   BACKEND_TIMEOUT_MESSAGE,
   BACKEND_UNREACHABLE_MESSAGE,
   getApiErrorMessage,
+  OLLAMA_UNAVAILABLE_MESSAGE,
   normalizeApiError,
 } from './apiError'
 
@@ -54,5 +55,23 @@ describe('apiError utilities', () => {
     )
 
     expect(message).toBe(BACKEND_TIMEOUT_MESSAGE)
+  })
+
+  it('normalizes Ollama provider details to actionable guidance', () => {
+    const message = getApiErrorMessage(
+      {
+        response: {
+          status: 502,
+          data: {
+            detail: 'Analysis failed: Ollama is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime.',
+          },
+        },
+      },
+      {
+        fallbackMessage: 'Fallback message',
+      },
+    )
+
+    expect(message).toBe(OLLAMA_UNAVAILABLE_MESSAGE)
   })
 })
