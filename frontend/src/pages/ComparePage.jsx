@@ -51,11 +51,11 @@ export default function ComparePage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
 
-  // Load all analyses for picker
+  // Load analyses for picker — refetch when search filter changes
   useEffect(() => {
     const loadAnalyses = async () => {
       try {
-        const data = await getAnalyses({ limit: 100 });
+        const data = await getAnalyses({ limit: 200, search: searchFilter || undefined });
         setAnalyses(data.items || []);
       } catch (err) {
         setError(err.response?.data?.detail || 'Failed to load analyses');
@@ -63,8 +63,9 @@ export default function ComparePage() {
         setLoadingList(false);
       }
     };
-    loadAnalyses();
-  }, []);
+    const debounceTimer = setTimeout(loadAnalyses, searchFilter ? 300 : 0);
+    return () => clearTimeout(debounceTimer);
+  }, [searchFilter]);
 
   const toggleSelection = (id) => {
     setSelectedIds((prev) => {

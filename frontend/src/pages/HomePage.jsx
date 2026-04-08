@@ -106,10 +106,11 @@ export default function HomePage() {
 
             {/* Title Input */}
             <div className="mb-5">
-              <label className="block text-sm font-medium text-text-secondary mb-2">
+              <label htmlFor="analysis-title" className="block text-sm font-medium text-text-secondary mb-2">
                 Analysis Title
               </label>
               <input
+                id="analysis-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -122,10 +123,11 @@ export default function HomePage() {
 
             {/* Description Input */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-text-secondary mb-2">
+              <label htmlFor="system-description" className="block text-sm font-medium text-text-secondary mb-2">
                 System Architecture Description
               </label>
               <textarea
+                id="system-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your system's components, technologies, data flows, and security mechanisms..."

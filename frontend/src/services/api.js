@@ -39,6 +39,12 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const url = error.config?.url || '';
     
+    // Auto-logout on 401 for non-auth endpoints (token expired mid-session)
+    if (status === 401 && !url.includes('/auth/')) {
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
     // Only log non-401 errors or 401s on auth endpoints to avoid noise
     if (status !== 401 || url.includes('/auth/')) {
       console.error(`API Error: ${status} ${url}`, error.response?.data);
