@@ -104,4 +104,18 @@ describe('AnalysisPage PDF export', () => {
 
     expect(await screen.findByText('PDF export unavailable')).toBeInTheDocument()
   })
+
+  it('shows normalized backend-unreachable message when analysis fetch fails', async () => {
+    getAnalysis.mockRejectedValueOnce({
+      code: 'ERR_NETWORK',
+      message: 'Network Error',
+      config: { url: '/analyses/42' },
+    })
+
+    renderAnalysisPage()
+
+    expect(
+      await screen.findByText(/Cannot reach the backend service/i),
+    ).toBeInTheDocument()
+  })
 })

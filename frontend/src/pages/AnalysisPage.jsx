@@ -8,6 +8,7 @@ import {
   TrendingUp, FileText
 } from 'lucide-react';
 import { downloadAnalysisPdf, getAnalysis } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import ThreatCard from '../components/ThreatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -25,7 +26,10 @@ export default function AnalysisPage() {
         const data = await getAnalysis(id);
         setAnalysis(data);
       } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to load analysis');
+        setError(getApiErrorMessage(err, {
+          fallbackMessage: 'Failed to load analysis',
+          operation: 'analysis.fetch',
+        }));
       } finally {
         setLoading(false);
       }
@@ -62,7 +66,10 @@ export default function AnalysisPage() {
       window.URL.revokeObjectURL(blobUrl);
     } catch (downloadError) {
       console.error('Failed to download PDF report:', downloadError);
-      setPdfError(downloadError.response?.data?.detail || 'Failed to download PDF report');
+      setPdfError(getApiErrorMessage(downloadError, {
+        fallbackMessage: 'Failed to download PDF report',
+        operation: 'analysis.pdf_export',
+      }));
     } finally {
       setIsDownloadingPdf(false);
     }

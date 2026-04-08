@@ -7,6 +7,7 @@ import {
   Eye, Wifi, Shield, Clock, History, ArrowRight 
 } from 'lucide-react';
 import { analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { FullPageLoader } from '../components/LoadingSpinner';
 
 const TITLE_MAX_LENGTH = 255;
@@ -68,10 +69,10 @@ export default function HomePage() {
       setSourceMetadata(extracted.source_metadata || null);
     } catch (err) {
       console.error('Diagram extraction failed:', err);
-      setError(
-        err.response?.data?.detail
-          || 'Failed to extract architecture from diagram. Please try another file.',
-      );
+      setError(getApiErrorMessage(err, {
+        fallbackMessage: 'Failed to extract architecture from diagram. Please try another file.',
+        operation: 'diagram.extract',
+      }));
     } finally {
       setIsExtracting(false);
     }
@@ -93,10 +94,10 @@ export default function HomePage() {
       navigate(`/analysis/${result.id}`);
     } catch (err) {
       console.error('Analysis failed:', err);
-      setError(
-        err.response?.data?.detail || 
-        'Failed to analyze system. Please check if the backend is running.'
-      );
+      setError(getApiErrorMessage(err, {
+        fallbackMessage: 'Failed to analyze system. Please check if the backend is running.',
+        operation: inputMode === 'text' ? 'analysis.create' : 'diagram.analyze',
+      }));
     } finally {
       setIsLoading(false);
     }

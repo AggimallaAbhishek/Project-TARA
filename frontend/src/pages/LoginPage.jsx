@@ -4,19 +4,49 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Zap, Target, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { getBackendHealth } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 export default function LoginPage({ isGoogleConfigured = false, googleConfigSource = 'frontend-env' }) {
   const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isCheckingBackend, setIsCheckingBackend] = useState(true);
+  const [isBackendReachable, setIsBackendReachable] = useState(true);
+  const [backendError, setBackendError] = useState('');
 
   // Redirect if already logged in
   if (!loading && isAuthenticated) {
     return <Navigate to="/" replace />;
   }
+
+  const probeBackendReachability = async () => {
+    setIsCheckingBackend(true);
+    setBackendError('');
+    try {
+      await getBackendHealth();
+      setIsBackendReachable(true);
+    } catch (probeError) {
+      setIsBackendReachable(false);
+      setBackendError(
+        getApiErrorMessage(probeError, {
+          fallbackMessage:
+            'Cannot reach backend auth API. Start backend and verify /health is reachable.',
+          operation: 'auth.health_probe',
+        }),
+      );
+    } finally {
+      setIsCheckingBackend(false);
+    }
+  };
+
+  useEffect(() => {
+    probeBackendReachability();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSuccess = async (credentialResponse) => {
     setIsLoggingIn(true);
@@ -25,8 +55,12 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
       await login(credentialResponse.credential);
       navigate('/', { replace: true });
     } catch (err) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
-      setError(errorMessage);
+      setError(
+        getApiErrorMessage(err, {
+          fallbackMessage: 'Login failed. Please try again.',
+          operation: 'auth.login',
+        }),
+      );
       console.error('Login error:', err);
       setIsLoggingIn(false);
     }
@@ -96,16 +130,35 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
 
           <div className="flex justify-center">
             {isGoogleConfigured ? (
-              <GoogleLogin
-                onSuccess={handleSuccess}
-                onError={handleError}
-                useOneTap
-                theme="filled_black"
-                size="large"
-                text="signin_with"
-                shape="rectangular"
-                width="300"
-              />
+              isCheckingBackend ? (
+                <div className="w-full max-w-[300px] p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 rounded-lg text-sm text-cyber-cyan text-center">
+                  Checking backend connectivity...
+                </div>
+              ) : isBackendReachable ? (
+                <GoogleLogin
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  useOneTap
+                  theme="filled_black"
+                  size="large"
+                  text="signin_with"
+                  shape="rectangular"
+                  width="300"
+                />
+              ) : (
+                <div className="w-full max-w-[300px] space-y-3">
+                  <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+                    {backendError || 'Backend is unreachable. Check backend service health and try again.'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={probeBackendReachability}
+                    className="w-full px-3 py-2 rounded-lg border border-dark-border bg-dark-tertiary text-text-secondary text-sm hover:text-text-primary hover:border-cyber-cyan/40 transition-colors"
+                  >
+                    Retry Backend Check
+                  </button>
+                </div>
+              )
             ) : (
               <div className="w-full max-w-[300px] p-3 bg-risk-medium/10 border border-risk-medium/30 rounded-lg text-sm text-risk-medium">
                 Google login is not configured.

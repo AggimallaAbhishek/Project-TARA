@@ -20,6 +20,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
 import { deleteAnalysis, getAnalyses } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 const RISK_FILTER_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 const STRIDE_FILTER_OPTIONS = [
@@ -72,7 +73,10 @@ export default function HistoryPage() {
         setHasMore(Boolean(data.has_more));
         setError(null);
       } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to load analyses');
+        setError(getApiErrorMessage(err, {
+          fallbackMessage: 'Failed to load analyses',
+          operation: 'history.load',
+        }));
       } finally {
         setLoading(false);
         hasLoadedOnceRef.current = true;
@@ -110,7 +114,10 @@ export default function HistoryPage() {
       }
     } catch (deleteError) {
       console.error('Failed to delete analysis:', deleteError);
-      setActionError(deleteError.response?.data?.detail || 'Failed to delete analysis');
+      setActionError(getApiErrorMessage(deleteError, {
+        fallbackMessage: 'Failed to delete analysis',
+        operation: 'history.delete',
+      }));
     }
   };
 

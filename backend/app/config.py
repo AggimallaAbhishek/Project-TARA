@@ -1,6 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ENV_FILE_PATH = Path(__file__).resolve().parents[1] / ".env"
 
 
 class Settings(BaseSettings):
@@ -51,7 +54,7 @@ class Settings(BaseSettings):
     diagram_extract_ttl_seconds: int = 1800
     db_startup_strict: bool | None = None
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH)
 
     @property
     def cors_origins(self) -> list[str]:

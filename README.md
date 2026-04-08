@@ -25,7 +25,27 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 - A text model pulled (e.g., `ollama pull llama3.2`)
 - A vision model pulled for diagram extraction (e.g., `ollama pull llava`)
 
-### 1. Backend Setup
+### 1. Docker Dev Startup (Recommended)
+
+Run from repository root:
+
+```bash
+./scripts/dev-up.sh
+```
+
+This is the canonical local startup path. It rebuilds backend (`--build`), starts services, and verifies backend readiness via `/health`.
+
+Manual equivalent:
+
+```bash
+docker compose up -d postgres redis
+docker compose up -d --build backend
+docker compose up -d frontend
+docker compose ps backend
+curl -fsS http://localhost:8000/health
+```
+
+### 2. Backend Setup (Local Python runtime)
 
 ```bash
 cd backend
@@ -120,6 +140,22 @@ Then update backend `DATABASE_URL` to:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://tara:tara@localhost:5433/tara
+```
+
+### Troubleshooting
+
+If backend fails during startup with:
+
+```text
+Form data requires "python-multipart" to be installed
+```
+
+this usually means a stale backend image is running without latest dependencies. Rebuild backend image and restart:
+
+```bash
+docker compose up -d --build backend
+docker compose ps backend
+curl -fsS http://localhost:8000/health
 ```
 
 Configure frontend in `frontend/.env`:

@@ -4,6 +4,29 @@ import { runtimeConfig } from '../config/runtimeConfig';
 const API_BASE_URL = runtimeConfig.apiBaseUrl;
 const DEBUG_API = import.meta.env.DEV && runtimeConfig.debugApi;
 
+function resolveHealthUrl(apiBaseUrl) {
+  if (!apiBaseUrl) {
+    return '/health';
+  }
+
+  try {
+    const parsedUrl = new URL(apiBaseUrl, window.location.origin);
+    const basePath = parsedUrl.pathname.replace(/\/+$/, '');
+    if (basePath.endsWith('/api')) {
+      parsedUrl.pathname = `${basePath.slice(0, -4) || ''}/health`;
+    } else {
+      parsedUrl.pathname = '/health';
+    }
+    parsedUrl.search = '';
+    parsedUrl.hash = '';
+    return parsedUrl.toString();
+  } catch {
+    return '/health';
+  }
+}
+
+const BACKEND_HEALTH_URL = resolveHealthUrl(API_BASE_URL);
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -64,6 +87,14 @@ export const getMe = async () => {
 
 export const getAuthConfig = async () => {
   const response = await api.get('/auth/config');
+  return response.data;
+};
+
+export const getBackendHealth = async () => {
+  const response = await axios.get(BACKEND_HEALTH_URL, {
+    withCredentials: true,
+    timeout: 10000,
+  });
   return response.data;
 };
 

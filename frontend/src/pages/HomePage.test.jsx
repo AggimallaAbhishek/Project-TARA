@@ -103,4 +103,26 @@ describe('HomePage', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/analysis/202')
     })
   })
+
+  it('shows normalized backend-unreachable error when API is down', async () => {
+    analyzeSystem.mockRejectedValue({
+      code: 'ERR_NETWORK',
+      message: 'Network Error',
+      config: { url: '/analyze' },
+    })
+
+    renderHomePage()
+
+    fireEvent.change(screen.getByLabelText('Analysis Title'), {
+      target: { value: 'Network Down Case' },
+    })
+    fireEvent.change(screen.getByLabelText('System Architecture Description'), {
+      target: { value: 'Gateway and auth service with external API.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze System Threats' }))
+
+    expect(
+      await screen.findByText(/Cannot reach the backend service/i),
+    ).toBeInTheDocument()
+  })
 })

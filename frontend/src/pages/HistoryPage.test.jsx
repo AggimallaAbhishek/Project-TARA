@@ -108,4 +108,18 @@ describe('HistoryPage', () => {
       })
     })
   })
+
+  it('shows normalized backend-unreachable message when history API fails', async () => {
+    getAnalyses.mockRejectedValue({
+      code: 'ERR_NETWORK',
+      message: 'Network Error',
+      config: { url: '/analyses' },
+    })
+
+    renderHistoryPage()
+
+    expect(
+      await screen.findByText(/Cannot reach the backend service/i),
+    ).toBeInTheDocument()
+  })
 })

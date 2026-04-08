@@ -29,6 +29,7 @@ import {
 import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
 import { compareAnalyses, getAnalyses } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 const STRIDE_CATEGORIES = [
   'Spoofing',
@@ -58,7 +59,10 @@ export default function ComparePage() {
         const data = await getAnalyses({ limit: 200, search: searchFilter || undefined });
         setAnalyses(data.items || []);
       } catch (err) {
-        setError(err.response?.data?.detail || 'Failed to load analyses');
+        setError(getApiErrorMessage(err, {
+          fallbackMessage: 'Failed to load analyses',
+          operation: 'compare.load_analyses',
+        }));
       } finally {
         setLoadingList(false);
       }
@@ -83,7 +87,10 @@ export default function ComparePage() {
       const data = await compareAnalyses(selectedIds);
       setComparison(data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Comparison failed');
+      setError(getApiErrorMessage(err, {
+        fallbackMessage: 'Comparison failed',
+        operation: 'compare.run',
+      }));
     } finally {
       setComparing(false);
     }
