@@ -40,7 +40,7 @@ class CrossAnalysisMetrics(BaseModel):
     total_unique_components: int
     total_unique_threat_names: int
     common_threats: list[str]
-    unique_threats_per_analysis: dict[int, list[str]]
+    unique_threats_per_analysis: dict[str, list[str]]
     risk_trend: list[dict[str, Any]]
 
 

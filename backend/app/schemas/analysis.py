@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import List
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
 from enum import Enum
 
@@ -25,7 +24,6 @@ class AnalysisCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255, description="Title for the analysis")
     system_description: str = Field(
         ...,
-        min_length=10,
         max_length=5000,
         description="Detailed description of the system architecture"
     )
@@ -59,9 +57,8 @@ class ThreatResponse(ThreatBase):
     id: int
     analysis_id: int
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Analysis Schemas
@@ -73,13 +70,11 @@ class AnalysisBase(BaseModel):
 class AnalysisResponse(AnalysisBase):
     id: int
     created_at: datetime
-    updated_at: datetime
     total_risk_score: float
     analysis_time: float = 0.0
-    threats: List[ThreatResponse] = []
-    
-    class Config:
-        from_attributes = True
+    threats: list[ThreatResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisSummary(BaseModel):
@@ -90,13 +85,12 @@ class AnalysisSummary(BaseModel):
     threat_count: int
     high_risk_count: int
     analysis_time: float = 0.0
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnalysisListResponse(BaseModel):
-    items: List[AnalysisSummary]
+    items: list[AnalysisSummary]
     total: int
     skip: int
     limit: int

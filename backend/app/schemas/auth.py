@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
@@ -11,11 +10,10 @@ class UserResponse(BaseModel):
     id: int
     email: str
     name: str
-    picture: Optional[str] = None
+    picture: str | None = None
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TokenResponse(BaseModel):

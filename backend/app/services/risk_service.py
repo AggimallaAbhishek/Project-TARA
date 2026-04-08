@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Any
 
 
 class RiskScoringService:
@@ -42,7 +42,7 @@ class RiskScoringService:
             return 'Critical'
     
     @staticmethod
-    def calculate_total_risk_score(threats: List[Dict[str, Any]]) -> float:
+    def calculate_total_risk_score(threats: list[dict[str, Any]]) -> float:
         """
         Calculate aggregate risk score for all threats.
         Uses weighted average based on individual risk scores.
@@ -54,12 +54,12 @@ class RiskScoringService:
         return round(total_score / len(threats), 2)
     
     @staticmethod
-    def prioritize_threats(threats: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def prioritize_threats(threats: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Sort threats by risk score in descending order."""
         return sorted(threats, key=lambda x: x.get('risk_score', 0), reverse=True)
     
     @staticmethod
-    def get_risk_summary(threats: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_risk_summary(threats: list[dict[str, Any]]) -> dict[str, Any]:
         """Generate a summary of risk distribution."""
         summary = {
             'total_threats': len(threats),
