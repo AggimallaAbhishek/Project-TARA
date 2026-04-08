@@ -11,8 +11,14 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create non-root user
+RUN adduser --disabled-password --gecos '' appuser
+
 # Copy application code
 COPY . .
+
+# Switch to non-root user
+USER appuser
 
 EXPOSE 8000
 
