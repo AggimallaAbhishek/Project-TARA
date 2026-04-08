@@ -74,7 +74,7 @@ uvicorn app.main:app --reload
 
 Backend runs at: http://localhost:8000
 
-### 2. Frontend Setup
+### 3. Frontend Setup
 
 ```bash
 cd frontend

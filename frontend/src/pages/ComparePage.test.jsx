@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import ComparePage from './ComparePage'
@@ -46,5 +46,24 @@ describe('ComparePage', () => {
     expect(
       await screen.findByText(/Cannot reach the backend service/i),
     ).toBeInTheDocument()
+  })
+
+  it('passes query text using q parameter for API search', async () => {
+    getAnalyses.mockResolvedValue({
+      items: [],
+      total: 0,
+      skip: 0,
+      limit: 200,
+      has_more: false,
+    })
+
+    renderComparePage()
+
+    await waitFor(() => {
+      expect(getAnalyses).toHaveBeenCalledWith({
+        limit: 200,
+        q: undefined,
+      })
+    })
   })
 })

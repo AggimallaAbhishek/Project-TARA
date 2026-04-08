@@ -56,7 +56,7 @@ export default function ComparePage() {
   useEffect(() => {
     const loadAnalyses = async () => {
       try {
-        const data = await getAnalyses({ limit: 200, search: searchFilter || undefined });
+        const data = await getAnalyses({ limit: 200, q: searchFilter || undefined });
         setAnalyses(data.items || []);
       } catch (err) {
         setError(getApiErrorMessage(err, {

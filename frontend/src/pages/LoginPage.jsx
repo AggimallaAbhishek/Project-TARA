@@ -17,11 +17,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
   const [isCheckingBackend, setIsCheckingBackend] = useState(true);
   const [isBackendReachable, setIsBackendReachable] = useState(true);
   const [backendError, setBackendError] = useState('');
-
-  // Redirect if already logged in
-  if (!loading && isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
+  const shouldRedirect = !loading && isAuthenticated;
 
   const probeBackendReachability = async () => {
     setIsCheckingBackend(true);
@@ -44,9 +40,16 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
   };
 
   useEffect(() => {
+    if (shouldRedirect) {
+      return;
+    }
     probeBackendReachability();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [shouldRedirect]);
+
+  // Redirect if already logged in
+  if (shouldRedirect) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSuccess = async (credentialResponse) => {
     setIsLoggingIn(true);
