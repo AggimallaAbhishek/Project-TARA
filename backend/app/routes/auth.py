@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
@@ -11,21 +11,33 @@ from app.services.auth_service import (
     get_current_user
 )
 from app.models.user import User
+from app.services.rate_limit_service import HybridRateLimiter
 
 router = APIRouter()
 settings = get_settings()
+auth_rate_limiter = HybridRateLimiter(max_requests=10, window_seconds=60)
 
 
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(
     request: GoogleAuthRequest,
     response: Response,
+    raw_request: Request,
     db: Session = Depends(get_db)
 ):
     """
     Authenticate user with Google OAuth.
     Expects the Google ID token from frontend.
     """
+    # Rate limit by client IP
+    client_ip = raw_request.client.host if raw_request.client else "unknown"
+    is_allowed, retry_after = auth_rate_limiter.is_allowed(f"auth:{client_ip}")
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
     # Verify Google token and get user info
     google_data = verify_google_token(request.credential)
     

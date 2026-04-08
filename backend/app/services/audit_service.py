@@ -24,13 +24,24 @@ class AuditService:
             action=action,
             event_metadata=event_metadata,
         )
-        db.add(event)
-        logger.debug(
-            "Audit event queued action=%s user_id=%s analysis_id=%s",
-            action,
-            user_id,
-            analysis_id,
-        )
+        try:
+            nested = db.begin_nested()
+            db.add(event)
+            nested.commit()
+        except Exception:
+            logger.warning(
+                "Audit event commit failed action=%s user_id=%s analysis_id=%s",
+                action,
+                user_id,
+                analysis_id,
+            )
+        else:
+            logger.debug(
+                "Audit event committed action=%s user_id=%s analysis_id=%s",
+                action,
+                user_id,
+                analysis_id,
+            )
         return event
 
 
