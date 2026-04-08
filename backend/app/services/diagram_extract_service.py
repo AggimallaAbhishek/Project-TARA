@@ -2,6 +2,7 @@ import asyncio
 import base64
 import html
 import logging
+import os
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -16,6 +17,7 @@ from app.config import get_settings
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+os.environ.setdefault("OLLAMA_HOST", settings.ollama_host)
 
 MAX_EXTRACTED_TEXT_LENGTH = 5000
 
@@ -175,19 +177,43 @@ class DiagramExtractService:
             "content": self._diagram_prompt,
             "images": [base64.b64encode(image_bytes).decode("utf-8")],
         }
-        response = await asyncio.wait_for(
-            asyncio.to_thread(
-                ollama.chat,
-                model=settings.ollama_vision_model,
-                messages=[message],
-                options={
-                    "temperature": 0.1,
-                    "num_ctx": settings.ollama_num_ctx,
-                    "num_predict": settings.ollama_num_predict,
-                },
-            ),
-            timeout=settings.ollama_request_timeout_seconds,
-        )
+        try:
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    ollama.chat,
+                    model=settings.ollama_vision_model,
+                    messages=[message],
+                    options={
+                        "temperature": 0.1,
+                        "num_ctx": settings.ollama_num_ctx,
+                        "num_predict": settings.ollama_num_predict,
+                    },
+                ),
+                timeout=settings.ollama_request_timeout_seconds,
+            )
+        except ConnectionError as exc:
+            logger.warning(
+                "Diagram vision extraction provider_unreachable model=%s host=%s error=%s",
+                settings.ollama_vision_model,
+                settings.ollama_host,
+                str(exc),
+            )
+            raise RuntimeError(
+                "Ollama vision model is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
+            ) from exc
+        except ollama.ResponseError as exc:
+            status_code = getattr(exc, "status_code", None)
+            logger.warning(
+                "Diagram vision extraction provider_response_error model=%s status=%s error=%s",
+                settings.ollama_vision_model,
+                status_code,
+                str(getattr(exc, "error", "") or str(exc)),
+            )
+            if status_code == 404:
+                raise RuntimeError(
+                    f"Ollama vision model '{settings.ollama_vision_model}' is unavailable. Pull it or set OLLAMA_VISION_MODEL."
+                ) from exc
+            raise RuntimeError("Diagram vision extraction provider error from Ollama.") from exc
         message_payload = response.get("message", {}) if isinstance(response, dict) else {}
         extracted = str(message_payload.get("content", "") or "").strip()
         if not extracted:

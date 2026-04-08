@@ -4,6 +4,18 @@ export const BACKEND_UNREACHABLE_MESSAGE =
 export const BACKEND_TIMEOUT_MESSAGE =
   'Request timed out while contacting backend. Verify backend health and try again.'
 
+export const OLLAMA_UNAVAILABLE_MESSAGE =
+  'Threat analysis provider is unavailable. Start Ollama, verify OLLAMA_HOST, and ensure the configured model is installed.'
+
+const OLLAMA_DETAIL_PATTERNS = [
+  /failed to connect to ollama/i,
+  /ollama is unreachable/i,
+  /ollama vision model is unreachable/i,
+  /provider error from ollama/i,
+  /ollama model .* unavailable/i,
+  /ollama vision model .* unavailable/i,
+]
+
 export function isBackendUnavailableError(error) {
   if (error?.response) {
     return false
@@ -13,6 +25,13 @@ export function isBackendUnavailableError(error) {
     || error?.code === 'ECONNABORTED'
     || error?.message === 'Network Error'
   )
+}
+
+function isOllamaProviderErrorDetail(detail) {
+  if (typeof detail !== 'string') {
+    return false
+  }
+  return OLLAMA_DETAIL_PATTERNS.some((pattern) => pattern.test(detail))
 }
 
 export function normalizeApiError(
@@ -29,7 +48,12 @@ export function normalizeApiError(
 
   if (typeof detail === 'string' && detail.trim()) {
     category = 'http'
-    message = detail.trim()
+    if (isOllamaProviderErrorDetail(detail.trim())) {
+      category = 'provider'
+      message = OLLAMA_UNAVAILABLE_MESSAGE
+    } else {
+      message = detail.trim()
+    }
   } else if (isBackendUnavailableError(error)) {
     if (code === 'ECONNABORTED') {
       category = 'timeout'

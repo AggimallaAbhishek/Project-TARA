@@ -9,7 +9,8 @@ ENV_FILE_PATH = Path(__file__).resolve().parents[1] / ".env"
 class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "TARA - Threat Analysis & Risk Assessment"
-    ollama_model: str = "llama3.2"
+    ollama_host: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3-coder:480b-cloud"
     ollama_temperature: float = 0.1
     ollama_num_predict: int = 2048
     ollama_num_ctx: int = 4096

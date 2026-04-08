@@ -30,3 +30,12 @@ until curl -fsS "${health_url}" >/dev/null; do
 done
 
 echo "[dev-up] Backend health: OK"
+
+echo "[dev-up] Verifying Ollama connectivity from backend runtime..."
+if ! docker compose exec -T backend python scripts/check_ollama.py; then
+  echo "[dev-up] Ollama connectivity check failed." >&2
+  echo "[dev-up] Verify OLLAMA_HOST and that Ollama is running on the host." >&2
+  exit 1
+fi
+
+echo "[dev-up] Ollama connectivity: OK"

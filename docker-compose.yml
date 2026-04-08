@@ -47,6 +47,10 @@ services:
       # Override .env values for Docker networking (localhost → service names)
       DATABASE_URL: postgresql+psycopg2://tara:tara@postgres:5432/tara
       REDIS_URL: redis://redis:6379/0
+      # Host-managed Ollama endpoint for local development.
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

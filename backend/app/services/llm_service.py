@@ -3,6 +3,7 @@ import copy
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from collections import OrderedDict
@@ -19,6 +20,7 @@ from app.services.risk_service import risk_service
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+os.environ.setdefault("OLLAMA_HOST", settings.ollama_host)
 
 STRIDE_PROMPT = """Analyze this system for security threats using STRIDE. Return JSON only.
 
@@ -366,18 +368,49 @@ class LLMService:
                 f"Threat analysis timed out after {self.request_timeout_seconds}s. "
                 "Try a smaller model or reduce prompt complexity."
             ) from exc
+        except ConnectionError as exc:
+            elapsed = time.perf_counter() - overall_start
+            logger.warning(
+                "Threat analysis provider_unreachable model=%s host=%s chars=%d elapsed=%.2fs error=%s",
+                self.model,
+                settings.ollama_host,
+                len(system_description),
+                elapsed,
+                str(exc),
+            )
+            raise RuntimeError(
+                "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
+            ) from exc
         except ollama.ResponseError as exc:
             elapsed = time.perf_counter() - overall_start
-            logger.exception("Ollama API error after %.2fs", elapsed)
-            raise RuntimeError("Threat analysis provider error") from exc
+            status_code = getattr(exc, "status_code", None)
+            error_text = str(getattr(exc, "error", "") or str(exc))
+            logger.warning(
+                "Threat analysis provider_response_error model=%s status=%s chars=%d elapsed=%.2fs error=%s",
+                self.model,
+                status_code,
+                len(system_description),
+                elapsed,
+                error_text,
+            )
+            if status_code == 404:
+                raise RuntimeError(
+                    f"Ollama model '{self.model}' is unavailable. Pull the model or set OLLAMA_MODEL to an installed model."
+                ) from exc
+            raise RuntimeError("Threat analysis provider error from Ollama") from exc
         except ValueError as exc:
             elapsed = time.perf_counter() - overall_start
             logger.warning("LLM response parsing error after %.2fs: %s", elapsed, str(exc))
             raise RuntimeError("Threat analysis response was invalid") from exc
         except Exception as exc:
             elapsed = time.perf_counter() - overall_start
-            logger.exception("Unexpected Ollama error after %.2fs", elapsed)
-            raise RuntimeError("Threat analysis request failed") from exc
+            logger.exception(
+                "Threat analysis unexpected_error model=%s chars=%d elapsed=%.2fs",
+                self.model,
+                len(system_description),
+                elapsed,
+            )
+            raise RuntimeError("Threat analysis request failed unexpectedly") from exc
 
     def _parse_response(self, response_text: str) -> list[dict[str, Any]]:
         payload = self._extract_json_payload(response_text)
