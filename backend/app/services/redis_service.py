@@ -88,6 +88,7 @@ class RedisService:
         """
         Sliding-window rate limiter using a Redis sorted set.
         Returns (is_allowed, retry_after_seconds).
+        All operations are executed atomically in a single pipeline.
         """
         if not self.is_available:
             raise RuntimeError("Redis unavailable for rate limiting")
@@ -99,13 +100,14 @@ class RedisService:
         window_start = now - window_seconds
         redis_key = f"tara:rate_limit:{key}"
 
-        pipe = self._client.pipeline(transaction=True)
         try:
+            pipe = self._client.pipeline(transaction=True)
             pipe.zremrangebyscore(redis_key, "-inf", window_start)
             pipe.zcard(redis_key)
-            pipe.execute()
+            results = pipe.execute()
 
-            count = self._client.zcard(redis_key)
+            count = results[1]  # zcard result from pipeline
+
             if count >= max_requests:
                 oldest = self._client.zrangebyscore(
                     redis_key, "-inf", "+inf", start=0, num=1
@@ -118,8 +120,10 @@ class RedisService:
                     retry_after = 1
                 return False, retry_after
 
-            self._client.zadd(redis_key, {str(now): now})
-            self._client.expire(redis_key, window_seconds + 1)
+            pipe2 = self._client.pipeline(transaction=True)
+            pipe2.zadd(redis_key, {str(now): now})
+            pipe2.expire(redis_key, window_seconds + 1)
+            pipe2.execute()
             return True, 0
         except Exception:
             logger.warning("Redis rate limit check failed for key=%s", key)

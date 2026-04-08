@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     app_name: str = "TARA - Threat Analysis & Risk Assessment"
     ollama_model: str = "llama3.2"
     ollama_temperature: float = 0.1
-    ollama_num_predict: int = 768
+    ollama_num_predict: int = 2048
     ollama_num_ctx: int = 4096
     ollama_request_timeout_seconds: int = 120
     ollama_keep_alive: str = "10m"

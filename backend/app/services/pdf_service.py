@@ -1,5 +1,6 @@
 from io import BytesIO
 from typing import Iterable
+from xml.sax.saxutils import escape as xml_escape
 
 from app.models.analysis import Analysis, Threat
 
@@ -33,9 +34,11 @@ class PDFReportService:
         styles = getSampleStyleSheet()
         elements = []
 
+        safe_title = xml_escape(analysis.title)
+
         elements.append(Paragraph(f"<b>TARA Analysis Report</b> #{analysis.id}", styles["Title"]))
         elements.append(Spacer(1, 10))
-        elements.append(Paragraph(f"<b>Title:</b> {analysis.title}", styles["BodyText"]))
+        elements.append(Paragraph(f"<b>Title:</b> {safe_title}", styles["BodyText"]))
         elements.append(
             Paragraph(
                 f"<b>Created At:</b> {analysis.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
@@ -60,7 +63,8 @@ class PDFReportService:
         elements.append(Spacer(1, 12))
         elements.append(Paragraph("<b>System Description</b>", styles["Heading3"]))
         elements.append(Spacer(1, 6))
-        elements.append(Paragraph(analysis.system_description.replace("\n", "<br/>"), styles["BodyText"]))
+        safe_desc = xml_escape(analysis.system_description).replace("\n", "<br/>")
+        elements.append(Paragraph(safe_desc, styles["BodyText"]))
 
         elements.append(Spacer(1, 14))
         elements.append(Paragraph("<b>Threat Summary</b>", styles["Heading3"]))
@@ -98,15 +102,23 @@ class PDFReportService:
         elements.append(Spacer(1, 6))
 
         for index, threat in enumerate(self._sorted_threats(analysis.threats), start=1):
-            elements.append(Paragraph(f"<b>{index}. {threat.name}</b>", styles["BodyText"]))
+            safe_name = xml_escape(threat.name)
+            safe_stride = xml_escape(threat.stride_category)
+            safe_risk = xml_escape(threat.risk_level)
+            safe_description = xml_escape(threat.description)
+            safe_mitigation = xml_escape(threat.mitigation)
+            safe_component = xml_escape(threat.affected_component)
+
+            elements.append(Paragraph(f"<b>{index}. {safe_name}</b>", styles["BodyText"]))
             elements.append(
                 Paragraph(
-                    f"<b>Category:</b> {threat.stride_category} | <b>Risk:</b> {threat.risk_level} ({threat.risk_score:.1f})",
+                    f"<b>Category:</b> {safe_stride} | <b>Risk:</b> {safe_risk} ({threat.risk_score:.1f})",
                     styles["BodyText"],
                 )
             )
-            elements.append(Paragraph(f"<b>Description:</b> {threat.description}", styles["BodyText"]))
-            elements.append(Paragraph(f"<b>Mitigation:</b> {threat.mitigation}", styles["BodyText"]))
+            elements.append(Paragraph(f"<b>Component:</b> {safe_component}", styles["BodyText"]))
+            elements.append(Paragraph(f"<b>Description:</b> {safe_description}", styles["BodyText"]))
+            elements.append(Paragraph(f"<b>Mitigation:</b> {safe_mitigation}", styles["BodyText"]))
             elements.append(Spacer(1, 10))
 
         doc.build(elements)

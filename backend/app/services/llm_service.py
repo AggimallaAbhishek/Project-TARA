@@ -105,6 +105,13 @@ class HybridThreatCache:
         self._fallback.set(key, threats)
 
     def clear(self) -> None:
+        try:
+            from app.services.redis_service import redis_service
+            if redis_service.client:
+                for key in redis_service.client.scan_iter(match="tara:threat_cache:*", count=100):
+                    redis_service.client.delete(key)
+        except Exception:
+            pass
         self._fallback.clear()
 
 
@@ -425,6 +432,10 @@ class LLMService:
                     stride = category
                     break
         if stride not in valid_categories:
+            logger.warning(
+                "Unknown STRIDE category '%s' from LLM, defaulting to Information Disclosure",
+                stride,
+            )
             stride = "Information Disclosure"
         normalized["stride_category"] = stride
 
