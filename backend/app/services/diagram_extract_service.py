@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import html
-import imghdr
 import logging
 import re
 import xml.etree.ElementTree as ET
@@ -162,8 +161,9 @@ class DiagramExtractService:
 
     @staticmethod
     def _validate_image(file_bytes: bytes) -> None:
-        image_kind = imghdr.what(None, h=file_bytes)
-        if image_kind not in {"png", "jpeg"}:
+        is_png = file_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+        is_jpeg = file_bytes.startswith(b"\xff\xd8")
+        if not is_png and not is_jpeg:
             raise DiagramExtractionError("Invalid image content. Use PNG or JPEG images.")
 
     async def _extract_from_image(self, image_bytes: bytes) -> str:

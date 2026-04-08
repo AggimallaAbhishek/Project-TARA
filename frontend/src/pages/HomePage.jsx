@@ -6,29 +6,90 @@ import {
   Sparkles, AlertCircle, User, Edit3, FileX, 
   Eye, Wifi, Shield, Clock, History, ArrowRight 
 } from 'lucide-react';
-import { analyzeSystem } from '../services/api';
+import { analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api';
 import { FullPageLoader } from '../components/LoadingSpinner';
 
 const TITLE_MAX_LENGTH = 255;
 const DESCRIPTION_MAX_LENGTH = 5000;
+const MAX_DIAGRAM_UPLOAD_BYTES = 10 * 1024 * 1024;
+const DIAGRAM_ACCEPT_TYPES = '.png,.jpg,.jpeg,.pdf,.mmd,.mermaid,.puml,.plantuml,.uml,.drawio,.xml';
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState(null);
   const [title, setTitle] = useState('');
+  const [inputMode, setInputMode] = useState('text');
   const [description, setDescription] = useState('');
+  const [diagramFile, setDiagramFile] = useState(null);
+  const [extractId, setExtractId] = useState('');
+  const [extractedDescription, setExtractedDescription] = useState('');
+  const [sourceMetadata, setSourceMetadata] = useState(null);
   const navigate = useNavigate();
   const remainingDescriptionChars = DESCRIPTION_MAX_LENGTH - description.length;
 
+  const resetExtractedState = () => {
+    setExtractId('');
+    setExtractedDescription('');
+    setSourceMetadata(null);
+  };
+
+  const handleModeChange = (mode) => {
+    setInputMode(mode);
+    setError(null);
+    if (mode === 'text') {
+      setDiagramFile(null);
+      resetExtractedState();
+    }
+  };
+
+  const handleDiagramFileChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    setError(null);
+    setDiagramFile(null);
+    resetExtractedState();
+
+    if (!file) return;
+    if (file.size > MAX_DIAGRAM_UPLOAD_BYTES) {
+      setError('Diagram file is too large. Maximum size is 10 MB.');
+      return;
+    }
+    setDiagramFile(file);
+  };
+
+  const handleExtractDiagram = async () => {
+    if (!diagramFile || !title.trim()) return;
+    setError(null);
+    setIsExtracting(true);
+    try {
+      const extracted = await extractDiagram(diagramFile);
+      setExtractId(extracted.extract_id);
+      setExtractedDescription(extracted.extracted_system_description || '');
+      setSourceMetadata(extracted.source_metadata || null);
+    } catch (err) {
+      console.error('Diagram extraction failed:', err);
+      setError(
+        err.response?.data?.detail
+          || 'Failed to extract architecture from diagram. Please try another file.',
+      );
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim()) return;
+    if (!title.trim()) return;
+    if (inputMode === 'text' && !description.trim()) return;
+    if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const result = await analyzeSystem(title, description);
+      const result = inputMode === 'text'
+        ? await analyzeSystem(title, description)
+        : await analyzeFromDiagram(title, extractId, extractedDescription);
       navigate(`/analysis/${result.id}`);
     } catch (err) {
       console.error('Analysis failed:', err);
@@ -36,6 +97,7 @@ export default function HomePage() {
         err.response?.data?.detail || 
         'Failed to analyze system. Please check if the backend is running.'
       );
+    } finally {
       setIsLoading(false);
     }
   };
@@ -121,62 +183,165 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Description Input */}
-            <div className="mb-6">
-              <label htmlFor="system-description" className="block text-sm font-medium text-text-secondary mb-2">
-                System Architecture Description
-              </label>
-              <textarea
-                id="system-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your system's components, technologies, data flows, and security mechanisms..."
-                rows={8}
-                maxLength={DESCRIPTION_MAX_LENGTH}
-                className="textarea-dark"
-                required
-              />
-              <p className="mt-2 text-xs text-text-muted flex items-center justify-between">
-                The more detail you provide, the more accurate the threat analysis will be.
-                <span className={remainingDescriptionChars < 200 ? 'text-risk-medium' : ''}>
-                  {remainingDescriptionChars} characters left
-                </span>
-              </p>
+            <div className="mb-5">
+              <span className="block text-sm font-medium text-text-secondary mb-2">
+                Input Mode
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('text')}
+                  className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    inputMode === 'text'
+                      ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
+                      : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                  }`}
+                >
+                  Text Description
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('diagram')}
+                  className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    inputMode === 'diagram'
+                      ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
+                      : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                  }`}
+                >
+                  Upload Diagram
+                </button>
+              </div>
             </div>
+
+            {inputMode === 'text' ? (
+              <div className="mb-6">
+                <label htmlFor="system-description" className="block text-sm font-medium text-text-secondary mb-2">
+                  System Architecture Description
+                </label>
+                <textarea
+                  id="system-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe your system's components, technologies, data flows, and security mechanisms..."
+                  rows={8}
+                  maxLength={DESCRIPTION_MAX_LENGTH}
+                  className="textarea-dark"
+                  required
+                />
+                <p className="mt-2 text-xs text-text-muted flex items-center justify-between">
+                  The more detail you provide, the more accurate the threat analysis will be.
+                  <span className={remainingDescriptionChars < 200 ? 'text-risk-medium' : ''}>
+                    {remainingDescriptionChars} characters left
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <div className="mb-6 space-y-4">
+                <div>
+                  <label htmlFor="diagram-file" className="block text-sm font-medium text-text-secondary mb-2">
+                    Upload Architecture Diagram
+                  </label>
+                  <input
+                    id="diagram-file"
+                    type="file"
+                    accept={DIAGRAM_ACCEPT_TYPES}
+                    onChange={handleDiagramFileChange}
+                    className="input-dark cursor-pointer"
+                  />
+                  <p className="mt-2 text-xs text-text-muted">
+                    Supported: PNG, JPG, JPEG, PDF, Mermaid, PlantUML, draw.io XML. Max size: 10 MB.
+                  </p>
+                  {diagramFile && (
+                    <p className="mt-1 text-xs text-text-secondary">
+                      Selected: {diagramFile.name} ({Math.ceil(diagramFile.size / 1024)} KB)
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleExtractDiagram}
+                    disabled={!title.trim() || !diagramFile || isExtracting}
+                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExtracting ? 'Extracting Architecture...' : extractId ? 'Re-extract Architecture' : 'Extract Architecture'}
+                  </motion.button>
+                  {sourceMetadata && (
+                    <span className="text-xs text-text-muted">
+                      {sourceMetadata.input_type} | {sourceMetadata.extractor_used}
+                      {sourceMetadata.pages_processed ? ` | pages: ${sourceMetadata.pages_processed}` : ''}
+                    </span>
+                  )}
+                </div>
+
+                {extractId && (
+                  <div>
+                    <label htmlFor="extracted-description" className="block text-sm font-medium text-text-secondary mb-2">
+                      Review Extracted Architecture
+                    </label>
+                    <textarea
+                      id="extracted-description"
+                      value={extractedDescription}
+                      onChange={(event) => setExtractedDescription(event.target.value)}
+                      rows={8}
+                      maxLength={DESCRIPTION_MAX_LENGTH}
+                      className="textarea-dark"
+                      placeholder="Extracted architecture description will appear here..."
+                    />
+                    <p className="mt-2 text-xs text-text-muted">
+                      Edit this text before running threat analysis.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Submit Button */}
             <motion.button
               type="submit"
-              disabled={!title.trim() || !description.trim()}
+              disabled={
+                isExtracting
+                || !title.trim()
+                || (
+                  inputMode === 'text'
+                    ? !description.trim()
+                    : (!extractId || !extractedDescription.trim())
+                )
+              }
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="w-full btn-cyber flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-5 h-5" />
-              Analyze System Threats
+              {inputMode === 'text' ? 'Analyze System Threats' : 'Analyze Diagram Threats'}
             </motion.button>
           </form>
 
           {/* Quick Examples */}
-          <div className="mt-6">
-            <h3 className="text-sm font-medium text-text-secondary mb-3">Quick Examples</h3>
-            <div className="flex flex-wrap gap-2">
-              {examples.map((example) => (
-                <motion.button
-                  key={example.title}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setTitle(example.title);
-                    setDescription(example.description);
-                  }}
-                  className="px-3 py-1.5 text-sm bg-dark-tertiary text-text-secondary rounded-lg border border-dark-border hover:border-cyber-cyan/50 hover:text-cyber-cyan transition-all"
-                >
-                  {example.title}
-                </motion.button>
-              ))}
+          {inputMode === 'text' && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-text-secondary mb-3">Quick Examples</h3>
+              <div className="flex flex-wrap gap-2">
+                {examples.map((example) => (
+                  <motion.button
+                    key={example.title}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setTitle(example.title);
+                      setDescription(example.description);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-dark-tertiary text-text-secondary rounded-lg border border-dark-border hover:border-cyber-cyan/50 hover:text-cyber-cyan transition-all"
+                  >
+                    {example.title}
+                  </motion.button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
 
         {/* Sidebar */}

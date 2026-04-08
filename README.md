@@ -9,6 +9,7 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 - **Modern UI**: Clean React interface with filtering and visualization
 - **Analysis History**: Save and review past security analyses
 - **Local AI**: Uses Ollama for private, offline threat detection (no API costs!)
+- **Diagram-to-Threat Modeling**: Upload architecture diagrams/DFDs and review extracted architecture text before analysis
 
 ## Tech Stack
 
@@ -21,7 +22,8 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 
 ### Prerequisites
 - [Ollama](https://ollama.ai) installed and running
-- A model pulled (e.g., `ollama pull llama3.2` or use cloud models)
+- A text model pulled (e.g., `ollama pull llama3.2`)
+- A vision model pulled for diagram extraction (e.g., `ollama pull llava`)
 
 ### 1. Backend Setup
 
@@ -74,12 +76,16 @@ OLLAMA_KEEP_ALIVE=10m
 OLLAMA_ENABLE_CACHE=true
 OLLAMA_CACHE_TTL_SECONDS=600
 OLLAMA_CACHE_MAX_ENTRIES=128
+OLLAMA_VISION_MODEL=llava
 DATABASE_URL=sqlite:///./tara.db
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ALLOWED_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1)(:\d+)?$
 GOOGLE_CLIENT_ID=your-google-client-id
 SECRET_KEY=replace-with-a-long-random-secret
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
+DIAGRAM_MAX_UPLOAD_MB=10
+DIAGRAM_PDF_MAX_PAGES=3
+DIAGRAM_EXTRACT_TTL_SECONDS=1800
 ```
 
 Configure frontend in `frontend/.env`:
@@ -101,12 +107,26 @@ VITE_DEBUG_API=false
 | GET | `/api/auth/config` | Get auth client configuration |
 | GET | `/api/auth/me` | Get current user |
 | POST | `/api/analyze` | Create new threat analysis |
+| POST | `/api/diagram/extract` | Extract editable architecture text from uploaded diagram |
+| POST | `/api/diagram/analyze` | Analyze extracted (or edited) architecture text |
 | GET | `/api/analyses` | List analyses (pagination + search/filter) |
 | GET | `/api/analyses/{id}` | Get specific analysis |
 | GET | `/api/analyses/{id}/summary` | Get risk summary |
 | GET | `/api/analyses/{id}/export.pdf` | Download analysis report PDF |
 | DELETE | `/api/analyses/{id}` | Delete analysis |
 | GET | `/api/audit/logs` | List audit events for current user |
+
+## Diagram Upload Workflow
+
+1. Enter an analysis title and switch to **Upload Diagram** mode.
+2. Upload one of the supported formats:
+   - Images: `png`, `jpg`, `jpeg`
+   - PDF: first 3 pages are extracted
+   - Text diagrams: Mermaid (`.mmd/.mermaid`), PlantUML (`.puml/.plantuml/.uml`), draw.io XML (`.drawio/.xml`)
+3. Click **Extract Architecture** and review/edit extracted text.
+4. Click **Analyze Diagram Threats** to run STRIDE analysis.
+
+File uploads are processed ephemerally and not persisted.
 
 ## STRIDE Categories
 
