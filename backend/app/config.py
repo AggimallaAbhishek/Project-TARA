@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     diagram_max_upload_mb: int = 10
     diagram_pdf_max_pages: int = 3
     diagram_extract_ttl_seconds: int = 1800
+    db_startup_strict: bool | None = None
 
     model_config = SettingsConfigDict(env_file=".env")
 
@@ -65,6 +66,12 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def is_db_startup_strict(self) -> bool:
+        if self.db_startup_strict is not None:
+            return self.db_startup_strict
+        return self.is_production
 
 
 @lru_cache()

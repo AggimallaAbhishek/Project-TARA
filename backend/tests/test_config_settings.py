@@ -26,6 +26,16 @@ class SettingsConfigTest(unittest.TestCase):
         self.assertTrue(settings.ollama_retry_on_invalid_response)
         self.assertEqual(settings.ollama_retry_num_predict, 4096)
 
+    def test_db_startup_strict_derives_from_environment(self):
+        dev_settings = Settings(app_env="development", db_startup_strict=None)
+        prod_settings = Settings(app_env="production", db_startup_strict=None)
+        self.assertFalse(dev_settings.is_db_startup_strict)
+        self.assertTrue(prod_settings.is_db_startup_strict)
+
+    def test_db_startup_strict_explicit_override_is_respected(self):
+        settings = Settings(app_env="production", db_startup_strict=False)
+        self.assertFalse(settings.is_db_startup_strict)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,7 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 
 - **Backend**: FastAPI (Python)
 - **Frontend**: React + Vite + Tailwind CSS
-- **Database**: SQLite
+- **Database**: PostgreSQL (Docker for local default), SQLite (optional fallback)
 - **AI**: Ollama (local LLM)
 
 ## Quick Start
@@ -40,6 +40,13 @@ pip install -r requirements.txt
 # Configure environment
 cp .env.example .env
 # Edit .env with your secrets and model preferences
+
+# Start PostgreSQL first (from repo root in a separate terminal)
+# cd ..
+# docker compose up -d postgres
+
+# Verify DB connectivity deterministically before app startup
+python scripts/check_db.py
 
 # Run server
 uvicorn app.main:app --reload
@@ -77,7 +84,10 @@ OLLAMA_ENABLE_CACHE=true
 OLLAMA_CACHE_TTL_SECONDS=600
 OLLAMA_CACHE_MAX_ENTRIES=128
 OLLAMA_VISION_MODEL=llava
-DATABASE_URL=sqlite:///./tara.db
+DATABASE_URL=postgresql+psycopg2://tara:tara@localhost:5432/tara
+# DATABASE_URL=sqlite:///./tara.db
+# Optional override: false in development, true in production when unset
+DB_STARTUP_STRICT=false
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ALLOWED_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1)(:\d+)?$
 GOOGLE_CLIENT_ID=your-google-client-id
@@ -86,6 +96,30 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 DIAGRAM_MAX_UPLOAD_MB=10
 DIAGRAM_PDF_MAX_PAGES=3
 DIAGRAM_EXTRACT_TTL_SECONDS=1800
+```
+
+### Local PostgreSQL Notes
+
+Start and health-check Postgres before running backend:
+
+```bash
+docker compose up -d postgres
+docker compose ps postgres
+docker compose exec postgres pg_isready -U tara -d tara
+cd backend
+venv/bin/python scripts/check_db.py
+```
+
+If host port `5432` is occupied by a native local Postgres, run Docker Postgres on `5433` instead:
+
+```bash
+POSTGRES_PORT=5433 docker compose up -d postgres
+```
+
+Then update backend `DATABASE_URL` to:
+
+```env
+DATABASE_URL=postgresql+psycopg2://tara:tara@localhost:5433/tara
 ```
 
 Configure frontend in `frontend/.env`:
@@ -158,7 +192,7 @@ Project-TARA/
 │   ├── app/
 │   │   ├── main.py          # FastAPI app
 │   │   ├── config.py        # Settings
-│   │   ├── database.py      # SQLite setup
+│   │   ├── database.py      # SQLAlchemy engine/session setup
 │   │   ├── models/          # SQLAlchemy models
 │   │   ├── schemas/         # Pydantic schemas
 │   │   ├── routes/          # API endpoints

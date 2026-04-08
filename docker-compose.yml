@@ -9,7 +9,8 @@ services:
       POSTGRES_PASSWORD: tara
       POSTGRES_DB: tara
     ports:
-      - "5432:5432"
+      # Override host port with POSTGRES_PORT if 5432 is already in use locally.
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

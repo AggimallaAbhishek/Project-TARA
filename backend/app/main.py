@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,13 +23,35 @@ DEFAULT_SECRET_KEY = "change-me-in-production"
 if settings.is_production and settings.secret_key == DEFAULT_SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be configured in production")
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+def initialize_database_for_startup() -> bool:
+    """Initialize database tables during app startup."""
+    strict_startup = settings.is_db_startup_strict
+    mode = "fail-fast" if strict_startup else "degraded"
+    logger.info("DB init attempt (mode=%s)", mode)
+
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        logger.exception("DB init failed (mode=%s)", mode)
+        if strict_startup:
+            raise
+        return False
+
+    logger.info("DB init success")
+    return True
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    application.state.db_startup_ready = initialize_database_for_startup()
+    yield
+
 
 app = FastAPI(
     title=settings.app_name,
     description="AI-powered Threat Analysis and Risk Assessment using STRIDE methodology",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CSRF protection strategy:
