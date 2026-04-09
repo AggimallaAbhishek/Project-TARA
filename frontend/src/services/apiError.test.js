@@ -74,4 +74,27 @@ describe('apiError utilities', () => {
 
     expect(message).toBe(OLLAMA_UNAVAILABLE_MESSAGE)
   })
+
+  it('parses FastAPI validation detail arrays into actionable messages', () => {
+    const message = getApiErrorMessage(
+      {
+        response: {
+          status: 422,
+          data: {
+            detail: [
+              {
+                loc: ['query', 'limit'],
+                msg: 'Input should be less than or equal to 100',
+              },
+            ],
+          },
+        },
+      },
+      {
+        fallbackMessage: 'Fallback message',
+      },
+    )
+
+    expect(message).toBe('limit: Input should be less than or equal to 100')
+  })
 })

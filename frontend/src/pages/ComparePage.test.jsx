@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import ComparePage from './ComparePage'
@@ -53,7 +53,7 @@ describe('ComparePage', () => {
       items: [],
       total: 0,
       skip: 0,
-      limit: 200,
+      limit: 100,
       has_more: false,
     })
 
@@ -61,8 +61,82 @@ describe('ComparePage', () => {
 
     await waitFor(() => {
       expect(getAnalyses).toHaveBeenCalledWith({
-        limit: 200,
+        skip: 0,
+        limit: 100,
         q: undefined,
+      })
+    })
+  })
+
+  it('loads analyses across multiple pages until has_more is false', async () => {
+    getAnalyses
+      .mockResolvedValueOnce({
+        items: [{ id: 1, title: 'Analysis A', total_risk_score: 10 }],
+        total: 2,
+        skip: 0,
+        limit: 100,
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        items: [{ id: 2, title: 'Analysis B', total_risk_score: 8 }],
+        total: 2,
+        skip: 1,
+        limit: 100,
+        has_more: false,
+      })
+
+    renderComparePage()
+
+    await waitFor(() => {
+      expect(getAnalyses).toHaveBeenNthCalledWith(1, {
+        skip: 0,
+        limit: 100,
+        q: undefined,
+      })
+      expect(getAnalyses).toHaveBeenNthCalledWith(2, {
+        skip: 1,
+        limit: 100,
+        q: undefined,
+      })
+    })
+  })
+
+  it('applies search text via debounced q parameter', async () => {
+    getAnalyses.mockResolvedValue({
+      items: [],
+      total: 0,
+      skip: 0,
+      limit: 100,
+      has_more: false,
+    })
+
+    renderComparePage()
+
+    await waitFor(() => {
+      expect(getAnalyses).toHaveBeenCalledWith({
+        skip: 0,
+        limit: 100,
+        q: undefined,
+      })
+    })
+
+    vi.clearAllMocks()
+
+    fireEvent.click(screen.getByRole('button', { name: /click to select analyses/i }))
+    fireEvent.change(screen.getByPlaceholderText(/filter analyses/i), {
+      target: { value: 'bank' },
+    })
+
+    // Debounce should prevent immediate request.
+    expect(getAnalyses).not.toHaveBeenCalled()
+
+    await new Promise((resolve) => setTimeout(resolve, 330))
+
+    await waitFor(() => {
+      expect(getAnalyses).toHaveBeenCalledWith({
+        skip: 0,
+        limit: 100,
+        q: 'bank',
       })
     })
   })

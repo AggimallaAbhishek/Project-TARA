@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
@@ -41,6 +41,8 @@ const STRIDE_CATEGORIES = [
 ];
 
 const CHART_COLORS = ['#06d6a0', '#118ab2', '#ef476f', '#ffd166', '#073b4c'];
+const ANALYSES_PAGE_SIZE = 100;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function ComparePage() {
   const [analyses, setAnalyses] = useState([]);
@@ -51,24 +53,100 @@ export default function ComparePage() {
   const [error, setError] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+  const latestLoadRequestIdRef = useRef(0);
 
-  // Load analyses for picker — refetch when search filter changes
+  // Load analyses for picker with backend-compatible pagination and stale-response protection.
   useEffect(() => {
+    let isCancelled = false;
+    const requestId = latestLoadRequestIdRef.current + 1;
+    latestLoadRequestIdRef.current = requestId;
+
     const loadAnalyses = async () => {
       try {
-        const data = await getAnalyses({ limit: 200, q: searchFilter || undefined });
-        setAnalyses(data.items || []);
+        if (requestId === latestLoadRequestIdRef.current) {
+          setError(null);
+        }
+
+        const nextAnalyses = [];
+        let currentSkip = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          if (isCancelled || requestId !== latestLoadRequestIdRef.current) {
+            if (import.meta.env.DEV) {
+              console.debug('compare.load_analyses.abort_stale', { requestId, currentSkip });
+            }
+            return;
+          }
+
+          const page = await getAnalyses({
+            skip: currentSkip,
+            limit: ANALYSES_PAGE_SIZE,
+            q: searchFilter || undefined,
+          });
+
+          const pageItems = page.items || [];
+          nextAnalyses.push(...pageItems);
+          hasMore = Boolean(page.has_more);
+
+          if (import.meta.env.DEV) {
+            console.debug('compare.load_analyses.page', {
+              requestId,
+              skip: currentSkip,
+              received: pageItems.length,
+              hasMore,
+            });
+          }
+
+          if (!hasMore) {
+            break;
+          }
+          if (pageItems.length === 0) {
+            if (import.meta.env.DEV) {
+              console.debug('compare.load_analyses.guard_stop', {
+                requestId,
+                reason: 'has_more true with zero items',
+              });
+            }
+            break;
+          }
+
+          currentSkip += pageItems.length;
+        }
+
+        if (isCancelled || requestId !== latestLoadRequestIdRef.current) {
+          if (import.meta.env.DEV) {
+            console.debug('compare.load_analyses.stale_ignored', { requestId });
+          }
+          return;
+        }
+
+        setAnalyses(nextAnalyses);
+        setError(null);
       } catch (err) {
+        if (isCancelled || requestId !== latestLoadRequestIdRef.current) {
+          return;
+        }
         setError(getApiErrorMessage(err, {
           fallbackMessage: 'Failed to load analyses',
           operation: 'compare.load_analyses',
         }));
+        setAnalyses([]);
       } finally {
-        setLoadingList(false);
+        if (!isCancelled && requestId === latestLoadRequestIdRef.current) {
+          setLoadingList(false);
+        }
       }
     };
-    const debounceTimer = setTimeout(loadAnalyses, searchFilter ? 300 : 0);
-    return () => clearTimeout(debounceTimer);
+
+    const debounceTimer = setTimeout(
+      loadAnalyses,
+      searchFilter ? SEARCH_DEBOUNCE_MS : 0,
+    );
+    return () => {
+      isCancelled = true;
+      clearTimeout(debounceTimer);
+    };
   }, [searchFilter]);
 
   const toggleSelection = (id) => {

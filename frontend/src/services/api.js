@@ -26,6 +26,16 @@ function resolveHealthUrl(apiBaseUrl) {
 }
 
 const BACKEND_HEALTH_URL = resolveHealthUrl(API_BASE_URL);
+const ANALYSES_LIMIT_MIN = 1;
+const ANALYSES_LIMIT_MAX = 100;
+
+function normalizePositiveInt(value, fallbackValue) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallbackValue;
+  }
+  return Math.floor(numeric);
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -144,7 +154,12 @@ export const getAnalyses = async ({
   date_from = '',
   date_to = '',
 } = {}) => {
-  const params = { skip, limit };
+  const normalizedSkip = Math.max(0, normalizePositiveInt(skip, 0));
+  const normalizedLimit = Math.min(
+    ANALYSES_LIMIT_MAX,
+    Math.max(ANALYSES_LIMIT_MIN, normalizePositiveInt(limit, 20)),
+  );
+  const params = { skip: normalizedSkip, limit: normalizedLimit };
   if (q.trim()) params.q = q.trim();
   if (risk_level) params.risk_level = risk_level;
   if (stride_category) params.stride_category = stride_category;

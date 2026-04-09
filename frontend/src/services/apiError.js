@@ -34,6 +34,39 @@ function isOllamaProviderErrorDetail(detail) {
   return OLLAMA_DETAIL_PATTERNS.some((pattern) => pattern.test(detail))
 }
 
+function formatValidationLocation(loc) {
+  if (!Array.isArray(loc)) {
+    return ''
+  }
+  return loc
+    .filter((part) => part !== 'body' && part !== 'query' && part !== 'path')
+    .map((part) => String(part).replace(/_/g, ' '))
+    .join(' > ')
+}
+
+function getValidationDetailMessage(detail) {
+  if (!Array.isArray(detail) || detail.length === 0) {
+    return null
+  }
+
+  const firstError = detail[0]
+  if (typeof firstError === 'string') {
+    const trimmed = firstError.trim()
+    return trimmed || null
+  }
+  if (!firstError || typeof firstError !== 'object') {
+    return null
+  }
+
+  const message = typeof firstError.msg === 'string' ? firstError.msg.trim() : ''
+  const location = formatValidationLocation(firstError.loc)
+
+  if (location && message) {
+    return `${location}: ${message}`
+  }
+  return message || null
+}
+
 export function normalizeApiError(
   error,
   { fallbackMessage = 'Request failed. Please try again.', operation = 'request' } = {},
@@ -54,6 +87,10 @@ export function normalizeApiError(
     } else {
       message = detail.trim()
     }
+  } else if (status === 422) {
+    category = 'http'
+    const validationMessage = getValidationDetailMessage(detail)
+    message = validationMessage || 'Request validation failed. Check the submitted values and try again.'
   } else if (isBackendUnavailableError(error)) {
     if (code === 'ECONNABORTED') {
       category = 'timeout'
