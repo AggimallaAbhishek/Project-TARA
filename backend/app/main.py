@@ -31,10 +31,15 @@ def initialize_database_for_startup() -> bool:
 
     try:
         Base.metadata.create_all(bind=engine)
-    except Exception:
-        logger.exception("DB init failed (mode=%s)", mode)
+    except Exception as exc:
         if strict_startup:
+            logger.exception("DB init failed (mode=%s)", mode)
             raise
+        logger.warning(
+            "DB init failed (mode=%s). Continuing in degraded mode. error=%s",
+            mode,
+            str(exc),
+        )
         return False
 
     logger.info("DB init success")
