@@ -1,4 +1,5 @@
 from io import BytesIO
+import re
 from typing import Iterable
 from xml.sax.saxutils import escape as xml_escape
 
@@ -9,6 +10,47 @@ class PDFReportService:
     @staticmethod
     def _sorted_threats(threats: Iterable[Threat]) -> list[Threat]:
         return sorted(threats, key=lambda threat: threat.risk_score, reverse=True)
+
+    @staticmethod
+    def _sanitize_mitigation_segment(text: str) -> str:
+        cleaned = text.strip()
+        for _ in range(4):
+            updated = cleaned.strip()
+            updated = re.sub(r"^[\[\]\"'`]+", "", updated)
+            updated = re.sub(r"[\[\]\"'`]+$", "", updated)
+            updated = re.sub(r"[\[\]\"'`]+(?=[\.,;:!?]+$)", "", updated)
+            updated = updated.strip()
+            if updated == cleaned:
+                break
+            cleaned = updated
+        return cleaned
+
+    @classmethod
+    def _sanitize_mitigation_text(cls, text: str) -> str:
+        raw = (text or "").strip()
+        if not raw:
+            return "Mitigation not provided."
+
+        step_prefix_pattern = re.compile(r"^(\d+[).]?\s+|[-*•]\s+)")
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        if lines:
+            normalized_steps: list[str] = []
+            for line in lines:
+                step = step_prefix_pattern.sub("", line).strip()
+                step = cls._sanitize_mitigation_segment(step)
+                if not step:
+                    continue
+                if step[-1] not in ".!?":
+                    step = f"{step}."
+                normalized_steps.append(step)
+
+            if normalized_steps:
+                return "\n".join(
+                    f"{index}. {step}" for index, step in enumerate(normalized_steps, start=1)
+                )
+
+        fallback = cls._sanitize_mitigation_segment(raw)
+        return fallback or "Mitigation not provided."
 
     def build_analysis_pdf(self, analysis: Analysis) -> bytes:
         try:
@@ -174,7 +216,8 @@ class PDFReportService:
             safe_stride = xml_escape(threat.stride_category)
             safe_risk = xml_escape(threat.risk_level)
             safe_description = xml_escape(threat.description).replace("\n", "<br/>")
-            safe_mitigation = xml_escape(threat.mitigation).replace("\n", "<br/>")
+            cleaned_mitigation = self._sanitize_mitigation_text(threat.mitigation)
+            safe_mitigation = xml_escape(cleaned_mitigation).replace("\n", "<br/>")
             safe_component = xml_escape(threat.affected_component)
 
             elements.append(Paragraph(f"<b>{index}. {safe_name}</b>", body_style))
