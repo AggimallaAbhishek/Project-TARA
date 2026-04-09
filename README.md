@@ -180,6 +180,15 @@ Common fixes:
 - Set `OLLAMA_HOST` so backend can reach Ollama (`http://host.docker.internal:11434` in Docker mode).
 - Pull or switch to an installed model (`OLLAMA_MODEL`, `OLLAMA_VISION_MODEL`).
 
+### PDF Branding Assets
+
+To include your branding in exported PDFs, place these files in `backend/app/assets/pdf/`:
+
+- `banner.png` (shown at the top of page 1 only)
+- `logo.png` (shown below the banner on page 1 only)
+
+Supported branding image formats for lookup are `.png`, `.jpg`, `.jpeg` with base names `banner` and `logo`.
+
 Configure frontend in `frontend/.env`:
 
 ```env

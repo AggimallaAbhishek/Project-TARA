@@ -1,15 +1,68 @@
 from io import BytesIO
+import logging
+from pathlib import Path
 import re
 from typing import Iterable
 from xml.sax.saxutils import escape as xml_escape
 
 from app.models.analysis import Analysis, Threat
 
+logger = logging.getLogger(__name__)
+
 
 class PDFReportService:
+    BRANDING_ASSET_DIR = Path(__file__).resolve().parents[1] / "assets" / "pdf"
+    BRANDING_ASSET_EXTENSIONS = (".png", ".jpg", ".jpeg")
+    BRANDING_BANNER_BASENAME = "banner"
+    BRANDING_LOGO_BASENAME = "logo"
+
     @staticmethod
     def _sorted_threats(threats: Iterable[Threat]) -> list[Threat]:
         return sorted(threats, key=lambda threat: threat.risk_score, reverse=True)
+
+    @classmethod
+    def _resolve_branding_asset_path(cls, base_name: str) -> Path | None:
+        for extension in cls.BRANDING_ASSET_EXTENSIONS:
+            candidate = cls.BRANDING_ASSET_DIR / f"{base_name}{extension}"
+            if candidate.is_file():
+                return candidate
+        return None
+
+    @classmethod
+    def _resolve_branding_assets(cls) -> dict[str, Path]:
+        banner = cls._resolve_branding_asset_path(cls.BRANDING_BANNER_BASENAME)
+        logo = cls._resolve_branding_asset_path(cls.BRANDING_LOGO_BASENAME)
+        assets: dict[str, Path] = {}
+        if banner:
+            assets["banner"] = banner
+        if logo:
+            assets["logo"] = logo
+
+        logger.debug(
+            "PDF branding assets resolved banner=%s logo=%s dir=%s",
+            str(banner) if banner else "missing",
+            str(logo) if logo else "missing",
+            str(cls.BRANDING_ASSET_DIR),
+        )
+        return assets
+
+    @staticmethod
+    def _get_scaled_dimensions(
+        image_path: Path,
+        *,
+        max_width: float,
+        max_height: float,
+    ) -> tuple[float, float]:
+        from reportlab.lib.utils import ImageReader
+
+        raw_width, raw_height = ImageReader(str(image_path)).getSize()
+        width = float(raw_width)
+        height = float(raw_height)
+        if width <= 0 or height <= 0:
+            raise ValueError(f"Invalid image dimensions for {image_path}")
+
+        scale = min(max_width / width, max_height / height, 1.0)
+        return width * scale, height * scale
 
     @staticmethod
     def _sanitize_mitigation_segment(text: str) -> str:
@@ -58,7 +111,14 @@ class PDFReportService:
             from reportlab.lib.pagesizes import letter
             from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
             from reportlab.lib.units import inch
-            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+            from reportlab.platypus import (
+                Image as ReportLabImage,
+                Paragraph,
+                SimpleDocTemplate,
+                Spacer,
+                Table,
+                TableStyle,
+            )
         except ImportError as exc:
             raise RuntimeError("PDF export dependency is missing. Install reportlab.") from exc
 
@@ -123,7 +183,46 @@ class PDFReportService:
             parent=table_cell_style,
             alignment=2,  # Right align numeric values
         )
+
         elements = []
+        branding_assets = self._resolve_branding_assets()
+        banner_path = branding_assets.get("banner")
+        if banner_path:
+            try:
+                banner_width, banner_height = self._get_scaled_dimensions(
+                    banner_path,
+                    max_width=doc.width,
+                    max_height=1.45 * inch,
+                )
+                elements.append(
+                    ReportLabImage(str(banner_path), width=banner_width, height=banner_height)
+                )
+                elements.append(Spacer(1, 10))
+            except Exception:
+                logger.warning(
+                    "Failed to render PDF banner asset path=%s",
+                    banner_path,
+                    exc_info=True,
+                )
+
+        logo_path = branding_assets.get("logo")
+        if logo_path:
+            try:
+                logo_width, logo_height = self._get_scaled_dimensions(
+                    logo_path,
+                    max_width=0.95 * inch,
+                    max_height=0.95 * inch,
+                )
+                logo = ReportLabImage(str(logo_path), width=logo_width, height=logo_height)
+                logo.hAlign = "LEFT"
+                elements.append(logo)
+                elements.append(Spacer(1, 10))
+            except Exception:
+                logger.warning(
+                    "Failed to render PDF logo asset path=%s",
+                    logo_path,
+                    exc_info=True,
+                )
 
         safe_title = xml_escape(analysis.title)
 
