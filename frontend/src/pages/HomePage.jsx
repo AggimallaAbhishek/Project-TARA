@@ -277,7 +277,7 @@ export default function HomePage() {
                   </span>
                 </p>
               </div>
-            ) : (
+            ) : inputMode === 'diagram' ? (
               <div className="mb-6 space-y-4">
                 <div>
                   <label htmlFor="diagram-file" className="block text-sm font-medium text-text-secondary mb-2">
