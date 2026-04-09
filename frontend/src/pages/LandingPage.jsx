@@ -7,6 +7,7 @@ import { Shield, Zap, Target, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 /* eslint-disable react-hooks/purity */
 export default function LandingPage() {
+  const projectLogoSrc = '/tara-logo.png';
   const features = [
     {
       icon: Shield,
@@ -81,7 +82,11 @@ export default function LandingPage() {
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
           className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-cyber-cyan/20 to-cyber-purple/20 border border-cyber-cyan/30"
         >
-          <Shield className="w-10 h-10 text-cyber-cyan" />
+          <img
+            src={projectLogoSrc}
+            alt="Project TARA logo"
+            className="w-full h-full rounded-2xl object-cover"
+          />
         </motion.div>
 
         {/* Title */}

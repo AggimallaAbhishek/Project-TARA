@@ -182,12 +182,11 @@ Common fixes:
 
 ### PDF Branding Assets
 
-To include your branding in exported PDFs, place these files in `backend/app/assets/pdf/`:
+To include your branding in exported PDFs, place this file in `backend/app/assets/pdf/`:
 
 - `banner.png` (shown at the top of page 1 only)
-- `logo.png` (shown below the banner on page 1 only)
 
-Supported branding image formats for lookup are `.png`, `.jpg`, `.jpeg` with base names `banner` and `logo`.
+Supported banner formats for lookup are `.png`, `.jpg`, `.jpeg` with base name `banner`.
 
 Configure frontend in `frontend/.env`:
 

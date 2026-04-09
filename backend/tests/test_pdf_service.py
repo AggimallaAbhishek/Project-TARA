@@ -60,7 +60,7 @@ class PDFServiceTest(unittest.TestCase):
         self.assertNotIn("]", sanitized)
         self.assertNotIn("'", sanitized)
 
-    def test_resolve_branding_assets_finds_banner_and_logo(self):
+    def test_resolve_branding_assets_finds_banner_only(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)
             (temp_path / "banner.png").write_bytes(self._ONE_PIXEL_PNG)
@@ -70,9 +70,8 @@ class PDFServiceTest(unittest.TestCase):
                 assets = PDFReportService._resolve_branding_assets()
 
         self.assertIn("banner", assets)
-        self.assertIn("logo", assets)
+        self.assertNotIn("logo", assets)
         self.assertEqual(assets["banner"].name, "banner.png")
-        self.assertEqual(assets["logo"].name, "logo.png")
 
     def test_build_analysis_pdf_with_branding_assets(self):
         analysis = self._build_analysis_fixture()

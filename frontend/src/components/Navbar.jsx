@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { Shield, LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
@@ -15,6 +15,7 @@ export default function Navbar() {
   const userInitial = userDisplayName.charAt(0).toUpperCase();
   const avatarUrl = (user?.picture || '').trim();
   const shouldShowAvatarImage = Boolean(avatarUrl && failedAvatarUrl !== avatarUrl);
+  const brandLogoSrc = '/tara-logo.png';
   
   const isActive = (path) => location.pathname === path;
   
@@ -31,12 +32,12 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <Link to="/welcome" className="flex items-center gap-2">
-              <motion.div
-                whileHover={{ rotate: 10 }}
-                className="p-2 rounded-lg bg-cyber-cyan/10"
-              >
-                <Shield className="w-6 h-6 text-cyber-cyan" />
-              </motion.div>
+              <motion.img
+                whileHover={{ scale: 1.06 }}
+                src={brandLogoSrc}
+                alt="TARA logo"
+                className="w-10 h-10 rounded-lg object-cover border border-cyber-cyan/25 bg-dark-tertiary"
+              />
               <span className="text-xl font-bold font-display text-text-primary">
                 TARA
               </span>
@@ -55,12 +56,12 @@ export default function Navbar() {
           {/* Logo & Nav Links */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2 mr-8">
-              <motion.div
-                whileHover={{ rotate: 10 }}
-                className="p-2 rounded-lg bg-cyber-cyan/10"
-              >
-                <Shield className="w-6 h-6 text-cyber-cyan" />
-              </motion.div>
+              <motion.img
+                whileHover={{ scale: 1.06 }}
+                src={brandLogoSrc}
+                alt="TARA logo"
+                className="w-10 h-10 rounded-lg object-cover border border-cyber-cyan/25 bg-dark-tertiary"
+              />
               <span className="text-xl font-bold font-display text-text-primary">
                 TARA
               </span>
