@@ -25,6 +25,13 @@ def minimal_threat(name="Threat"):
 
 
 class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
+    def test_target_threat_count_scales_with_input_size(self):
+        service = LLMService(enable_cache=False, request_timeout_seconds=2)
+        self.assertEqual(service._estimate_target_threat_count("x" * 200), 6)
+        self.assertEqual(service._estimate_target_threat_count("x" * 500), 10)
+        self.assertEqual(service._estimate_target_threat_count("x" * 1000), 14)
+        self.assertEqual(service._estimate_target_threat_count("x" * 2000), 18)
+
     async def test_missing_risk_level_is_derived_from_score(self):
         service = LLMService(enable_cache=False, request_timeout_seconds=2)
         payload = json.dumps([minimal_threat()])

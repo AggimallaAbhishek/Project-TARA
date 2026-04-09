@@ -29,6 +29,7 @@ System: {system_description}
 Return a JSON array with as many meaningful threats as the architecture warrants.
 Prioritize broad coverage across components, trust boundaries, and data flows.
 Do not force a fixed count.
+Aim for at least {target_threat_count} distinct threats when the input has enough detail.
 
 Each threat must include:
 - name
@@ -178,6 +179,17 @@ class LLMService:
     def _build_cache_key(normalized_description: str) -> str:
         return hashlib.sha256(normalized_description.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def _estimate_target_threat_count(system_description: str) -> int:
+        char_count = len(system_description)
+        if char_count < 250:
+            return 6
+        if char_count < 700:
+            return 10
+        if char_count < 1400:
+            return 14
+        return 18
+
     async def _request_threats(
         self,
         prompt: str,
@@ -257,7 +269,11 @@ class LLMService:
                 )
                 return cached_threats, round(elapsed, 2)
 
-        prompt = STRIDE_PROMPT.format(system_description=system_description)
+        target_threat_count = self._estimate_target_threat_count(system_description)
+        prompt = STRIDE_PROMPT.format(
+            system_description=system_description,
+            target_threat_count=target_threat_count,
+        )
         attempts: list[tuple[int, bool]] = [(self.num_predict, False)]
         if self.retry_on_invalid_response:
             attempts.append((max(self.num_predict, self.retry_num_predict), True))
