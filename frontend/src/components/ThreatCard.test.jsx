@@ -43,4 +43,18 @@ describe('ThreatCard', () => {
       screen.getByText('Use prepared statements and least-privilege DB users.'),
     ).toBeInTheDocument()
   })
+
+  it('removes wrapping brackets and quotes from mitigation content', () => {
+    const threat = makeThreat({
+      mitigation:
+        "1. ['Define trust boundaries.\n2. implement explicit trust boundaries around sensitive components'.\n3. 'Use network segmentation between trust zones'].",
+    })
+    render(<ThreatCard threat={threat} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /SQL Injection/i }))
+
+    expect(screen.getByText('Define trust boundaries.')).toBeInTheDocument()
+    expect(screen.getByText(/implement explicit trust boundaries/i)).toBeInTheDocument()
+    expect(screen.queryByText(/\[/)).not.toBeInTheDocument()
+  })
 })

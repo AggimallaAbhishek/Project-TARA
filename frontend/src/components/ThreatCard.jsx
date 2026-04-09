@@ -6,13 +6,32 @@ import { ChevronDown, Target, Shield, Lightbulb } from 'lucide-react';
 import RiskBadge from './RiskBadge';
 import StrideBadge from './StrideBadge';
 
+function sanitizeMitigationSegment(text) {
+  let cleaned = text.trim();
+  for (let i = 0; i < 3; i += 1) {
+    const next = cleaned
+      .trim()
+      .replace(/^\[+/, '')
+      .replace(/\]+$/, '')
+      .trim()
+      .replace(/^['"`]+/, '')
+      .replace(/['"`]+$/, '')
+      .trim();
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  return cleaned;
+}
+
 export default function ThreatCard({ threat, index = 0 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const mitigationSteps = threat.mitigation
+  const normalizedMitigationText = sanitizeMitigationSegment(threat.mitigation || '');
+  const mitigationSteps = normalizedMitigationText
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.replace(/^(\d+[\).]?\s+|[-*•]\s+)/, '').trim())
+    .map((line) => line.replace(/^(\d+[).]?\s+|[-*•]\s+)/, '').trim())
+    .map((line) => sanitizeMitigationSegment(line))
     .filter(Boolean);
   const hasMitigationSteps = mitigationSteps.length > 1;
 
@@ -124,7 +143,7 @@ export default function ThreatCard({ threat, index = 0 }) {
                   </ol>
                 ) : (
                   <p className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
-                    {threat.mitigation}
+                    {normalizedMitigationText}
                   </p>
                 )}
               </div>

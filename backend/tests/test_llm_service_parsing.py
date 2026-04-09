@@ -88,6 +88,25 @@ class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("1. Use parameterized queries.", threats[0]["mitigation"])
         self.assertIn("2. enforce strict input validation.", threats[0]["mitigation"].lower())
 
+    async def test_mitigation_list_string_drops_brackets_and_quotes(self):
+        service = LLMService(enable_cache=False, request_timeout_seconds=2)
+        threat = minimal_threat()
+        threat["mitigation"] = (
+            "['Define trust boundaries', "
+            "'Implement explicit boundaries around sensitive components', "
+            "'Use network segmentation between trust zones']"
+        )
+        payload = json.dumps([threat])
+        with patch("app.services.llm_service.ollama.chat", return_value={"message": {"content": payload}}):
+            threats, _elapsed = await service.analyze_system("desc")
+
+        self.assertEqual(len(threats), 1)
+        mitigation = threats[0]["mitigation"]
+        self.assertIn("1. Define trust boundaries.", mitigation)
+        self.assertNotIn("[", mitigation)
+        self.assertNotIn("]", mitigation)
+        self.assertNotIn("'Define", mitigation)
+
     async def test_retry_succeeds_after_empty_content_response(self):
         service = LLMService(
             enable_cache=False,

@@ -1,4 +1,5 @@
 import asyncio
+import ast
 import copy
 import hashlib
 import json
@@ -452,16 +453,49 @@ class LLMService:
 
     @staticmethod
     def _format_step_text(step: str) -> str:
-        cleaned = step.strip().strip(".,;")
+        cleaned = step.strip()
+        for _ in range(3):
+            updated = cleaned.strip().strip("[]").strip().strip("'\"`").strip()
+            if updated == cleaned:
+                break
+            cleaned = updated
+        cleaned = cleaned.strip(".,;")
         if not cleaned:
             return ""
         return cleaned if cleaned.endswith(".") else f"{cleaned}."
+
+    @classmethod
+    def _parse_serialized_mitigation_list(cls, mitigation_text: str) -> list[str] | None:
+        trimmed = mitigation_text.strip()
+        if not (trimmed.startswith("[") and trimmed.endswith("]")):
+            return None
+
+        for parser in (json.loads, ast.literal_eval):
+            try:
+                parsed = parser(trimmed)
+            except Exception:
+                continue
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed if str(item).strip()]
+        return None
 
     @classmethod
     def _normalize_mitigation_steps(cls, mitigation_text: str) -> str:
         cleaned = mitigation_text.strip()
         if not cleaned:
             return "Mitigation not provided."
+
+        serialized_steps = cls._parse_serialized_mitigation_list(cleaned)
+        if serialized_steps:
+            normalized_steps = [
+                formatted
+                for formatted in (cls._format_step_text(step) for step in serialized_steps)
+                if formatted
+            ]
+            if normalized_steps:
+                return "\n".join(
+                    f"{index}. {step}" for index, step in enumerate(normalized_steps[:6], start=1)
+                )
 
         explicit_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
         step_prefix_pattern = re.compile(r"^(\d+[\).]?\s+|[-*•]\s+)")
