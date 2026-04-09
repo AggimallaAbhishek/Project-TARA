@@ -14,7 +14,7 @@ class PDFReportService:
         try:
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import letter
-            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
             from reportlab.lib.units import inch
             from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
         except ImportError as exc:
@@ -32,57 +32,120 @@ class PDFReportService:
         )
 
         styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "ReportTitle",
+            parent=styles["Title"],
+            fontName="Helvetica-Bold",
+            fontSize=22,
+            leading=26,
+            textColor=colors.HexColor("#0E2142"),
+            spaceAfter=6,
+        )
+        section_heading_style = ParagraphStyle(
+            "SectionHeading",
+            parent=styles["Heading3"],
+            fontName="Helvetica-Bold",
+            fontSize=14,
+            leading=18,
+            textColor=colors.HexColor("#132E5C"),
+            spaceAfter=4,
+            spaceBefore=6,
+        )
+        body_style = ParagraphStyle(
+            "BodyStyle",
+            parent=styles["BodyText"],
+            fontSize=10.5,
+            leading=14,
+            textColor=colors.HexColor("#1F2937"),
+            wordWrap="CJK",
+        )
+        table_header_style = ParagraphStyle(
+            "TableHeader",
+            parent=styles["BodyText"],
+            fontName="Helvetica-Bold",
+            fontSize=10.5,
+            leading=13,
+            textColor=colors.white,
+            wordWrap="CJK",
+        )
+        table_cell_style = ParagraphStyle(
+            "TableCell",
+            parent=styles["BodyText"],
+            fontSize=9.8,
+            leading=12.2,
+            textColor=colors.HexColor("#111827"),
+            wordWrap="CJK",
+        )
+        table_score_style = ParagraphStyle(
+            "TableScoreCell",
+            parent=table_cell_style,
+            alignment=2,  # Right align numeric values
+        )
         elements = []
 
         safe_title = xml_escape(analysis.title)
 
-        elements.append(Paragraph(f"<b>TARA Analysis Report</b> #{analysis.id}", styles["Title"]))
-        elements.append(Spacer(1, 10))
-        elements.append(Paragraph(f"<b>Title:</b> {safe_title}", styles["BodyText"]))
+        elements.append(Paragraph("TARA Threat Analysis Report", title_style))
+        elements.append(Paragraph(f"Report ID: #{analysis.id}", body_style))
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph(f"<b>Title:</b> {safe_title}", body_style))
         elements.append(
             Paragraph(
                 f"<b>Created At:</b> {analysis.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
-                styles["BodyText"],
+                body_style,
             )
         )
         elements.append(
             Paragraph(
                 f"<b>Total Risk Score:</b> {analysis.total_risk_score:.2f}",
-                styles["BodyText"],
+                body_style,
             )
         )
-        elements.append(Paragraph(f"<b>Threat Count:</b> {len(analysis.threats)}", styles["BodyText"]))
+        elements.append(Paragraph(f"<b>Threat Count:</b> {len(analysis.threats)}", body_style))
         if analysis.analysis_time and analysis.analysis_time > 0:
             elements.append(
                 Paragraph(
                     f"<b>Analysis Time:</b> {analysis.analysis_time:.2f}s",
-                    styles["BodyText"],
+                    body_style,
                 )
             )
 
         elements.append(Spacer(1, 12))
-        elements.append(Paragraph("<b>System Description</b>", styles["Heading3"]))
+        elements.append(Paragraph("System Description", section_heading_style))
         elements.append(Spacer(1, 6))
         safe_desc = xml_escape(analysis.system_description).replace("\n", "<br/>")
-        elements.append(Paragraph(safe_desc, styles["BodyText"]))
+        elements.append(Paragraph(safe_desc, body_style))
 
         elements.append(Spacer(1, 14))
-        elements.append(Paragraph("<b>Threat Summary</b>", styles["Heading3"]))
+        elements.append(Paragraph("Threat Summary", section_heading_style))
         elements.append(Spacer(1, 6))
 
-        table_data = [["Name", "STRIDE", "Risk", "Score", "Component"]]
+        table_data = [[
+            Paragraph("Name", table_header_style),
+            Paragraph("STRIDE", table_header_style),
+            Paragraph("Risk", table_header_style),
+            Paragraph("Score", table_header_style),
+            Paragraph("Component", table_header_style),
+        ]]
         for threat in self._sorted_threats(analysis.threats):
             table_data.append(
                 [
-                    threat.name,
-                    threat.stride_category,
-                    threat.risk_level,
-                    f"{threat.risk_score:.1f}",
-                    threat.affected_component,
+                    Paragraph(xml_escape(threat.name), table_cell_style),
+                    Paragraph(xml_escape(threat.stride_category), table_cell_style),
+                    Paragraph(xml_escape(threat.risk_level), table_cell_style),
+                    Paragraph(f"{threat.risk_score:.1f}", table_score_style),
+                    Paragraph(xml_escape(threat.affected_component), table_cell_style),
                 ]
             )
 
-        summary_table = Table(table_data, repeatRows=1, colWidths=[2.0 * inch, 1.4 * inch, 0.8 * inch, 0.6 * inch, 2.0 * inch])
+        col_widths = [
+            doc.width * 0.31,
+            doc.width * 0.20,
+            doc.width * 0.13,
+            doc.width * 0.09,
+            doc.width * 0.27,
+        ]
+        summary_table = Table(table_data, repeatRows=1, colWidths=col_widths, hAlign="LEFT")
         summary_table.setStyle(
             TableStyle(
                 [
@@ -91,34 +154,39 @@ class PDFReportService:
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#8AA1C8")),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.HexColor("#EEF3FF")]),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#F8FAFF"), colors.HexColor("#EEF3FF")]),
+                    ("ALIGN", (3, 1), (3, -1), "RIGHT"),
                 ]
             )
         )
         elements.append(summary_table)
 
         elements.append(Spacer(1, 14))
-        elements.append(Paragraph("<b>Threat Details</b>", styles["Heading3"]))
+        elements.append(Paragraph("Threat Details", section_heading_style))
         elements.append(Spacer(1, 6))
 
         for index, threat in enumerate(self._sorted_threats(analysis.threats), start=1):
             safe_name = xml_escape(threat.name)
             safe_stride = xml_escape(threat.stride_category)
             safe_risk = xml_escape(threat.risk_level)
-            safe_description = xml_escape(threat.description)
-            safe_mitigation = xml_escape(threat.mitigation)
+            safe_description = xml_escape(threat.description).replace("\n", "<br/>")
+            safe_mitigation = xml_escape(threat.mitigation).replace("\n", "<br/>")
             safe_component = xml_escape(threat.affected_component)
 
-            elements.append(Paragraph(f"<b>{index}. {safe_name}</b>", styles["BodyText"]))
+            elements.append(Paragraph(f"<b>{index}. {safe_name}</b>", body_style))
             elements.append(
                 Paragraph(
                     f"<b>Category:</b> {safe_stride} | <b>Risk:</b> {safe_risk} ({threat.risk_score:.1f})",
-                    styles["BodyText"],
+                    body_style,
                 )
             )
-            elements.append(Paragraph(f"<b>Component:</b> {safe_component}", styles["BodyText"]))
-            elements.append(Paragraph(f"<b>Description:</b> {safe_description}", styles["BodyText"]))
-            elements.append(Paragraph(f"<b>Mitigation:</b> {safe_mitigation}", styles["BodyText"]))
+            elements.append(Paragraph(f"<b>Component:</b> {safe_component}", body_style))
+            elements.append(Paragraph(f"<b>Description:</b> {safe_description}", body_style))
+            elements.append(Paragraph(f"<b>Mitigation:</b> {safe_mitigation}", body_style))
             elements.append(Spacer(1, 10))
 
         doc.build(elements)

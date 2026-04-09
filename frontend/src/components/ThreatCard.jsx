@@ -11,11 +11,9 @@ function sanitizeMitigationSegment(text) {
   for (let i = 0; i < 3; i += 1) {
     const next = cleaned
       .trim()
-      .replace(/^\[+/, '')
-      .replace(/\]+$/, '')
-      .trim()
-      .replace(/^['"`]+/, '')
-      .replace(/['"`]+$/, '')
+      .replace(/^[\]'"`[]+/, '')
+      .replace(/[\]'"`[]+$/, '')
+      .replace(/[\]'"`[]+(?=[.,;:!?]+$)/g, '')
       .trim();
     if (next === cleaned) break;
     cleaned = next;

@@ -47,7 +47,7 @@ describe('ThreatCard', () => {
   it('removes wrapping brackets and quotes from mitigation content', () => {
     const threat = makeThreat({
       mitigation:
-        "1. ['Define trust boundaries.\n2. implement explicit trust boundaries around sensitive components'.\n3. 'Use network segmentation between trust zones'].",
+        "1. ['Define trust boundaries.\n2. implement explicit trust boundaries around sensitive components'.\n3. 'Use network segmentation between trust zones'].\n4. 'Implement account lockout mechanisms after failed attempts'].",
     })
     render(<ThreatCard threat={threat} />)
 
@@ -55,6 +55,8 @@ describe('ThreatCard', () => {
 
     expect(screen.getByText('Define trust boundaries.')).toBeInTheDocument()
     expect(screen.getByText(/implement explicit trust boundaries/i)).toBeInTheDocument()
+    expect(screen.getByText('Implement account lockout mechanisms after failed attempts.')).toBeInTheDocument()
     expect(screen.queryByText(/\[/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\]/)).not.toBeInTheDocument()
   })
 })

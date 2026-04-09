@@ -455,7 +455,12 @@ class LLMService:
     def _format_step_text(step: str) -> str:
         cleaned = step.strip()
         for _ in range(3):
-            updated = cleaned.strip().strip("[]").strip().strip("'\"`").strip()
+            updated = cleaned.strip()
+            updated = re.sub(r"^[\[\]\"'`]+", "", updated)
+            updated = re.sub(r"[\[\]\"'`]+$", "", updated)
+            # Handle artifacts like "step']." or "step']:" where wrappers precede punctuation.
+            updated = re.sub(r"[\[\]\"'`]+(?=[\.,;:!?]+$)", "", updated)
+            updated = updated.strip()
             if updated == cleaned:
                 break
             cleaned = updated

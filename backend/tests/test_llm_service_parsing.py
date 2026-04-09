@@ -107,6 +107,24 @@ class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("]", mitigation)
         self.assertNotIn("'Define", mitigation)
 
+    async def test_mitigation_trailing_bracket_artifacts_are_removed(self):
+        service = LLMService(enable_cache=False, request_timeout_seconds=2)
+        threat = minimal_threat()
+        threat["mitigation"] = (
+            "1. 'Implement multi-factor authentication for all user accounts'.\n"
+            "2. Use secure session management with proper token expiration'.\n"
+            "3. Add rate limiting to authentication endpoints'.\n"
+            "4. Implement account lockout mechanisms after failed attempts']."
+        )
+        payload = json.dumps([threat])
+        with patch("app.services.llm_service.ollama.chat", return_value={"message": {"content": payload}}):
+            threats, _elapsed = await service.analyze_system("desc")
+
+        self.assertEqual(len(threats), 1)
+        mitigation = threats[0]["mitigation"]
+        self.assertNotIn("']", mitigation)
+        self.assertIn("4. Implement account lockout mechanisms after failed attempts.", mitigation)
+
     async def test_retry_succeeds_after_empty_content_response(self):
         service = LLMService(
             enable_cache=False,
