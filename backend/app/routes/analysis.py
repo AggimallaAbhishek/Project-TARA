@@ -15,7 +15,9 @@ from app.schemas.analysis import (
     AnalysisSummary,
     RiskLevel,
     StrideCategory,
+    VersionComparisonResponse,
 )
+from app.services.analysis_version_comparison_service import analysis_version_comparison_service
 from app.services.audit_service import audit_service
 from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
@@ -221,6 +223,31 @@ async def get_analysis_summary(
     summary["analysis_id"] = analysis_id
     summary["title"] = analysis.title
     return summary
+
+
+@router.get(
+    "/analyses/{analysis_id}/version-comparison",
+    response_model=VersionComparisonResponse,
+    summary="Get version comparison against previous analysis with same title",
+    response_description="Resolved, unresolved, and newly introduced issues compared to previous version",
+    responses={401: {"description": "Authentication required"}, 404: {"description": "Analysis not found"}},
+)
+async def get_analysis_version_comparison(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return analysis_version_comparison_service.get_version_comparison(
+            db,
+            analysis_id=analysis_id,
+            user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
 
 
 @router.get(

@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     diagram_max_upload_mb: int = 10
     diagram_pdf_max_pages: int = 3
     diagram_extract_ttl_seconds: int = 1800
+    document_max_upload_mb: int = 10
+    document_pdf_max_pages: int = 20
     db_startup_strict: bool | None = None
 
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH)

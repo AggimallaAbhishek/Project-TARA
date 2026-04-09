@@ -77,6 +77,34 @@ class AnalysisResponse(AnalysisBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class VersionComparisonIssue(BaseModel):
+    name: str
+    stride_category: str
+    affected_component: str
+    risk_level: str
+    risk_score: float
+
+
+class VersionComparisonResponse(BaseModel):
+    current_analysis_id: int
+    current_created_at: datetime
+    previous_analysis_id: int | None = None
+    previous_created_at: datetime | None = None
+    has_previous_version: bool
+    previous_total_issues: int
+    resolved_issues_count: int
+    unresolved_issues_count: int
+    new_issues_count: int
+    resolved_issues: list[VersionComparisonIssue] = []
+    unresolved_issues: list[VersionComparisonIssue] = []
+    new_issues: list[VersionComparisonIssue] = []
+
+
+class DocumentAnalysisResponse(BaseModel):
+    analysis: AnalysisResponse
+    version_comparison: VersionComparisonResponse
+
+
 class AnalysisSummary(BaseModel):
     id: int
     title: str
