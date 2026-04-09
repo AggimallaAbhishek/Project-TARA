@@ -1,63 +1,15 @@
 from io import BytesIO
-import logging
-from pathlib import Path
 import re
 from typing import Iterable
 from xml.sax.saxutils import escape as xml_escape
 
 from app.models.analysis import Analysis, Threat
 
-logger = logging.getLogger(__name__)
-
 
 class PDFReportService:
-    BRANDING_ASSET_DIR = Path(__file__).resolve().parents[1] / "assets" / "pdf"
-    BRANDING_ASSET_EXTENSIONS = (".png", ".jpg", ".jpeg")
-    BRANDING_BANNER_BASENAME = "banner"
-
     @staticmethod
     def _sorted_threats(threats: Iterable[Threat]) -> list[Threat]:
         return sorted(threats, key=lambda threat: threat.risk_score, reverse=True)
-
-    @classmethod
-    def _resolve_branding_asset_path(cls, base_name: str) -> Path | None:
-        for extension in cls.BRANDING_ASSET_EXTENSIONS:
-            candidate = cls.BRANDING_ASSET_DIR / f"{base_name}{extension}"
-            if candidate.is_file():
-                return candidate
-        return None
-
-    @classmethod
-    def _resolve_branding_assets(cls) -> dict[str, Path]:
-        banner = cls._resolve_branding_asset_path(cls.BRANDING_BANNER_BASENAME)
-        assets: dict[str, Path] = {}
-        if banner:
-            assets["banner"] = banner
-
-        logger.debug(
-            "PDF branding assets resolved banner=%s dir=%s",
-            str(banner) if banner else "missing",
-            str(cls.BRANDING_ASSET_DIR),
-        )
-        return assets
-
-    @staticmethod
-    def _get_scaled_dimensions(
-        image_path: Path,
-        *,
-        max_width: float,
-        max_height: float,
-    ) -> tuple[float, float]:
-        from reportlab.lib.utils import ImageReader
-
-        raw_width, raw_height = ImageReader(str(image_path)).getSize()
-        width = float(raw_width)
-        height = float(raw_height)
-        if width <= 0 or height <= 0:
-            raise ValueError(f"Invalid image dimensions for {image_path}")
-
-        scale = min(max_width / width, max_height / height, 1.0)
-        return width * scale, height * scale
 
     @staticmethod
     def _sanitize_mitigation_segment(text: str) -> str:
@@ -99,91 +51,6 @@ class PDFReportService:
 
         fallback = cls._sanitize_mitigation_segment(raw)
         return fallback or "Mitigation not provided."
-
-    def _build_banner_header(
-        self,
-        *,
-        banner_path: Path,
-        max_width: float,
-        max_height: float,
-        title_text: str,
-    ):
-        from reportlab.lib import colors
-        from reportlab.platypus import Flowable
-
-        banner_width, banner_height = self._get_scaled_dimensions(
-            banner_path,
-            max_width=max_width,
-            max_height=max_height,
-        )
-
-        class BannerHeader(Flowable):
-            def __init__(self, image_path: Path, width: float, height: float, heading: str):
-                super().__init__()
-                self.image_path = image_path
-                self.width = width
-                self.height = height
-                self.heading = heading
-
-            def wrap(self, avail_width, avail_height):
-                return self.width, self.height
-
-            def draw(self):
-                self.canv.drawImage(
-                    str(self.image_path),
-                    0,
-                    0,
-                    width=self.width,
-                    height=self.height,
-                    preserveAspectRatio=True,
-                    mask="auto",
-                )
-
-                heading = (self.heading or "").strip()
-                if not heading:
-                    return
-
-                max_text_width = self.width * 0.84
-                font_name = "Helvetica-Bold"
-                font_size = 30
-                min_font_size = 16
-
-                while font_size > min_font_size:
-                    text_width = self.canv.stringWidth(heading, font_name, font_size)
-                    if text_width <= max_text_width:
-                        break
-                    font_size -= 1
-
-                text_width = self.canv.stringWidth(heading, font_name, font_size)
-                text_x = max(10, (self.width - text_width) / 2)
-                text_y = max(14, (self.height - font_size) / 2)
-
-                # Contrast band so heading remains readable over bright/complex banner areas.
-                band_padding_x = 18
-                band_padding_y = 8
-                band_x = max(6, text_x - band_padding_x)
-                band_y = max(6, text_y - band_padding_y)
-                band_w = min(self.width - 12, text_width + (band_padding_x * 2))
-                band_h = font_size + (band_padding_y * 2)
-
-                self.canv.saveState()
-                if hasattr(self.canv, "setFillAlpha"):
-                    self.canv.setFillAlpha(0.35)
-                self.canv.setFillColor(colors.HexColor("#0B1338"))
-                self.canv.roundRect(band_x, band_y, band_w, band_h, 8, stroke=0, fill=1)
-                if hasattr(self.canv, "setFillAlpha"):
-                    self.canv.setFillAlpha(1)
-                self.canv.setFillColor(colors.HexColor("#F8FBFF"))
-                self.canv.setFont(font_name, font_size)
-                self.canv.drawString(text_x, text_y, heading)
-                self.canv.restoreState()
-
-        return BannerHeader(
-            image_path=banner_path,
-            width=banner_width,
-            height=banner_height,
-            heading=title_text,
-        )
 
     def build_analysis_pdf(self, analysis: Analysis) -> bytes:
         try:
@@ -265,28 +132,8 @@ class PDFReportService:
 
         elements = []
         safe_title = xml_escape(analysis.title)
-        branding_assets = self._resolve_branding_assets()
-        banner_path = branding_assets.get("banner")
-        if banner_path:
-            try:
-                elements.append(
-                    self._build_banner_header(
-                        banner_path=banner_path,
-                        max_width=doc.width,
-                        max_height=1.6 * inch,
-                        title_text="TARA Threat Analysis Report",
-                    )
-                )
-                elements.append(Spacer(1, 10))
-            except Exception:
-                logger.warning(
-                    "Failed to render PDF banner asset path=%s",
-                    banner_path,
-                    exc_info=True,
-                )
-        else:
-            elements.append(Paragraph("TARA Threat Analysis Report", title_style))
-            elements.append(Spacer(1, 6))
+        elements.append(Paragraph("TARA Threat Analysis Report", title_style))
+        elements.append(Spacer(1, 6))
 
         elements.append(Paragraph(f"<b>Report ID:</b> #{analysis.id}", body_style))
         elements.append(Paragraph(f"<b>Title:</b> {safe_title}", body_style))

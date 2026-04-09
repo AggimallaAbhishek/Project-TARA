@@ -1,11 +1,8 @@
-import base64
 from datetime import datetime
 import pathlib
 import sys
-import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
 
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -16,10 +13,6 @@ from app.services.pdf_service import PDFReportService
 
 
 class PDFServiceTest(unittest.TestCase):
-    _ONE_PIXEL_PNG = base64.b64decode(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+M1wAAAAASUVORK5CYII="
-    )
-
     @staticmethod
     def _build_analysis_fixture():
         threat = SimpleNamespace(
@@ -60,30 +53,11 @@ class PDFServiceTest(unittest.TestCase):
         self.assertNotIn("]", sanitized)
         self.assertNotIn("'", sanitized)
 
-    def test_resolve_branding_assets_finds_banner_only(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = pathlib.Path(temp_dir)
-            (temp_path / "banner.png").write_bytes(self._ONE_PIXEL_PNG)
-            (temp_path / "logo.png").write_bytes(self._ONE_PIXEL_PNG)
-
-            with patch.object(PDFReportService, "BRANDING_ASSET_DIR", temp_path):
-                assets = PDFReportService._resolve_branding_assets()
-
-        self.assertIn("banner", assets)
-        self.assertNotIn("logo", assets)
-        self.assertEqual(assets["banner"].name, "banner.png")
-
-    def test_build_analysis_pdf_with_branding_assets(self):
+    def test_build_analysis_pdf_with_text_heading(self):
         analysis = self._build_analysis_fixture()
         service = PDFReportService()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = pathlib.Path(temp_dir)
-            (temp_path / "banner.png").write_bytes(self._ONE_PIXEL_PNG)
-            (temp_path / "logo.png").write_bytes(self._ONE_PIXEL_PNG)
-
-            with patch.object(PDFReportService, "BRANDING_ASSET_DIR", temp_path):
-                pdf_bytes = service.build_analysis_pdf(analysis)
+        pdf_bytes = service.build_analysis_pdf(analysis)
 
         self.assertTrue(pdf_bytes.startswith(b"%PDF"))
         self.assertGreater(len(pdf_bytes), 0)

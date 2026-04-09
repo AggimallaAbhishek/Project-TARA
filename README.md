@@ -180,13 +180,9 @@ Common fixes:
 - Set `OLLAMA_HOST` so backend can reach Ollama (`http://host.docker.internal:11434` in Docker mode).
 - Pull or switch to an installed model (`OLLAMA_MODEL`, `OLLAMA_VISION_MODEL`).
 
-### PDF Branding Assets
+### PDF Export Header
 
-To include your branding in exported PDFs, place this file in `backend/app/assets/pdf/`:
-
-- `banner.png` (shown at the top of page 1 only)
-
-Supported banner formats for lookup are `.png`, `.jpg`, `.jpeg` with base name `banner`.
+Exported PDFs use a clean text heading (`TARA Threat Analysis Report`) at the top of page 1.
 
 Configure frontend in `frontend/.env`:
 
