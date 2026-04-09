@@ -26,7 +26,11 @@ STRIDE_PROMPT = """Analyze this system for security threats using STRIDE. Return
 
 System: {system_description}
 
-Return a JSON array with exactly 5 threats. Each threat must include:
+Return a JSON array with as many meaningful threats as the architecture warrants.
+Prioritize broad coverage across components, trust boundaries, and data flows.
+Do not force a fixed count.
+
+Each threat must include:
 - name
 - description
 - stride_category (one of: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
@@ -34,7 +38,7 @@ Return a JSON array with exactly 5 threats. Each threat must include:
 - risk_level (Low, Medium, High, Critical)
 - likelihood (1-5)
 - impact (1-5)
-- mitigation
+- mitigation (numbered implementation steps, 3-6 concise and actionable steps)
 
 Output only valid JSON array, no markdown or extra text."""
 
@@ -428,8 +432,59 @@ class LLMService:
             if validated:
                 validated_threats.append(validated)
 
-        # Keep output bounded for consistent latency and storage cost.
-        return validated_threats[:5]
+        return validated_threats
+
+    @staticmethod
+    def _format_step_text(step: str) -> str:
+        cleaned = step.strip().strip(".,;")
+        if not cleaned:
+            return ""
+        return cleaned if cleaned.endswith(".") else f"{cleaned}."
+
+    @classmethod
+    def _normalize_mitigation_steps(cls, mitigation_text: str) -> str:
+        cleaned = mitigation_text.strip()
+        if not cleaned:
+            return "Mitigation not provided."
+
+        explicit_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+        step_prefix_pattern = re.compile(r"^(\d+[\).]?\s+|[-*•]\s+)")
+        if len(explicit_lines) >= 2 and any(step_prefix_pattern.match(line) for line in explicit_lines):
+            normalized_steps: list[str] = []
+            for raw_line in explicit_lines:
+                line = step_prefix_pattern.sub("", raw_line).strip()
+                formatted = cls._format_step_text(line)
+                if formatted:
+                    normalized_steps.append(formatted)
+            if normalized_steps:
+                return "\n".join(
+                    f"{index}. {step}" for index, step in enumerate(normalized_steps, start=1)
+                )
+
+        split_candidates = re.split(r";+|\n+", cleaned)
+        if len(split_candidates) <= 1:
+            split_candidates = re.split(r",\s+|\s+and\s+", cleaned)
+
+        normalized_candidates: list[str] = []
+        seen_lower: set[str] = set()
+        for candidate in split_candidates:
+            formatted = cls._format_step_text(candidate)
+            if not formatted:
+                continue
+            key = formatted.lower()
+            if key in seen_lower:
+                continue
+            seen_lower.add(key)
+            normalized_candidates.append(formatted)
+
+        if len(normalized_candidates) >= 2:
+            return "\n".join(
+                f"{index}. {step}"
+                for index, step in enumerate(normalized_candidates[:6], start=1)
+            )
+
+        fallback = cls._format_step_text(cleaned)
+        return fallback or "Mitigation not provided."
 
     def _validate_threat(self, threat: dict[str, Any]) -> dict[str, Any] | None:
         if not isinstance(threat, dict):
@@ -448,7 +503,8 @@ class LLMService:
             threat.get("affected_component"),
             "Unspecified component",
         )
-        normalized["mitigation"] = _as_str(threat.get("mitigation"), "Mitigation not provided.")
+        mitigation_text = _as_str(threat.get("mitigation"), "Mitigation not provided.")
+        normalized["mitigation"] = self._normalize_mitigation_steps(mitigation_text)
 
         valid_categories = [
             "Spoofing",

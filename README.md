@@ -5,7 +5,9 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 ## Features
 
 - **STRIDE-based Analysis**: Automatically identifies threats using the industry-standard STRIDE model
+- **Adaptive Threat Coverage**: Generates as many relevant threats as warranted by architecture complexity
 - **Risk Scoring**: Calculates risk scores (Likelihood × Impact) with prioritization
+- **Actionable Mitigations**: Returns implementation-oriented mitigation steps per threat
 - **Modern UI**: Clean React interface with filtering and visualization
 - **Analysis History**: Save and review past security analyses
 - **Local AI**: Uses Ollama for private, offline threat detection (no API costs!)

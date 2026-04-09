@@ -70,7 +70,7 @@ class LLMServicePerformanceTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("timed out", str(context.exception))
 
-    async def test_response_is_bounded_to_five_threats(self):
+    async def test_response_returns_all_valid_threats(self):
         service = LLMService(
             model="test-model",
             enable_cache=False,
@@ -84,7 +84,7 @@ class LLMServicePerformanceTest(unittest.IsolatedAsyncioTestCase):
         with patch("app.services.llm_service.ollama.chat", return_value=response_payload):
             threats, _elapsed = await service.analyze_system("Another architecture")
 
-        self.assertEqual(len(threats), 5)
+        self.assertEqual(len(threats), 7)
 
 
 if __name__ == "__main__":

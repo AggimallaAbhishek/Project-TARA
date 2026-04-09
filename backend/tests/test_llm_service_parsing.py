@@ -66,6 +66,21 @@ class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(threat["mitigation"], "Mitigation not provided.")
         self.assertEqual(threat["risk_level"], "High")  # 5*2=10 -> High per risk_service
 
+    async def test_mitigation_is_normalized_to_numbered_steps(self):
+        service = LLMService(enable_cache=False, request_timeout_seconds=2)
+        threat = minimal_threat()
+        threat["mitigation"] = (
+            "Use parameterized queries, enforce strict input validation, "
+            "rotate database credentials regularly"
+        )
+        payload = json.dumps([threat])
+        with patch("app.services.llm_service.ollama.chat", return_value={"message": {"content": payload}}):
+            threats, _elapsed = await service.analyze_system("desc")
+
+        self.assertEqual(len(threats), 1)
+        self.assertIn("1. Use parameterized queries.", threats[0]["mitigation"])
+        self.assertIn("2. enforce strict input validation.", threats[0]["mitigation"].lower())
+
     async def test_retry_succeeds_after_empty_content_response(self):
         service = LLMService(
             enable_cache=False,

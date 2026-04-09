@@ -8,6 +8,13 @@ import StrideBadge from './StrideBadge';
 
 export default function ThreatCard({ threat, index = 0 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const mitigationSteps = threat.mitigation
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^(\d+[\).]?\s+|[-*•]\s+)/, '').trim())
+    .filter(Boolean);
+  const hasMitigationSteps = mitigationSteps.length > 1;
 
   return (
     <motion.div
@@ -109,9 +116,17 @@ export default function ThreatCard({ threat, index = 0 }) {
                   <Lightbulb className="w-4 h-4" />
                   Recommended Mitigation
                 </h4>
-                <p className="text-text-primary text-sm leading-relaxed">
-                  {threat.mitigation}
-                </p>
+                {hasMitigationSteps ? (
+                  <ol className="text-text-primary text-sm leading-relaxed list-decimal pl-5 space-y-1">
+                    {mitigationSteps.map((step, stepIndex) => (
+                      <li key={`${threat.id}-mitigation-step-${stepIndex}`}>{step}</li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
+                    {threat.mitigation}
+                  </p>
+                )}
               </div>
             </div>
           </motion.div>
