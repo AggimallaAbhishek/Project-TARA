@@ -1,10 +1,12 @@
 from app.schemas.analysis import (
     AnalysisCreate,
+    DocumentAnalysisResponse,
     AnalysisListResponse,
     AnalysisResponse,
     AnalysisRiskSummary,
     AnalysisSummary,
     ThreatResponse,
+    VersionComparisonResponse,
 )
 from app.schemas.audit import AuditLogResponse
 from app.schemas.auth import AuthConfigResponse, GoogleAuthRequest, TokenResponse, UserResponse
@@ -18,6 +20,8 @@ __all__ = [
     "AnalysisRiskSummary",
     "AnalysisListResponse",
     "ThreatResponse",
+    "DocumentAnalysisResponse",
+    "VersionComparisonResponse",
     "AuthConfigResponse",
     "GoogleAuthRequest",
     "TokenResponse",

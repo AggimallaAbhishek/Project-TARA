@@ -12,6 +12,7 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 - **Analysis History**: Save and review past security analyses
 - **Local AI**: Uses Ollama for private, offline threat detection (no API costs!)
 - **Diagram-to-Threat Modeling**: Upload architecture diagrams/DFDs and review extracted architecture text before analysis
+- **Document Version Tracking**: Upload PDF/TXT documents and automatically compare issues with the previous version of the same title
 
 ## Tech Stack
 
@@ -120,6 +121,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=1440
 DIAGRAM_MAX_UPLOAD_MB=10
 DIAGRAM_PDF_MAX_PAGES=3
 DIAGRAM_EXTRACT_TTL_SECONDS=1800
+DOCUMENT_MAX_UPLOAD_MB=10
+DOCUMENT_PDF_MAX_PAGES=20
 ```
 
 For Docker backend, Compose sets `OLLAMA_HOST=http://host.docker.internal:11434` by default.
@@ -180,6 +183,11 @@ Common fixes:
 - Set `OLLAMA_HOST` so backend can reach Ollama (`http://host.docker.internal:11434` in Docker mode).
 - Pull or switch to an installed model (`OLLAMA_MODEL`, `OLLAMA_VISION_MODEL`).
 
+If document analysis rejects an upload:
+- Ensure file type is `.pdf` or `.txt`.
+- Ensure file size is under `DOCUMENT_MAX_UPLOAD_MB`.
+- For PDF files, ensure pages contain selectable text (image-only/scanned PDFs without OCR will return an empty extraction error).
+
 ### PDF Export Header
 
 Exported PDFs use a clean text heading (`TARA Threat Analysis Report`) at the top of page 1.
@@ -205,10 +213,12 @@ VITE_LONG_TASK_TIMEOUT_MS=600000
 | GET | `/api/auth/config` | Get auth client configuration |
 | GET | `/api/auth/me` | Get current user |
 | POST | `/api/analyze` | Create new threat analysis |
+| POST | `/api/document/analyze` | Analyze uploaded PDF/TXT document and auto-generate version comparison |
 | POST | `/api/diagram/extract` | Extract editable architecture text from uploaded diagram |
 | POST | `/api/diagram/analyze` | Analyze extracted (or edited) architecture text |
 | GET | `/api/analyses` | List analyses (pagination + search/filter) |
 | GET | `/api/analyses/{id}` | Get specific analysis |
+| GET | `/api/analyses/{id}/version-comparison` | Compare selected analysis against previous same-title version |
 | GET | `/api/analyses/{id}/summary` | Get risk summary |
 | GET | `/api/analyses/{id}/export.pdf` | Download analysis report PDF |
 | DELETE | `/api/analyses/{id}` | Delete analysis |
@@ -225,6 +235,19 @@ VITE_LONG_TASK_TIMEOUT_MS=600000
 4. Click **Analyze Diagram Threats** to run STRIDE analysis.
 
 File uploads are processed ephemerally and not persisted.
+
+## Document Upload Workflow
+
+1. Enter an analysis title and switch to **Upload Document** mode.
+2. Upload a supported document (`.pdf` or `.txt`).
+3. Click **Analyze Document Threats** to extract text, run STRIDE analysis, and auto-compare with the previous same-title version.
+4. Open the analysis detail page to review:
+   - Previous issue count
+   - Resolved issues
+   - Unresolved issues
+   - Newly introduced issues
+
+Uploaded source files are processed in-memory only and are not persisted.
 
 ## STRIDE Categories
 

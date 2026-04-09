@@ -36,6 +36,11 @@ class SettingsConfigTest(unittest.TestCase):
         settings = Settings(app_env="production", db_startup_strict=False)
         self.assertFalse(settings.is_db_startup_strict)
 
+    def test_document_upload_settings_defaults_are_available(self):
+        settings = Settings()
+        self.assertEqual(settings.document_max_upload_mb, 10)
+        self.assertEqual(settings.document_pdf_max_pages, 20)
+
 
 if __name__ == "__main__":
     unittest.main()
