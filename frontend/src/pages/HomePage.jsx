@@ -6,7 +6,7 @@ import {
   Sparkles, AlertCircle, User, Edit3, FileX, 
   Eye, Wifi, Shield, Clock, History, ArrowRight 
 } from 'lucide-react';
-import { analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api';
+import { analyzeDocument, analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import { FullPageLoader } from '../components/LoadingSpinner';
 
@@ -14,6 +14,8 @@ const TITLE_MAX_LENGTH = 255;
 const DESCRIPTION_MAX_LENGTH = 5000;
 const MAX_DIAGRAM_UPLOAD_BYTES = 10 * 1024 * 1024;
 const DIAGRAM_ACCEPT_TYPES = '.png,.jpg,.jpeg,.pdf,.mmd,.mermaid,.puml,.plantuml,.uml,.drawio,.xml';
+const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_ACCEPT_TYPES = '.pdf,.txt';
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +25,7 @@ export default function HomePage() {
   const [inputMode, setInputMode] = useState('text');
   const [description, setDescription] = useState('');
   const [diagramFile, setDiagramFile] = useState(null);
+  const [documentFile, setDocumentFile] = useState(null);
   const [extractId, setExtractId] = useState('');
   const [extractedDescription, setExtractedDescription] = useState('');
   const [sourceMetadata, setSourceMetadata] = useState(null);
@@ -38,9 +41,12 @@ export default function HomePage() {
   const handleModeChange = (mode) => {
     setInputMode(mode);
     setError(null);
-    if (mode === 'text') {
+    if (mode !== 'diagram') {
       setDiagramFile(null);
       resetExtractedState();
+    }
+    if (mode !== 'document') {
+      setDocumentFile(null);
     }
   };
 
@@ -78,11 +84,25 @@ export default function HomePage() {
     }
   };
 
+  const handleDocumentFileChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    setError(null);
+    setDocumentFile(null);
+
+    if (!file) return;
+    if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
+      setError('Document file is too large. Maximum size is 10 MB.');
+      return;
+    }
+    setDocumentFile(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
     if (inputMode === 'text' && !description.trim()) return;
     if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) return;
+    if (inputMode === 'document' && !documentFile) return;
     
     setIsLoading(true);
     setError(null);
@@ -90,13 +110,23 @@ export default function HomePage() {
     try {
       const result = inputMode === 'text'
         ? await analyzeSystem(title, description)
-        : await analyzeFromDiagram(title, extractId, extractedDescription);
-      navigate(`/analysis/${result.id}`);
+        : inputMode === 'diagram'
+          ? await analyzeFromDiagram(title, extractId, extractedDescription)
+          : await analyzeDocument(title, documentFile);
+      const analysisId = result?.id ?? result?.analysis?.id;
+      if (!analysisId) {
+        throw new Error('Missing analysis ID in API response');
+      }
+      navigate(`/analysis/${analysisId}`);
     } catch (err) {
       console.error('Analysis failed:', err);
       setError(getApiErrorMessage(err, {
         fallbackMessage: 'Failed to analyze system. Please check if the backend is running.',
-        operation: inputMode === 'text' ? 'analysis.create' : 'diagram.analyze',
+        operation: inputMode === 'text'
+          ? 'analysis.create'
+          : inputMode === 'diagram'
+            ? 'diagram.analyze'
+            : 'document.analyze',
       }));
     } finally {
       setIsLoading(false);
@@ -188,7 +218,7 @@ export default function HomePage() {
               <span className="block text-sm font-medium text-text-secondary mb-2">
                 Input Mode
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleModeChange('text')}
@@ -210,6 +240,17 @@ export default function HomePage() {
                   }`}
                 >
                   Upload Diagram
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('document')}
+                  className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    inputMode === 'document'
+                      ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
+                      : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                  }`}
+                >
+                  Upload Document
                 </button>
               </div>
             </div>
@@ -298,6 +339,27 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
+            ) : (
+              <div className="mb-6">
+                <label htmlFor="document-file" className="block text-sm font-medium text-text-secondary mb-2">
+                  Upload Document
+                </label>
+                <input
+                  id="document-file"
+                  type="file"
+                  accept={DOCUMENT_ACCEPT_TYPES}
+                  onChange={handleDocumentFileChange}
+                  className="input-dark cursor-pointer"
+                />
+                <p className="mt-2 text-xs text-text-muted">
+                  Supported: PDF, TXT. Max size: 10 MB.
+                </p>
+                {documentFile && (
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Selected: {documentFile.name} ({Math.ceil(documentFile.size / 1024)} KB)
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Submit Button */}
@@ -309,7 +371,9 @@ export default function HomePage() {
                 || (
                   inputMode === 'text'
                     ? !description.trim()
-                    : (!extractId || !extractedDescription.trim())
+                    : inputMode === 'diagram'
+                      ? (!extractId || !extractedDescription.trim())
+                      : !documentFile
                 )
               }
               whileHover={{ scale: 1.02 }}
@@ -317,7 +381,11 @@ export default function HomePage() {
               className="w-full btn-cyber flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-5 h-5" />
-              {inputMode === 'text' ? 'Analyze System Threats' : 'Analyze Diagram Threats'}
+              {inputMode === 'text'
+                ? 'Analyze System Threats'
+                : inputMode === 'diagram'
+                  ? 'Analyze Diagram Threats'
+                  : 'Analyze Document Threats'}
             </motion.button>
           </form>
 

@@ -166,6 +166,19 @@ export const analyzeFromDiagram = async (title, extractId, editedDescription = '
   return response.data;
 };
 
+export const analyzeDocument = async (title, file) => {
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('file', file);
+  const response = await api.post('/document/analyze', formData, {
+    timeout: LONG_TASK_TIMEOUT_MS,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 export const getAnalyses = async ({
   skip = 0,
   limit = 20,
@@ -195,6 +208,11 @@ export const getAnalyses = async ({
 
 export const getAnalysis = async (id) => {
   const response = await api.get(`/analyses/${id}`);
+  return response.data;
+};
+
+export const getAnalysisVersionComparison = async (id) => {
+  const response = await api.get(`/analyses/${id}/version-comparison`);
   return response.data;
 };
 
