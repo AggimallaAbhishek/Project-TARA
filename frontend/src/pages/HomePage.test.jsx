@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import HomePage from './HomePage'
-import { analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api'
+import { analyzeDocument, analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api'
 
 const mockNavigate = vi.fn()
 
@@ -19,6 +19,7 @@ vi.mock('../services/api', () => ({
   analyzeSystem: vi.fn(),
   extractDiagram: vi.fn(),
   analyzeFromDiagram: vi.fn(),
+  analyzeDocument: vi.fn(),
 }))
 
 function renderHomePage() {
@@ -41,6 +42,10 @@ describe('HomePage', () => {
       },
     })
     analyzeFromDiagram.mockResolvedValue({ id: 202 })
+    analyzeDocument.mockResolvedValue({
+      analysis: { id: 303 },
+      version_comparison: { has_previous_version: false },
+    })
   })
 
   afterEach(() => {
@@ -124,5 +129,30 @@ describe('HomePage', () => {
     expect(
       await screen.findByText(/Cannot reach the backend service/i),
     ).toBeInTheDocument()
+  })
+
+  it('submits document mode analysis', async () => {
+    renderHomePage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
+
+    fireEvent.change(screen.getByLabelText('Analysis Title'), {
+      target: { value: 'Policy Document Analysis' },
+    })
+
+    const fileInput = screen.getByLabelText('Upload Document')
+    const documentFile = new File(
+      ['Document architecture text with gateway, auth, and data processing details.'],
+      'policy.txt',
+      { type: 'text/plain' },
+    )
+    fireEvent.change(fileInput, { target: { files: [documentFile] } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze Document Threats' }))
+
+    await waitFor(() => {
+      expect(analyzeDocument).toHaveBeenCalledWith('Policy Document Analysis', documentFile)
+      expect(mockNavigate).toHaveBeenCalledWith('/analysis/303')
+    })
   })
 })

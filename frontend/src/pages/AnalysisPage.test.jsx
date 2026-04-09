@@ -3,11 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import AnalysisPage from './AnalysisPage'
-import { downloadAnalysisPdf, getAnalysis } from '../services/api'
+import { downloadAnalysisPdf, getAnalysis, getAnalysisVersionComparison } from '../services/api'
 
 vi.mock('../services/api', () => ({
   getAnalysis: vi.fn(),
   downloadAnalysisPdf: vi.fn(),
+  getAnalysisVersionComparison: vi.fn(),
 }))
 
 vi.mock('../components/ThreatCard', () => ({
@@ -46,6 +47,20 @@ describe('AnalysisPage PDF export', () => {
       total_risk_score: 8.0,
       system_description: 'System description',
       threats: [],
+    })
+    getAnalysisVersionComparison.mockResolvedValue({
+      current_analysis_id: 42,
+      current_created_at: '2026-01-01T10:00:00',
+      previous_analysis_id: null,
+      previous_created_at: null,
+      has_previous_version: false,
+      previous_total_issues: 0,
+      resolved_issues_count: 0,
+      unresolved_issues_count: 0,
+      new_issues_count: 0,
+      resolved_issues: [],
+      unresolved_issues: [],
+      new_issues: [],
     })
 
     const nativeCreateElement = document.createElement.bind(document)
@@ -116,6 +131,13 @@ describe('AnalysisPage PDF export', () => {
 
     expect(
       await screen.findByText(/Cannot reach the backend service/i),
+    ).toBeInTheDocument()
+  })
+
+  it('shows baseline message when there is no previous version', async () => {
+    renderAnalysisPage()
+    expect(
+      await screen.findByText(/This is the first version for this title/i),
     ).toBeInTheDocument()
   })
 })

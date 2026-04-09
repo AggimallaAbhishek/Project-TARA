@@ -7,7 +7,7 @@ import {
   ArrowLeft, Clock, Shield, AlertTriangle, Download,
   TrendingUp, FileText
 } from 'lucide-react';
-import { downloadAnalysisPdf, getAnalysis } from '../services/api';
+import { downloadAnalysisPdf, getAnalysis, getAnalysisVersionComparison } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import ThreatCard from '../components/ThreatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -19,6 +19,9 @@ export default function AnalysisPage() {
   const [error, setError] = useState(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState(null);
+  const [versionComparison, setVersionComparison] = useState(null);
+  const [versionComparisonLoading, setVersionComparisonLoading] = useState(true);
+  const [versionComparisonError, setVersionComparisonError] = useState(null);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -36,6 +39,37 @@ export default function AnalysisPage() {
     };
 
     fetchAnalysis();
+  }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchVersionComparison = async () => {
+      setVersionComparisonLoading(true);
+      setVersionComparisonError(null);
+      try {
+        const data = await getAnalysisVersionComparison(id);
+        if (isMounted) {
+          setVersionComparison(data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setVersionComparisonError(getApiErrorMessage(err, {
+            fallbackMessage: 'Failed to load version comparison',
+            operation: 'analysis.version_comparison',
+          }));
+          setVersionComparison(null);
+        }
+      } finally {
+        if (isMounted) {
+          setVersionComparisonLoading(false);
+        }
+      }
+    };
+
+    fetchVersionComparison();
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   const parseFilenameFromHeader = (contentDisposition) => {
@@ -114,6 +148,17 @@ export default function AnalysisPage() {
 
   const highRiskCount = analysis.threats.filter(t => ['Critical', 'High'].includes(t.risk_level)).length;
   const sortedThreats = [...analysis.threats].sort((a, b) => b.risk_score - a.risk_score);
+  const formatIssueLine = (issue) => (
+    <li key={`${issue.name}-${issue.stride_category}-${issue.affected_component}`} className="text-sm text-text-secondary">
+      <span className="text-text-primary font-medium">{issue.name}</span>
+      {' · '}
+      {issue.stride_category}
+      {' · '}
+      {issue.affected_component}
+      {' · '}
+      {issue.risk_level} ({Number(issue.risk_score || 0).toFixed(1)})
+    </li>
+  );
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -208,6 +253,90 @@ export default function AnalysisPage() {
             {analysis.system_description}
           </p>
         </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="card-dark p-6 mb-6"
+      >
+        <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-cyber-cyan" />
+          Version Comparison
+        </h2>
+
+        {versionComparisonLoading ? (
+          <p className="text-sm text-text-secondary">Loading version comparison...</p>
+        ) : versionComparisonError ? (
+          <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+            {versionComparisonError}
+          </div>
+        ) : versionComparison ? (
+          <div className="space-y-4">
+            {versionComparison.has_previous_version ? (
+              <>
+                <div className="grid sm:grid-cols-4 gap-3">
+                  <div className="bg-dark-tertiary rounded-lg p-3">
+                    <p className="text-xs text-text-muted">Previous Issues</p>
+                    <p className="text-xl font-semibold text-text-primary">{versionComparison.previous_total_issues}</p>
+                  </div>
+                  <div className="bg-dark-tertiary rounded-lg p-3">
+                    <p className="text-xs text-text-muted">Resolved</p>
+                    <p className="text-xl font-semibold text-green-400">{versionComparison.resolved_issues_count}</p>
+                  </div>
+                  <div className="bg-dark-tertiary rounded-lg p-3">
+                    <p className="text-xs text-text-muted">Unresolved</p>
+                    <p className="text-xl font-semibold text-amber-400">{versionComparison.unresolved_issues_count}</p>
+                  </div>
+                  <div className="bg-dark-tertiary rounded-lg p-3">
+                    <p className="text-xs text-text-muted">New Issues</p>
+                    <p className="text-xl font-semibold text-risk-critical">{versionComparison.new_issues_count}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-dark-tertiary rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-green-400 mb-2">Resolved Issues</h3>
+                    {versionComparison.resolved_issues.length === 0 ? (
+                      <p className="text-sm text-text-muted">No resolved issues.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {versionComparison.resolved_issues.map(formatIssueLine)}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="bg-dark-tertiary rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-amber-400 mb-2">Unresolved Issues</h3>
+                    {versionComparison.unresolved_issues.length === 0 ? (
+                      <p className="text-sm text-text-muted">No unresolved issues.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {versionComparison.unresolved_issues.map(formatIssueLine)}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="bg-dark-tertiary rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-risk-critical mb-2">Newly Introduced Issues</h3>
+                    {versionComparison.new_issues.length === 0 ? (
+                      <p className="text-sm text-text-muted">No newly introduced issues.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {versionComparison.new_issues.map(formatIssueLine)}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-text-secondary">
+                This is the first version for this title. Future uploads with the same title will include progress comparison.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-text-muted">No version comparison data available.</p>
+        )}
       </motion.div>
 
       {/* Charts Row */}
