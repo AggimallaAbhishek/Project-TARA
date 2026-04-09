@@ -138,12 +138,44 @@ class PDFReportService:
                     preserveAspectRatio=True,
                     mask="auto",
                 )
-                text_margin = 18
-                text_y = max(16, self.height - 38)
+
+                heading = (self.heading or "").strip()
+                if not heading:
+                    return
+
+                max_text_width = self.width * 0.84
+                font_name = "Helvetica-Bold"
+                font_size = 30
+                min_font_size = 16
+
+                while font_size > min_font_size:
+                    text_width = self.canv.stringWidth(heading, font_name, font_size)
+                    if text_width <= max_text_width:
+                        break
+                    font_size -= 1
+
+                text_width = self.canv.stringWidth(heading, font_name, font_size)
+                text_x = max(10, (self.width - text_width) / 2)
+                text_y = max(14, (self.height - font_size) / 2)
+
+                # Contrast band so heading remains readable over bright/complex banner areas.
+                band_padding_x = 18
+                band_padding_y = 8
+                band_x = max(6, text_x - band_padding_x)
+                band_y = max(6, text_y - band_padding_y)
+                band_w = min(self.width - 12, text_width + (band_padding_x * 2))
+                band_h = font_size + (band_padding_y * 2)
+
                 self.canv.saveState()
-                self.canv.setFillColor(colors.HexColor("#EEF5FF"))
-                self.canv.setFont("Helvetica-Bold", 22)
-                self.canv.drawString(text_margin, text_y, self.heading)
+                if hasattr(self.canv, "setFillAlpha"):
+                    self.canv.setFillAlpha(0.35)
+                self.canv.setFillColor(colors.HexColor("#0B1338"))
+                self.canv.roundRect(band_x, band_y, band_w, band_h, 8, stroke=0, fill=1)
+                if hasattr(self.canv, "setFillAlpha"):
+                    self.canv.setFillAlpha(1)
+                self.canv.setFillColor(colors.HexColor("#F8FBFF"))
+                self.canv.setFont(font_name, font_size)
+                self.canv.drawString(text_x, text_y, heading)
                 self.canv.restoreState()
 
         return BannerHeader(
