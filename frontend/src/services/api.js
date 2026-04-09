@@ -3,6 +3,22 @@ import { runtimeConfig } from '../config/runtimeConfig';
 
 const API_BASE_URL = runtimeConfig.apiBaseUrl;
 const DEBUG_API = import.meta.env.DEV && runtimeConfig.debugApi;
+const DEFAULT_API_TIMEOUT_MS = 120000;
+const DEFAULT_LONG_TASK_TIMEOUT_MS = 600000;
+
+function parseTimeoutEnv(rawValue, fallbackValue) {
+  const numeric = Number(rawValue);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return fallbackValue;
+  }
+  return Math.floor(numeric);
+}
+
+const API_TIMEOUT_MS = parseTimeoutEnv(import.meta.env.VITE_API_TIMEOUT_MS, DEFAULT_API_TIMEOUT_MS);
+const LONG_TASK_TIMEOUT_MS = Math.max(
+  API_TIMEOUT_MS,
+  parseTimeoutEnv(import.meta.env.VITE_LONG_TASK_TIMEOUT_MS, DEFAULT_LONG_TASK_TIMEOUT_MS),
+);
 
 function resolveHealthUrl(apiBaseUrl) {
   if (!apiBaseUrl) {
@@ -43,7 +59,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 120000, // 2 minutes for LLM analysis
+  timeout: API_TIMEOUT_MS,
 });
 
 // Request interceptor for optional diagnostics
@@ -118,6 +134,8 @@ export const analyzeSystem = async (title, systemDescription) => {
   const response = await api.post('/analyze', {
     title,
     system_description: systemDescription,
+  }, {
+    timeout: LONG_TASK_TIMEOUT_MS,
   });
   return response.data;
 };
@@ -126,6 +144,7 @@ export const extractDiagram = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
   const response = await api.post('/diagram/extract', formData, {
+    timeout: LONG_TASK_TIMEOUT_MS,
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -141,7 +160,9 @@ export const analyzeFromDiagram = async (title, extractId, editedDescription = '
   if (editedDescription.trim()) {
     payload.system_description = editedDescription.trim();
   }
-  const response = await api.post('/diagram/analyze', payload);
+  const response = await api.post('/diagram/analyze', payload, {
+    timeout: LONG_TASK_TIMEOUT_MS,
+  });
   return response.data;
 };
 

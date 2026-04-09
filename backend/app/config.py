@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ollama_temperature: float = 0.1
     ollama_num_predict: int = 2048
     ollama_num_ctx: int = 4096
-    ollama_request_timeout_seconds: int = 120
+    ollama_request_timeout_seconds: int = 600
     ollama_keep_alive: str = "10m"
     ollama_retry_on_invalid_response: bool = True
     ollama_retry_num_predict: int = 4096
