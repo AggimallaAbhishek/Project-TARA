@@ -1,4 +1,4 @@
-# Project TARA — Threat Analysis & Risk Assessment
+# Project TARA — Threat Analysis & Risk Assessment.
 
 ## A Comprehensive Project Report
 
