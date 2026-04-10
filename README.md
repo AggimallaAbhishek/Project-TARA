@@ -19,6 +19,7 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 - **Backend**: FastAPI (Python)
 - **Frontend**: React + Vite + Tailwind CSS
 - **Database**: PostgreSQL (Docker for local default), SQLite (optional fallback)
+- **Cache & Rate Limiting**: Redis (optional, with in-memory fallback)
 - **AI**: Ollama (local LLM)
 
 ## Quick Start
@@ -115,9 +116,18 @@ DATABASE_URL=postgresql+psycopg2://tara:tara@localhost:5432/tara
 DB_STARTUP_STRICT=false
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ALLOWED_ORIGIN_REGEX=^https?://(localhost|127\.0\.0\.1)(:\d+)?$
+REDIS_URL=redis://localhost:6379/0
 GOOGLE_CLIENT_ID=your-google-client-id
 SECRET_KEY=replace-with-a-long-random-secret
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=user@example.com
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM_EMAIL=tara@example.com
+SMTP_USE_TLS=true
+EMAIL_NOTIFICATIONS_ENABLED=false
+FRONTEND_URL=http://localhost:5173
 DIAGRAM_MAX_UPLOAD_MB=10
 DIAGRAM_PDF_MAX_PAGES=3
 DIAGRAM_EXTRACT_TTL_SECONDS=1800
