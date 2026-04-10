@@ -13,6 +13,25 @@
 
 ---
 
+### Submitted By
+
+| | |
+|---|---|
+| **Student 1** | Aggimalla Abhishek — 23BDS004 |
+| **Student 2** | Prem Sagar T K — 23BDS065 |
+| **Year / Semester** | 3rd Year, 6th Semester |
+| **Branch** | Data Science and Artificial Intelligence |
+| **Institute** | Indian Institute of Information Technology, Dharwad |
+
+### Submitted To
+
+| | |
+|---|---|
+| **Faculty** | Dr. Girish Revadigar |
+| **Course** | Data Security and Privacy (DS308) |
+
+---
+
 ## Table of Contents
 
 1. [Abstract](#1-abstract)
