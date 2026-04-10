@@ -1,0 +1,166 @@
+/* Import Google Fonts - must be first */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for theming */
+:root {
+  --bg-primary: #0B0F19;
+  --bg-secondary: #121826;
+  --bg-tertiary: #1a2234;
+  --bg-border: #2a3441;
+  
+  --accent-cyan: #00F5FF;
+  --accent-cyan-dim: #00c4cc;
+  --accent-purple: #8B5CF6;
+  
+  --risk-critical: #FF4D4D;
+  --risk-high: #FF6B6B;
+  --risk-medium: #FFA500;
+  --risk-low: #00FF94;
+  
+  --text-primary: #E6EAF2;
+  --text-secondary: #9AA4B2;
+  --text-muted: #6B7280;
+}
+
+/* Base styles */
+body {
+  @apply bg-dark-primary text-text-primary min-h-screen;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-primary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-tertiary;
+}
+
+/* Selection color */
+::selection {
+  @apply bg-cyber-cyan/30 text-text-primary;
+}
+
+/* Focus ring for accessibility */
+*:focus-visible {
+  @apply outline-none ring-2 ring-cyber-cyan ring-offset-2 ring-offset-dark-primary;
+}
+
+/* Custom utility classes */
+@layer components {
+  /* Glowing button */
+  .btn-cyber {
+    @apply px-6 py-3 bg-cyber-cyan text-dark-primary font-semibold rounded-lg
+           transition-all duration-300 ease-out
+           hover:shadow-glow-cyan hover:scale-105
+           active:scale-95;
+  }
+  
+  /* Secondary button */
+  .btn-secondary {
+    @apply px-6 py-3 bg-dark-tertiary text-text-primary font-medium rounded-lg
+           border border-dark-border
+           transition-all duration-300
+           hover:border-cyber-cyan/50 hover:bg-dark-secondary;
+  }
+  
+  /* Card component */
+  .card-dark {
+    @apply bg-dark-secondary rounded-xl border border-dark-border
+           transition-all duration-300
+           hover:border-cyber-cyan/30;
+  }
+  
+  /* Input field */
+  .input-dark {
+    @apply w-full px-4 py-3 bg-dark-tertiary text-text-primary
+           border border-dark-border rounded-lg
+           placeholder-text-muted
+           transition-all duration-300
+           focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan/50
+           focus:outline-none;
+  }
+  
+  /* Textarea */
+  .textarea-dark {
+    @apply w-full px-4 py-3 bg-dark-tertiary text-text-primary
+           border border-dark-border rounded-lg
+           placeholder-text-muted resize-none
+           transition-all duration-300
+           focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan/50
+           focus:outline-none;
+  }
+  
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-cyber-cyan to-cyber-purple bg-clip-text text-transparent;
+  }
+  
+  /* Cyber grid background */
+  .bg-cyber-pattern {
+    background-image: 
+      linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+}
+
+/* Animation classes */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

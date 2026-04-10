@@ -1,0 +1,4 @@
+/* Minimal reset — the app theme is defined in styles.css via Tailwind */
+body {
+  margin: 0;
+}
