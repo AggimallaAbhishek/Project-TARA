@@ -310,12 +310,17 @@ async def delete_analysis(
             detail=f"Analysis with id {analysis_id} not found",
         )
 
+    # Remove references in audit log first to avoid integrity error
+    from app.models.audit import AuditLog
+    db.query(AuditLog).filter(AuditLog.analysis_id == analysis.id).update({"analysis_id": None})
+
     audit_service.record_event(
         db,
         user_id=current_user.id,
         action="analysis_deleted",
-        analysis_id=analysis.id,
+        analysis_id=None,
         event_metadata={
+            "analysis_id": analysis.id,
             "title": analysis.title,
             "threat_count": len(analysis.threats),
             "total_risk_score": analysis.total_risk_score,
