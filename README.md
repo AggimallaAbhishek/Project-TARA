@@ -1,4 +1,4 @@
-# Project TARA - Threat Analysis & Risk Assessment
+# Project TARA - Threat Analysis & Risk Assessment.
 
 AI-powered security threat analysis using STRIDE methodology, powered by Ollama (local LLM).
 
