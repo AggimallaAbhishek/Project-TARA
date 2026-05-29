@@ -7,6 +7,7 @@ import { getAnalyses } from '../services/api'
 
 vi.mock('../services/api', () => ({
   getAnalyses: vi.fn(),
+  getProject: vi.fn(),
   compareAnalyses: vi.fn(),
 }))
 

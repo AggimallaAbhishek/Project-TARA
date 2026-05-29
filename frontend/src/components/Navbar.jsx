@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X, FolderKanban } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
@@ -17,10 +17,11 @@ export default function Navbar() {
   const shouldShowAvatarImage = Boolean(avatarUrl && failedAvatarUrl !== avatarUrl);
   const brandLogoSrc = '/tara-logo.png';
   
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => (path === '/projects' ? location.pathname.startsWith('/projects') : location.pathname === path);
   
   const navLinks = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/projects', label: 'Projects', icon: FolderKanban },
     { path: '/history', label: 'History', icon: History },
     { path: '/compare', label: 'Compare', icon: GitCompareArrows },
   ];

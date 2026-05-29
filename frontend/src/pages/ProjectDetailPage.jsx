@@ -1,0 +1,240 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  FileText,
+  GitCompareArrows,
+  Plus,
+  ShieldAlert,
+} from 'lucide-react';
+
+import LoadingSpinner from '../components/LoadingSpinner';
+import ProjectActivityTimeline from '../components/ProjectActivityTimeline';
+import RiskBadge from '../components/RiskBadge';
+import { getProject, getProjectActivity, getProjectAnalyses } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
+
+function getRiskBadgeLevel(score) {
+  if (score >= 16) return 'Critical';
+  if (score >= 10) return 'High';
+  if (score >= 5) return 'Medium';
+  return 'Low';
+}
+
+export default function ProjectDetailPage() {
+  const { projectId } = useParams();
+  const [project, setProject] = useState(null);
+  const [analyses, setAnalyses] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadProjectWorkspace = async () => {
+      setLoading(true);
+      try {
+        const [projectData, analysesData, activityData] = await Promise.all([
+          getProject(projectId),
+          getProjectAnalyses(projectId, { limit: 20 }),
+          getProjectActivity(projectId, { limit: 50 }),
+        ]);
+        if (!isMounted) return;
+        setProject(projectData);
+        setAnalyses(analysesData.items || []);
+        setActivity(activityData || []);
+        setError(null);
+      } catch (loadError) {
+        if (!isMounted) return;
+        setError(getApiErrorMessage(loadError, {
+          fallbackMessage: 'Failed to load project',
+          operation: 'projects.detail',
+        }));
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadProjectWorkspace();
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <LoadingSpinner text="Loading project workspace..." />
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <div className="text-risk-critical text-lg mb-4">{error || 'Project not found'}</div>
+        <Link to="/projects" className="text-cyber-cyan hover:underline flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Projects
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="mb-6"
+      >
+        <Link to="/projects" className="inline-flex items-center gap-2 text-text-secondary hover:text-cyber-cyan transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Projects
+        </Link>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card-dark p-6 mb-6"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div className="min-w-0">
+            <p className="text-cyber-cyan text-sm font-semibold uppercase tracking-wide mb-2">
+              Project Workspace
+            </p>
+            <h1 className="text-3xl font-bold font-display text-text-primary truncate">
+              {project.name}
+            </h1>
+            {project.description && (
+              <p className="text-text-secondary mt-3 max-w-3xl">{project.description}</p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link to={`/?project_id=${project.id}`}>
+              <button type="button" className="btn-cyber inline-flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                New Analysis
+              </button>
+            </Link>
+            <Link to={`/compare?project_id=${project.id}`}>
+              <button type="button" className="btn-secondary inline-flex items-center gap-2">
+                <GitCompareArrows className="w-5 h-5" />
+                Compare
+              </button>
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          <div className="rounded-lg bg-dark-tertiary p-4">
+            <p className="text-xs text-text-muted flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Analyses
+            </p>
+            <p className="text-2xl font-semibold text-text-primary mt-1">{project.analysis_count}</p>
+          </div>
+          <div className="rounded-lg bg-dark-tertiary p-4">
+            <p className="text-xs text-text-muted flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" />
+              High/Critical
+            </p>
+            <p className="text-2xl font-semibold text-risk-critical mt-1">{project.high_risk_count}</p>
+          </div>
+          <div className="rounded-lg bg-dark-tertiary p-4">
+            <p className="text-xs text-text-muted flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Threats
+            </p>
+            <p className="text-2xl font-semibold text-text-primary mt-1">{project.total_threat_count}</p>
+          </div>
+          <div className="rounded-lg bg-dark-tertiary p-4">
+            <p className="text-xs text-text-muted flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Latest
+            </p>
+            <p className="text-sm font-semibold text-text-primary mt-2">
+              {project.latest_analysis_at ? new Date(project.latest_analysis_at).toLocaleDateString() : 'No analyses'}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-text-primary">Project Analyses</h2>
+            <Link to="/history" className="text-sm text-cyber-cyan hover:underline">
+              Open global history
+            </Link>
+          </div>
+
+          {analyses.length === 0 ? (
+            <div className="card-dark p-8 text-center">
+              <FileText className="w-10 h-10 text-text-muted mx-auto mb-3" />
+              <p className="text-text-secondary mb-4">No analyses in this project yet.</p>
+              <Link to={`/?project_id=${project.id}`}>
+                <button type="button" className="btn-cyber inline-flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Run First Analysis
+                </button>
+              </Link>
+            </div>
+          ) : (
+            analyses.map((analysis) => (
+              <Link
+                key={analysis.id}
+                to={`/analysis/${analysis.id}`}
+                className="card-dark p-5 block hover:border-cyber-cyan/30 transition-colors"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold text-text-primary truncate">{analysis.title}</h3>
+                    <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-text-secondary">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {new Date(analysis.created_at).toLocaleDateString()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {Number(analysis.analysis_time || 0).toFixed(1)}s
+                      </span>
+                      <span>{analysis.threat_count} threats</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center px-3 py-1 bg-dark-tertiary rounded-lg">
+                      <div className="text-lg font-bold text-cyber-cyan">
+                        {Number(analysis.total_risk_score || 0).toFixed(1)}
+                      </div>
+                      <div className="text-xs text-text-muted">Score</div>
+                    </div>
+                    <RiskBadge level={getRiskBadgeLevel(analysis.total_risk_score)} showIcon={false} size="small" />
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <ProjectActivityTimeline activity={activity} />
+        </motion.div>
+      </div>
+    </div>
+  );
+}

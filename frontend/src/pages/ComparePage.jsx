@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -28,7 +28,7 @@ import {
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
-import { compareAnalyses, getAnalyses } from '../services/api';
+import { compareAnalyses, getAnalyses, getProject } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import {
   ANALYSES_PAGE_SIZE,
@@ -50,7 +50,36 @@ export default function ComparePage() {
   const [error, setError] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+  const [projectContext, setProjectContext] = useState(null);
+  const [searchParams] = useSearchParams();
   const latestLoadRequestIdRef = useRef(0);
+  const projectId = searchParams.get('project_id') || '';
+
+  useEffect(() => {
+    let isCancelled = false;
+    const loadProjectContext = async () => {
+      if (!projectId) {
+        setProjectContext(null);
+        return;
+      }
+      try {
+        const project = await getProject(projectId);
+        if (!isCancelled) {
+          setProjectContext(project);
+        }
+      } catch (projectError) {
+        if (!isCancelled) {
+          console.error('Failed to load compare project context:', projectError);
+          setProjectContext(null);
+        }
+      }
+    };
+
+    loadProjectContext();
+    return () => {
+      isCancelled = true;
+    };
+  }, [projectId]);
 
   // Load analyses for picker with backend-compatible pagination and stale-response protection.
   useEffect(() => {
@@ -76,11 +105,15 @@ export default function ComparePage() {
             return;
           }
 
-          const page = await getAnalyses({
+          const analysisParams = {
             skip: currentSkip,
             limit: ANALYSES_PAGE_SIZE,
             q: searchFilter || undefined,
-          });
+          };
+          if (projectId) {
+            analysisParams.project_id = Number(projectId);
+          }
+          const page = await getAnalyses(analysisParams);
 
           const pageItems = page.items || [];
           nextAnalyses.push(...pageItems);
@@ -144,7 +177,7 @@ export default function ComparePage() {
       isCancelled = true;
       clearTimeout(debounceTimer);
     };
-  }, [searchFilter]);
+  }, [searchFilter, projectId]);
 
   const toggleSelection = (id) => {
     setSelectedIds((prev) => {
@@ -194,16 +227,18 @@ export default function ComparePage() {
         <div>
           <h1 className="text-3xl font-bold font-display text-text-primary flex items-center gap-3">
             <GitCompareArrows className="w-8 h-8 text-cyber-cyan" />
-            Compare Analyses
+            {projectContext ? `Compare ${projectContext.name}` : 'Compare Analyses'}
           </h1>
           <p className="text-text-secondary mt-1">
-            Select 2–5 analyses to compare side-by-side
+            {projectContext
+              ? 'Select 2–5 analyses from this project to compare side-by-side'
+              : 'Select 2–5 analyses to compare side-by-side'}
           </p>
         </div>
-        <Link to="/history">
+        <Link to={projectContext ? `/projects/${projectContext.id}` : '/history'}>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
-            Back to History
+            {projectContext ? 'Back to Project' : 'Back to History'}
           </motion.button>
         </Link>
       </motion.div>

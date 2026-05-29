@@ -3,10 +3,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import HistoryPage from './HistoryPage'
-import { getAnalyses } from '../services/api'
+import { getAnalyses, getProjects } from '../services/api'
 
 vi.mock('../services/api', () => ({
   getAnalyses: vi.fn(),
+  getProjects: vi.fn(),
   deleteAnalysis: vi.fn(),
 }))
 
@@ -27,6 +28,13 @@ describe('HistoryPage', () => {
       limit: 20,
       has_more: false,
     })
+    getProjects.mockResolvedValue({
+      items: [{ id: 7, name: 'Banking Mobile App' }],
+      total: 1,
+      skip: 0,
+      limit: 100,
+      has_more: false,
+    })
   })
 
   afterEach(() => {
@@ -43,6 +51,7 @@ describe('HistoryPage', () => {
 
     fireEvent.change(screen.getByLabelText('Risk Level'), { target: { value: 'High' } })
     fireEvent.change(screen.getByLabelText('STRIDE Category'), { target: { value: 'Tampering' } })
+    fireEvent.change(screen.getByLabelText('Project'), { target: { value: '7' } })
     fireEvent.change(screen.getByLabelText('Date From'), { target: { value: '2026-01-01' } })
     fireEvent.change(screen.getByLabelText('Date To'), { target: { value: '2026-01-31' } })
     fireEvent.change(screen.getByLabelText('Search analyses'), { target: { value: 'Payment' } })
@@ -55,6 +64,7 @@ describe('HistoryPage', () => {
         q: 'Payment',
         risk_level: 'High',
         stride_category: 'Tampering',
+        project_id: 7,
         date_from: '2026-01-01',
         date_to: '2026-01-31',
       })
@@ -72,6 +82,8 @@ describe('HistoryPage', () => {
           threat_count: 2,
           high_risk_count: 1,
           analysis_time: 1.2,
+          project_id: 7,
+          project: { id: 7, name: 'Banking Mobile App' },
         },
       ],
       total: 45,
@@ -89,6 +101,7 @@ describe('HistoryPage', () => {
         q: '',
         risk_level: '',
         stride_category: '',
+        project_id: '',
         date_from: '',
         date_to: '',
       })
@@ -103,6 +116,7 @@ describe('HistoryPage', () => {
         q: '',
         risk_level: '',
         stride_category: '',
+        project_id: '',
         date_from: '',
         date_to: '',
       })

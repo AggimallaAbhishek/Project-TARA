@@ -168,12 +168,12 @@ export default function AnalysisPage() {
         animate={{ opacity: 1, x: 0 }}
         className="mb-6"
       >
-        <Link 
-          to="/" 
+        <Link
+          to={analysis?.project ? `/projects/${analysis.project.id}` : "/"}
           className="inline-flex items-center gap-2 text-text-secondary hover:text-cyber-cyan transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
+          {analysis?.project ? `Back to ${analysis.project.name}` : 'Back to Dashboard'}
         </Link>
       </motion.div>
 
@@ -204,6 +204,14 @@ export default function AnalysisPage() {
             <h1 className="text-2xl font-bold font-display text-text-primary mb-2">
               {analysis.title}
             </h1>
+            {analysis.project && (
+              <Link
+                to={`/projects/${analysis.project.id}`}
+                className="inline-flex items-center px-2 py-1 mb-3 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/20 text-cyber-cyan text-xs hover:bg-cyber-cyan/20 transition-colors"
+              >
+                Project: {analysis.project.name}
+              </Link>
+            )}
             <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary">
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />

@@ -11,6 +11,7 @@ import {
   Clock,
   Eye,
   FileSearch,
+  FolderKanban,
   Plus,
   RotateCcw,
   Search,
@@ -19,7 +20,7 @@ import {
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
-import { deleteAnalysis, getAnalyses } from '../services/api';
+import { deleteAnalysis, getAnalyses, getProjects } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 
 const RISK_FILTER_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
@@ -43,8 +44,10 @@ export default function HistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState('all');
   const [strideFilter, setStrideFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [projects, setProjects] = useState([]);
 
   const [skip, setSkip] = useState(0);
   const [limit, setLimit] = useState(20);
@@ -52,6 +55,25 @@ export default function HistoryPage() {
   const [hasMore, setHasMore] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const hasLoadedOnceRef = useRef(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadProjects = async () => {
+      try {
+        const data = await getProjects({ limit: 100 });
+        if (isMounted) {
+          setProjects(data.items || []);
+        }
+      } catch (projectLoadError) {
+        console.error('Failed to load project filter options:', projectLoadError);
+      }
+    };
+
+    loadProjects();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadAnalyses = async () => {
@@ -65,6 +87,7 @@ export default function HistoryPage() {
           q: searchQuery,
           risk_level: riskFilter === 'all' ? '' : riskFilter,
           stride_category: strideFilter === 'all' ? '' : strideFilter,
+          project_id: projectFilter === 'all' ? '' : Number(projectFilter),
           date_from: dateFrom,
           date_to: dateTo,
         });
@@ -84,7 +107,7 @@ export default function HistoryPage() {
     };
 
     loadAnalyses();
-  }, [skip, limit, searchQuery, riskFilter, strideFilter, dateFrom, dateTo, refreshKey]);
+  }, [skip, limit, searchQuery, riskFilter, strideFilter, projectFilter, dateFrom, dateTo, refreshKey]);
 
   const handleSearchApply = (e) => {
     e.preventDefault();
@@ -97,6 +120,7 @@ export default function HistoryPage() {
     setSearchQuery('');
     setRiskFilter('all');
     setStrideFilter('all');
+    setProjectFilter('all');
     setDateFrom('');
     setDateTo('');
     setSkip(0);
@@ -133,7 +157,12 @@ export default function HistoryPage() {
   const pageStart = total === 0 ? 0 : skip + 1;
   const pageEnd = skip + analyses.length;
   const hasFiltersApplied =
-    Boolean(searchQuery) || riskFilter !== 'all' || strideFilter !== 'all' || Boolean(dateFrom) || Boolean(dateTo);
+    Boolean(searchQuery)
+    || riskFilter !== 'all'
+    || strideFilter !== 'all'
+    || projectFilter !== 'all'
+    || Boolean(dateFrom)
+    || Boolean(dateTo);
 
   if (loading) {
     return (
@@ -197,7 +226,29 @@ export default function HistoryPage() {
           </button>
         </form>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div>
+            <label htmlFor="history-project-filter" className="block text-xs text-text-secondary mb-1">
+              Project
+            </label>
+            <select
+              id="history-project-filter"
+              value={projectFilter}
+              onChange={(event) => {
+                setProjectFilter(event.target.value);
+                setSkip(0);
+              }}
+              className="input-dark"
+            >
+              <option value="all">All</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label htmlFor="history-risk-filter" className="block text-xs text-text-secondary mb-1">
               Risk Level
@@ -352,6 +403,15 @@ export default function HistoryPage() {
                     >
                       {analysis.title}
                     </Link>
+                    {analysis.project && (
+                      <Link
+                        to={`/projects/${analysis.project.id}`}
+                        className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/20 text-cyber-cyan text-xs hover:bg-cyber-cyan/20 transition-colors"
+                      >
+                        <FolderKanban className="w-3 h-3" />
+                        {analysis.project.name}
+                      </Link>
+                    )}
                     <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-text-secondary">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />

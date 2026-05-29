@@ -3,7 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import HomePage from './HomePage'
-import { analyzeDocument, analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api'
+import {
+  analyzeDocument,
+  analyzeFromDiagram,
+  analyzeSystem,
+  createProject,
+  extractDiagram,
+  getProjects,
+} from '../services/api'
 
 const mockNavigate = vi.fn()
 
@@ -20,6 +27,8 @@ vi.mock('../services/api', () => ({
   extractDiagram: vi.fn(),
   analyzeFromDiagram: vi.fn(),
   analyzeDocument: vi.fn(),
+  getProjects: vi.fn(),
+  createProject: vi.fn(),
 }))
 
 function renderHomePage() {
@@ -32,6 +41,14 @@ function renderHomePage() {
 
 describe('HomePage', () => {
   beforeEach(() => {
+    getProjects.mockResolvedValue({
+      items: [{ id: 7, name: 'Banking Mobile App' }],
+      total: 1,
+      skip: 0,
+      limit: 100,
+      has_more: false,
+    })
+    createProject.mockResolvedValue({ id: 8, name: 'New Project' })
     analyzeSystem.mockResolvedValue({ id: 101 })
     extractDiagram.mockResolvedValue({
       extract_id: 'extract-123',
@@ -55,6 +72,8 @@ describe('HomePage', () => {
   it('submits text mode analysis', async () => {
     renderHomePage()
 
+    await screen.findByLabelText('Project')
+
     fireEvent.change(screen.getByLabelText('Analysis Title'), {
       target: { value: 'Text Analysis' },
     })
@@ -67,6 +86,7 @@ describe('HomePage', () => {
       expect(analyzeSystem).toHaveBeenCalledWith(
         'Text Analysis',
         'Gateway, auth service, and database with external integrations.',
+        { projectId: 7 },
       )
       expect(mockNavigate).toHaveBeenCalledWith('/analysis/101')
     })
@@ -74,6 +94,8 @@ describe('HomePage', () => {
 
   it('extracts and analyzes diagram mode with edited text', async () => {
     renderHomePage()
+
+    await screen.findByLabelText('Project')
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload Diagram' }))
 
@@ -104,6 +126,7 @@ describe('HomePage', () => {
         'Diagram Analysis',
         'extract-123',
         'Edited extracted architecture with gateway and identity service.',
+        { projectId: 7 },
       )
       expect(mockNavigate).toHaveBeenCalledWith('/analysis/202')
     })
@@ -117,6 +140,8 @@ describe('HomePage', () => {
     })
 
     renderHomePage()
+
+    await screen.findByLabelText('Project')
 
     fireEvent.change(screen.getByLabelText('Analysis Title'), {
       target: { value: 'Network Down Case' },
@@ -133,6 +158,8 @@ describe('HomePage', () => {
 
   it('submits document mode analysis', async () => {
     renderHomePage()
+
+    await screen.findByLabelText('Project')
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
 
@@ -151,8 +178,38 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze Document Threats' }))
 
     await waitFor(() => {
-      expect(analyzeDocument).toHaveBeenCalledWith('Policy Document Analysis', documentFile)
+      expect(analyzeDocument).toHaveBeenCalledWith('Policy Document Analysis', documentFile, { projectId: 7 })
       expect(mockNavigate).toHaveBeenCalledWith('/analysis/303')
+    })
+  })
+
+  it('creates a project inline and uses it for analysis', async () => {
+    renderHomePage()
+
+    await screen.findByLabelText('Project')
+    fireEvent.change(screen.getByLabelText('New project name'), {
+      target: { value: 'Inline Project' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(createProject).toHaveBeenCalledWith({ name: 'Inline Project' })
+    })
+
+    fireEvent.change(screen.getByLabelText('Analysis Title'), {
+      target: { value: 'Inline Analysis' },
+    })
+    fireEvent.change(screen.getByLabelText('System Architecture Description'), {
+      target: { value: 'Gateway, auth service, and database with external integrations.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze System Threats' }))
+
+    await waitFor(() => {
+      expect(analyzeSystem).toHaveBeenCalledWith(
+        'Inline Analysis',
+        'Gateway, auth service, and database with external integrations.',
+        { projectId: 8 },
+      )
     })
   })
 })

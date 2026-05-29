@@ -1,11 +1,19 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { Sparkles, AlertCircle } from 'lucide-react';
-import { analyzeDocument, analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api';
+import { Sparkles, AlertCircle, FolderKanban } from 'lucide-react';
+import {
+  analyzeDocument,
+  analyzeFromDiagram,
+  analyzeSystem,
+  createProject,
+  extractDiagram,
+  getProjects,
+} from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import { FullPageLoader } from '../components/LoadingSpinner';
+import ProjectSelector from '../components/ProjectSelector';
 import {
   DESCRIPTION_MAX_LENGTH,
   DIAGRAM_ACCEPT_TYPES,
@@ -32,8 +40,50 @@ export default function HomePage() {
   const [extractId, setExtractId] = useState('');
   const [extractedDescription, setExtractedDescription] = useState('');
   const [sourceMetadata, setSourceMetadata] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectError, setProjectError] = useState(null);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const remainingDescriptionChars = DESCRIPTION_MAX_LENGTH - description.length;
+  const requestedProjectId = searchParams.get('project_id') || '';
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadProjects = async () => {
+      setProjectsLoading(true);
+      try {
+        const data = await getProjects({ limit: 100 });
+        if (!isMounted) return;
+        const nextProjects = data.items || [];
+        setProjects(nextProjects);
+        setProjectError(null);
+        setSelectedProjectId((current) => {
+          if (requestedProjectId && nextProjects.some((project) => String(project.id) === requestedProjectId)) {
+            return requestedProjectId;
+          }
+          if (current && nextProjects.some((project) => String(project.id) === String(current))) {
+            return String(current);
+          }
+          return nextProjects[0] ? String(nextProjects[0].id) : '';
+        });
+      } catch (loadProjectsError) {
+        if (!isMounted) return;
+        setProjectError(getApiErrorMessage(loadProjectsError, {
+          fallbackMessage: 'Failed to load projects',
+          operation: 'projects.load',
+        }));
+      } finally {
+        if (isMounted) setProjectsLoading(false);
+      }
+    };
+
+    loadProjects();
+    return () => {
+      isMounted = false;
+    };
+  }, [requestedProjectId]);
 
   const resetExtractedState = () => {
     setExtractId('');
@@ -100,9 +150,26 @@ export default function HomePage() {
     setDocumentFile(file);
   };
 
+  const handleCreateProject = async (projectName) => {
+    try {
+      const createdProject = await createProject({ name: projectName });
+      setProjects((currentProjects) => [createdProject, ...currentProjects]);
+      setSelectedProjectId(String(createdProject.id));
+    } catch (createProjectError) {
+      throw new Error(getApiErrorMessage(createProjectError, {
+        fallbackMessage: 'Failed to create project',
+        operation: 'projects.create',
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
+    if (!selectedProjectId) {
+      setError('Select or create a project before running analysis.');
+      return;
+    }
     if (inputMode === 'text' && !description.trim()) return;
     if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) return;
     if (inputMode === 'document' && !documentFile) return;
@@ -111,11 +178,12 @@ export default function HomePage() {
     setError(null);
     
     try {
+      const projectOptions = { projectId: Number(selectedProjectId) };
       const result = inputMode === 'text'
-        ? await analyzeSystem(title, description)
+        ? await analyzeSystem(title, description, projectOptions)
         : inputMode === 'diagram'
-          ? await analyzeFromDiagram(title, extractId, extractedDescription)
-          : await analyzeDocument(title, documentFile);
+          ? await analyzeFromDiagram(title, extractId, extractedDescription, projectOptions)
+          : await analyzeDocument(title, documentFile, projectOptions);
       const analysisId = result?.id ?? result?.analysis?.id;
       if (!analysisId) {
         throw new Error('Missing analysis ID in API response');
@@ -175,6 +243,22 @@ export default function HomePage() {
                 <p className="text-sm text-risk-critical">{error}</p>
               </motion.div>
             )}
+
+            {projectError && (
+              <div className="mb-6 p-4 bg-risk-critical/10 border border-risk-critical/30 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-risk-critical flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-risk-critical">{projectError}</p>
+              </div>
+            )}
+
+            <ProjectSelector
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              onProjectChange={setSelectedProjectId}
+              onCreateProject={handleCreateProject}
+              loading={projectsLoading}
+              disabled={isLoading || isExtracting}
+            />
 
             {/* Title Input */}
             <div className="mb-5">
@@ -346,6 +430,8 @@ export default function HomePage() {
               type="submit"
               disabled={
                 isExtracting
+                || projectsLoading
+                || !selectedProjectId
                 || !title.trim()
                 || (
                   inputMode === 'text'
@@ -426,6 +512,17 @@ export default function HomePage() {
               Quick Actions
             </h3>
             <div className="space-y-3">
+              <motion.button
+                whileHover={{ x: 5 }}
+                onClick={() => navigate('/projects')}
+                className="w-full flex items-center justify-between p-3 rounded-lg bg-dark-tertiary text-text-secondary hover:text-text-primary transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <FolderKanban className="w-4 h-4" />
+                  View Projects
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
               <motion.button
                 whileHover={{ x: 5 }}
                 onClick={() => navigate('/history')}
