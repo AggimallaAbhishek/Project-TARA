@@ -104,6 +104,7 @@ class ProjectService:
         current_user: User,
         name: str | None = None,
         description: str | None = None,
+        update_description: bool = False,
     ) -> Project:
         old_name = project.name
         changed_fields: list[str] = []
@@ -124,7 +125,7 @@ class ProjectService:
                 project.normalized_name = normalized_name
                 changed_fields.append("name")
 
-        if description is not None and description != project.description:
+        if update_description and description != project.description:
             project.description = description
             changed_fields.append("description")
 

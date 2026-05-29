@@ -360,8 +360,8 @@ export default function AnalysisPage() {
             <AlertTriangle className="w-5 h-5 text-cyber-cyan" />
             Risk Distribution
           </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-48 min-h-48 min-w-0" style={{ minWidth: 1 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={192}>
               <PieChart>
                 <Pie
                   data={riskDistribution}
@@ -403,8 +403,8 @@ export default function AnalysisPage() {
             <Shield className="w-5 h-5 text-cyber-cyan" />
             STRIDE Categories
           </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-48 min-h-48 min-w-0" style={{ minWidth: 1 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={192}>
               <BarChart data={strideDistribution} layout="vertical">
                 <XAxis type="number" tick={{ fill: '#9AA4B2' }} />
                 <YAxis 

@@ -111,6 +111,33 @@ def test_project_crud_and_activity(project_client):
     assert "project_updated" in actions
 
 
+def test_project_description_can_be_cleared(project_client):
+    client, _session_local, _user_id, _other_user_id = project_client
+
+    created = client.post(
+        "/api/projects",
+        json={"name": "Description Reset", "description": "Temporary notes"},
+    )
+    assert created.status_code == 201
+    project_id = created.json()["id"]
+
+    unchanged = client.patch(f"/api/projects/{project_id}", json={"name": "Description Reset Renamed"})
+    assert unchanged.status_code == 200
+    assert unchanged.json()["description"] == "Temporary notes"
+
+    cleared_with_null = client.patch(f"/api/projects/{project_id}", json={"description": None})
+    assert cleared_with_null.status_code == 200
+    assert cleared_with_null.json()["description"] is None
+
+    restored = client.patch(f"/api/projects/{project_id}", json={"description": "New notes"})
+    assert restored.status_code == 200
+    assert restored.json()["description"] == "New notes"
+
+    cleared_with_blank = client.patch(f"/api/projects/{project_id}", json={"description": "   "})
+    assert cleared_with_blank.status_code == 200
+    assert cleared_with_blank.json()["description"] is None
+
+
 def test_project_ownership_returns_404(project_client):
     client, session_local, _user_id, other_user_id = project_client
     db = session_local()

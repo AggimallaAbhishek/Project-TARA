@@ -483,8 +483,8 @@ export default function ComparePage() {
               <BarChart3 className="w-5 h-5 text-cyber-cyan" />
               STRIDE Distribution Overlay
             </h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-80 min-h-80 min-w-0" style={{ minWidth: 1 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={320}>
                 <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
                   <PolarGrid stroke="#30363d" />
                   <PolarAngleAxis dataKey="category" tick={{ fill: '#8b949e', fontSize: 12 }} />

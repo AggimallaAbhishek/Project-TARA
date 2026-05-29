@@ -125,12 +125,14 @@ async def update_project(
 ):
     try:
         project = project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
+        provided_fields = request.model_fields_set
         project_service.update_project(
             db,
             project=project,
             current_user=current_user,
-            name=request.name,
-            description=request.description,
+            name=request.name if "name" in provided_fields else None,
+            description=request.description if "description" in provided_fields else None,
+            update_description="description" in provided_fields,
         )
         db.commit()
         db.refresh(project)
