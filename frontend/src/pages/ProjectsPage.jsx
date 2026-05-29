@@ -111,10 +111,8 @@ export default function ProjectsPage() {
         </Link>
       </motion.div>
 
-      <div className="grid lg:grid-cols-[1fr_360px] gap-6 mb-8">
-        <motion.form
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6 mb-8 items-start">
+        <form
           onSubmit={handleSearch}
           className="card-dark p-4 h-fit"
         >
@@ -137,14 +135,11 @@ export default function ProjectsPage() {
               Search
             </button>
           </div>
-        </motion.form>
+        </form>
 
-        <motion.form
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
+        <form
           onSubmit={handleCreateProject}
-          className="card-dark p-4"
+          className="card-dark p-4 h-fit"
         >
           <h2 className="text-lg font-semibold text-text-primary mb-3">Create Project</h2>
           <div className="space-y-3">
@@ -180,7 +175,7 @@ export default function ProjectsPage() {
               {creating ? 'Creating...' : 'Create Project'}
             </button>
           </div>
-        </motion.form>
+        </form>
       </div>
 
       {error && (
