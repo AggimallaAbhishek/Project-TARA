@@ -5,6 +5,9 @@ const API_BASE_URL = runtimeConfig.apiBaseUrl;
 const DEBUG_API = import.meta.env.DEV && runtimeConfig.debugApi;
 const DEFAULT_API_TIMEOUT_MS = 120000;
 const DEFAULT_LONG_TASK_TIMEOUT_MS = 600000;
+const CSRF_COOKIE_NAME = 'tara_csrf_token';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+const CSRF_PROTECTED_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 
 function parseTimeoutEnv(rawValue, fallbackValue) {
   const numeric = Number(rawValue);
@@ -53,6 +56,18 @@ function normalizePositiveInt(value, fallbackValue) {
   return Math.floor(numeric);
 }
 
+function readCookie(name) {
+  if (typeof document === 'undefined' || !document.cookie) {
+    return '';
+  }
+
+  return document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || '';
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -65,6 +80,13 @@ const api = axios.create({
 // Request interceptor for optional diagnostics
 api.interceptors.request.use(
   (config) => {
+    const method = (config.method || 'get').toLowerCase();
+    const csrfToken = readCookie(CSRF_COOKIE_NAME);
+    if (CSRF_PROTECTED_METHODS.has(method) && csrfToken) {
+      config.headers = config.headers || {};
+      config.headers[CSRF_HEADER_NAME] = decodeURIComponent(csrfToken);
+    }
+
     if (DEBUG_API) {
       console.debug(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     }

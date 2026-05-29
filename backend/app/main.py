@@ -1,4 +1,5 @@
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -7,11 +8,13 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, engine
 from app.routes import analysis, audit, auth, comparison, diagram, document
+from app.services.auth_service import ACCESS_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 
 # Configure logging before anything else
 logging.basicConfig(
@@ -25,6 +28,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_SECRET_KEY = "change-me-in-production"
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_INI_PATH = BACKEND_ROOT / "alembic.ini"
+CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+CSRF_EXEMPT_PATHS = {"/api/auth/google"}
 
 if settings.is_production and settings.secret_key == DEFAULT_SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be configured in production")
@@ -113,9 +118,74 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", CSRF_HEADER_NAME],
 )
+
+
+def _set_header_if_missing(response, name: str, value: str) -> None:
+    if name not in response.headers:
+        response.headers[name] = value
+
+
+def _has_bearer_authorization(request: Request) -> bool:
+    authorization = request.headers.get("Authorization", "")
+    return authorization.lower().startswith("bearer ")
+
+
+def _requires_csrf_validation(request: Request) -> bool:
+    if request.method.upper() not in CSRF_PROTECTED_METHODS:
+        return False
+    if request.url.path in CSRF_EXEMPT_PATHS:
+        return False
+    if not request.url.path.startswith("/api"):
+        return False
+    if _has_bearer_authorization(request):
+        return False
+    return bool(request.cookies.get(ACCESS_TOKEN_COOKIE_NAME))
+
+
+def _add_security_headers(response) -> None:
+    _set_header_if_missing(response, "X-Content-Type-Options", "nosniff")
+    _set_header_if_missing(response, "X-Frame-Options", "DENY")
+    _set_header_if_missing(response, "Referrer-Policy", "no-referrer")
+    _set_header_if_missing(
+        response,
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=()",
+    )
+    if settings.is_production:
+        _set_header_if_missing(
+            response,
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains",
+        )
+
+
+@app.middleware("http")
+async def csrf_and_security_headers_middleware(request: Request, call_next):
+    if _requires_csrf_validation(request):
+        csrf_cookie = request.cookies.get(CSRF_COOKIE_NAME, "")
+        csrf_header = request.headers.get(CSRF_HEADER_NAME, "")
+        if not csrf_cookie or not csrf_header or not secrets.compare_digest(csrf_cookie, csrf_header):
+            logger.warning(
+                "CSRF validation failed method=%s path=%s has_cookie=%s has_header=%s",
+                request.method,
+                request.url.path,
+                bool(csrf_cookie),
+                bool(csrf_header),
+            )
+            response = JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF validation failed"},
+            )
+            _add_security_headers(response)
+            return response
+
+    response = await call_next(request)
+    _add_security_headers(response)
+    return response
+
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])

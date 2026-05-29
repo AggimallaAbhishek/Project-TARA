@@ -5,8 +5,10 @@ from app.database import get_db
 from app.schemas.auth import AuthConfigResponse, GoogleAuthRequest, TokenResponse, UserResponse
 from app.services.auth_service import (
     ACCESS_TOKEN_COOKIE_NAME,
+    CSRF_COOKIE_NAME,
     verify_google_token, 
     create_access_token, 
+    create_csrf_token,
     get_or_create_user,
     get_current_user
 )
@@ -46,11 +48,21 @@ async def google_auth(
     
     # Create JWT token - sub must be a string per JWT spec
     access_token = create_access_token(data={"sub": str(user.id)})
+    csrf_token = create_csrf_token()
 
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE_NAME,
         value=access_token,
         httponly=True,
+        secure=settings.is_production,
+        samesite="lax",
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=csrf_token,
+        httponly=False,
         secure=settings.is_production,
         samesite="lax",
         max_age=settings.access_token_expire_minutes * 60,
@@ -78,7 +90,8 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def logout(response: Response):
     """
     Logout endpoint (client-side token removal).
-    JWT tokens are stateless, so we just return success.
+    JWT tokens are stateless, so we clear auth and CSRF cookies.
     """
     response.delete_cookie(key=ACCESS_TOKEN_COOKIE_NAME, path="/")
+    response.delete_cookie(key=CSRF_COOKIE_NAME, path="/")
     return {"message": "Logged out successfully"}

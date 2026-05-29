@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import logging
+import secrets
 from typing import Optional
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -15,6 +16,8 @@ settings = get_settings()
 security = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
 ACCESS_TOKEN_COOKIE_NAME = "tara_access_token"
+CSRF_COOKIE_NAME = "tara_csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
 
 
 def verify_google_token(token: str) -> dict:
@@ -58,7 +61,7 @@ def verify_google_token(token: str) -> dict:
         logger.warning("Google token validation failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Google token: {str(e)}"
+            detail="Invalid Google token"
         )
     except Exception:
         logger.exception("Failed to verify Google token")
@@ -74,6 +77,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+
+def create_csrf_token() -> str:
+    """Create a random token for double-submit CSRF validation."""
+    return secrets.token_urlsafe(32)
 
 
 def get_current_user(
