@@ -361,7 +361,7 @@ test('filters history and confirms analysis deletion', async ({ page }) => {
   await mockApi(page, { onDelete: () => { deleteCalled = true; } });
 
   await page.goto('/history');
-  await expect(page.getByText('Payment Service')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Payment Service' }).first()).toBeVisible();
   await page.getByLabel('Search analyses').fill('Payment');
   await page.getByLabel('Risk Level').selectOption('Critical');
   await page.getByLabel('STRIDE Category').selectOption('Spoofing');
@@ -383,7 +383,7 @@ test('opens projects section and project workspace', async ({ page }) => {
   await expect(page).toHaveURL(/\/projects\/7$/);
   await expect(page.getByText('Project Workspace')).toBeVisible();
   await expect(page.getByText('Analysis created')).toBeVisible();
-  await expect(page.getByRole('link', { name: /Compare/i })).toHaveAttribute('href', '/compare?project_id=7');
+  await expect(page.locator('main').getByRole('link', { name: 'Compare' })).toHaveAttribute('href', '/compare?project_id=7');
 });
 
 test('downloads a PDF report from the analysis page', async ({ page }) => {
