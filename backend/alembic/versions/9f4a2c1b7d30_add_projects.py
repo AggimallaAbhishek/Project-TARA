@@ -125,7 +125,26 @@ def _backfill_projects() -> None:
                     updated_at=analysis["updated_at"] or timestamp,
                 )
             )
-            project_id = result.inserted_primary_key[0]
+            inserted_primary_key = list(result.inserted_primary_key or [])
+            if inserted_primary_key and inserted_primary_key[0] is not None:
+                project_id = inserted_primary_key[0]
+            else:
+                project_id = bind.execute(
+                    sa.text(
+                        """
+                        SELECT id
+                        FROM projects
+                        WHERE user_id = :user_id
+                          AND normalized_name = :normalized_name
+                        ORDER BY id DESC
+                        LIMIT 1
+                        """
+                    ),
+                    {
+                        "user_id": analysis["user_id"],
+                        "normalized_name": normalized_name,
+                    },
+                ).scalar_one()
             project_lookup[key] = project_id
 
         bind.execute(

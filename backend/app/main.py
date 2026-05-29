@@ -3,16 +3,18 @@ import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text
 from app import models  # noqa: F401
 from app.config import get_settings
-from app.database import Base, engine
+from app.database import engine
 from app.routes import analysis, audit, auth, comparison, diagram, document, projects
 from app.services.auth_service import ACCESS_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 
@@ -64,8 +66,23 @@ def verify_database_migrations_current() -> bool:
     return True
 
 
+def _run_alembic_upgrade_head() -> None:
+    config = _build_alembic_config()
+    command.upgrade(config, "head")
+
+
+def _get_user_table_names() -> set[str]:
+    with engine.connect() as connection:
+        inspector = sa_inspect(connection)
+        return {
+            table_name
+            for table_name in inspector.get_table_names()
+            if not table_name.startswith("sqlite_")
+        }
+
+
 def initialize_database_for_startup() -> bool:
-    """Validate or initialize database tables during app startup."""
+    """Validate database migration state during app startup."""
     if settings.is_production:
         logger.info("DB migration verification attempt (mode=production)")
         try:
@@ -74,24 +91,55 @@ def initialize_database_for_startup() -> bool:
             logger.exception("DB migration verification failed (mode=production)")
             raise
 
-    strict_startup = settings.is_db_startup_strict
-    mode = "fail-fast" if strict_startup else "degraded"
-    logger.info("DB local init attempt (mode=%s)", mode)
-
+    logger.info("DB migration startup check (mode=development)")
     try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as exc:
-        if strict_startup:
-            logger.exception("DB local init failed (mode=%s)", mode)
-            raise
-        logger.warning(
-            "DB local init failed (mode=%s). Continuing in degraded mode. error=%s",
-            mode,
-            str(exc),
-        )
-        return False
+        table_names = _get_user_table_names()
+    except Exception:
+        logger.exception("DB startup check failed while loading schema metadata")
+        raise
 
-    logger.info("DB local init success")
+    if not table_names:
+        logger.info("DB startup state detected: empty schema; running alembic upgrade head")
+        try:
+            _run_alembic_upgrade_head()
+        except Exception:
+            logger.exception("DB startup migration failed for empty schema")
+            raise
+        verify_database_migrations_current()
+        logger.info("DB startup migration success for empty schema")
+        return True
+
+    if "alembic_version" not in table_names:
+        remediation = (
+            "python backend/scripts/repair_schema_and_stamp.py "
+            "(or from backend/: python scripts/repair_schema_and_stamp.py)"
+        )
+        logger.error(
+            "DB startup state detected: non-empty schema without alembic_version table tables=%s",
+            sorted(table_names),
+        )
+        raise RuntimeError(
+            "Database schema exists but migration history is missing. "
+            f"Run `{remediation}` and restart the backend."
+        )
+
+    logger.info(
+        "DB startup state detected: migration-managed schema tables=%s; running alembic upgrade head",
+        sorted(table_names),
+    )
+    try:
+        _run_alembic_upgrade_head()
+    except Exception:
+        logger.exception("DB startup migration failed for existing schema")
+        raise RuntimeError(
+            "Could not apply database migrations automatically. "
+            "If this database was created before Alembic tracking, run "
+            "`python backend/scripts/repair_schema_and_stamp.py` "
+            "(or from backend/: `python scripts/repair_schema_and_stamp.py`) and retry."
+        )
+
+    verify_database_migrations_current()
+    logger.info("DB startup migration success for existing schema")
     return True
 
 

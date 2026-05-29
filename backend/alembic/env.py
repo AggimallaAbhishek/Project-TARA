@@ -15,7 +15,9 @@ config = context.config
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep existing application/uvicorn loggers enabled when Alembic runs from
+    # the app process (startup migration checks), so startup errors stay visible.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Import our models and database config for autogenerate support
 from app.database import Base  # noqa: E402

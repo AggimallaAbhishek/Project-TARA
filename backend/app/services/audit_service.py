@@ -26,17 +26,24 @@ class AuditService:
             action=action,
             event_metadata=event_metadata,
         )
+        nested_transaction = None
         try:
-            nested = db.begin_nested()
+            nested_transaction = db.begin_nested()
             db.add(event)
-            nested.commit()
+            db.flush()
+            nested_transaction.commit()
         except Exception:
+            if nested_transaction is not None and nested_transaction.is_active:
+                nested_transaction.rollback()
+            if event in db:
+                db.expunge(event)
             logger.warning(
                 "Audit event commit failed action=%s user_id=%s analysis_id=%s project_id=%s",
                 action,
                 user_id,
                 analysis_id,
                 project_id,
+                exc_info=True,
             )
         else:
             logger.debug(

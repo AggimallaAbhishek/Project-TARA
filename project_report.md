@@ -175,10 +175,11 @@ The primary objectives of Project TARA are:
 
 The application employs a **lifespan-based startup** pattern using FastAPI's `asynccontextmanager`. During startup:
 
-1. Database tables are created via SQLAlchemy ORM (`Base.metadata.create_all`).
-2. Startup operates in either **fail-fast** (production) or **degraded** (development) mode based on `DB_STARTUP_STRICT`.
-3. Redis connectivity is established with graceful fallback to in-memory caches.
-4. Production safety checks enforce `SECRET_KEY` configuration.
+1. Database schema is managed via **Alembic migrations** (`alembic upgrade head`), not ORM `create_all`.
+2. Production startup is **fail-fast** and requires the database to be at Alembic head before serving traffic.
+3. Development startup auto-runs migrations for empty databases and fails fast with a repair instruction for inconsistent non-empty schemas.
+4. Redis connectivity is established with graceful fallback to in-memory caches.
+5. Production safety checks enforce `SECRET_KEY` configuration.
 
 ### 6.3 Request Flow
 
@@ -414,7 +415,7 @@ Records all significant user actions for compliance and accountability.
 
 - **Primary**: PostgreSQL 16 (Docker) with connection pooling (`pool_size=5`, `max_overflow=10`, `pool_pre_ping=True`).
 - **Fallback**: SQLite for lightweight local development (via `check_same_thread=False`).
-- Auto-creation of tables at startup via SQLAlchemy `create_all`.
+- Migration-first schema management via Alembic (`upgrade head`), including startup revision verification.
 
 ---
 
@@ -492,7 +493,7 @@ Records all significant user actions for compliance and accountability.
 ### 11.5 Production Safety
 
 - Startup crash if `SECRET_KEY` equals the default placeholder in production mode.
-- Database startup in fail-fast mode for production, degraded mode for development.
+- Database startup enforces Alembic-managed schema state (production strict head check; development repair guidance for inconsistent local schemas).
 - Sensitive health-check details gated behind authentication.
 
 ### 11.6 Data Privacy
@@ -508,11 +509,14 @@ Records all significant user actions for compliance and accountability.
 
 | Page | Route | Description |
 |------|-------|-------------|
-| **Landing Page** | `/welcome` | Public marketing/introductory page |
+| **Landing / Root Entry** | `/` | Public landing page for unauthenticated users; authenticated users are routed to dashboard |
+| **Welcome Alias** | `/welcome` | Backward-compatible redirect to `/` |
 | **Login Page** | `/login` | Google OAuth sign-in with animated UI |
-| **Home Page** | `/` | Main analysis dashboard with input form (text, diagram, or document upload) |
+| **Home Dashboard** | `/` | Main analysis dashboard with input form (text, diagram, or document upload) for signed-in users |
 | **Analysis Detail** | `/analysis/:id` | Full threat report with filtering, STRIDE badges, risk badges, and PDF export |
 | **History** | `/history` | Paginated list of past analyses with search and filters |
+| **Projects** | `/projects` | Project workspace listing with summaries and navigation to project detail |
+| **Project Detail** | `/projects/:projectId` | Project-scoped analyses and activity timeline |
 | **Compare** | `/compare` | Version comparison view showing resolved, unresolved, and new issues |
 | **404** | `*` | Custom not-found page |
 
