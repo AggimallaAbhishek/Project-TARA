@@ -9,6 +9,7 @@ class Analysis(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     system_description = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
@@ -18,6 +19,7 @@ class Analysis(Base):
     
     # Relationships
     user = relationship("User", backref="analyses")
+    project = relationship("Project", back_populates="analyses")
     threats = relationship("Threat", back_populates="analysis", cascade="all, delete-orphan")
 
 

@@ -27,10 +27,19 @@ class AnalysisCreate(BaseModel):
         max_length=5000,
         description="Detailed description of the system architecture"
     )
+    project_id: int | None = Field(default=None, ge=1, description="Project to attach this analysis to")
+    project_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        description="Optional project name used when project_id is omitted",
+    )
 
-    @field_validator("title", "system_description")
+    @field_validator("title", "system_description", "project_name")
     @classmethod
-    def trim_and_validate_not_blank(cls, value: str, info) -> str:
+    def trim_and_validate_not_blank(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return None
         cleaned = value.strip()
         field_name = info.field_name.replace("_", " ")
         if not cleaned:
@@ -67,8 +76,17 @@ class AnalysisBase(BaseModel):
     system_description: str
 
 
+class AnalysisProjectReference(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AnalysisResponse(AnalysisBase):
     id: int
+    project_id: int
+    project: AnalysisProjectReference | None = None
     created_at: datetime
     total_risk_score: float
     analysis_time: float = 0.0
@@ -107,6 +125,8 @@ class DocumentAnalysisResponse(BaseModel):
 
 class AnalysisSummary(BaseModel):
     id: int
+    project_id: int
+    project: AnalysisProjectReference | None = None
     title: str
     created_at: datetime
     total_risk_score: float

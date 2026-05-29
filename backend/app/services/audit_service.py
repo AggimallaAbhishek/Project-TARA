@@ -16,11 +16,13 @@ class AuditService:
         user_id: int,
         action: str,
         analysis_id: int | None = None,
+        project_id: int | None = None,
         event_metadata: dict[str, Any] | None = None,
     ) -> AuditLog:
         event = AuditLog(
             user_id=user_id,
             analysis_id=analysis_id,
+            project_id=project_id,
             action=action,
             event_metadata=event_metadata,
         )
@@ -30,17 +32,19 @@ class AuditService:
             nested.commit()
         except Exception:
             logger.warning(
-                "Audit event commit failed action=%s user_id=%s analysis_id=%s",
+                "Audit event commit failed action=%s user_id=%s analysis_id=%s project_id=%s",
                 action,
                 user_id,
                 analysis_id,
+                project_id,
             )
         else:
             logger.debug(
-                "Audit event committed action=%s user_id=%s analysis_id=%s",
+                "Audit event committed action=%s user_id=%s analysis_id=%s project_id=%s",
                 action,
                 user_id,
                 analysis_id,
+                project_id,
             )
         return event
 

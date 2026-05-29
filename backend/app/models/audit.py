@@ -14,6 +14,8 @@ class AuditLog(Base):
     # Keep the deleted analysis id for immutable audit history. This intentionally
     # has no FK because analyses are physically deleted by the user.
     analysis_id = Column(Integer, nullable=True, index=True)
+    # Project id is also a snapshot field so activity survives future archive/delete flows.
+    project_id = Column(Integer, nullable=True, index=True)
     action = Column(String(64), nullable=False, index=True)
     event_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)

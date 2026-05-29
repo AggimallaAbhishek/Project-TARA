@@ -19,10 +19,14 @@ class DiagramAnalyzeRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     extract_id: str = Field(..., min_length=8, max_length=128)
     system_description: str | None = Field(default=None, max_length=5000)
+    project_id: int | None = Field(default=None, ge=1)
+    project_name: str | None = Field(default=None, min_length=1, max_length=255)
 
-    @field_validator("title")
+    @field_validator("title", "project_name")
     @classmethod
-    def validate_title(cls, value: str) -> str:
+    def validate_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("title cannot be blank")

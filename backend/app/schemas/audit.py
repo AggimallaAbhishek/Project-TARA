@@ -10,6 +10,7 @@ class AuditLogResponse(BaseModel):
     id: int
     user_id: int
     analysis_id: int | None
+    project_id: int | None
     action: str
     event_metadata: dict[str, Any] | None
     created_at: datetime

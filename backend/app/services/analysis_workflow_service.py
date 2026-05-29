@@ -9,6 +9,7 @@ from app.models.user import User
 from app.services.audit_service import audit_service
 from app.services.email_service import email_service
 from app.services.llm_service import llm_service
+from app.services.project_service import project_service
 from app.services.risk_service import risk_service
 
 logger = logging.getLogger(__name__)
@@ -22,14 +23,25 @@ class AnalysisWorkflowService:
         current_user: User,
         title: str,
         system_description: str,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        source: str = "text",
         background_tasks: BackgroundTasks | None = None,
     ) -> Analysis:
         request_start = perf_counter()
         try:
+            project = project_service.resolve_project_for_analysis(
+                db,
+                current_user=current_user,
+                title=title,
+                project_id=project_id,
+                project_name=project_name,
+            )
             threat_data, analysis_time = await llm_service.analyze_system(system_description)
 
             analysis = Analysis(
                 user_id=current_user.id,
+                project_id=project.id,
                 title=title,
                 system_description=system_description,
                 analysis_time=analysis_time,
@@ -87,7 +99,11 @@ class AnalysisWorkflowService:
                 user_id=current_user.id,
                 action="analysis_created",
                 analysis_id=analysis.id,
+                project_id=project.id,
                 event_metadata={
+                    "project_id": project.id,
+                    "project_name": project.name,
+                    "source": source,
                     "title": analysis.title,
                     "threat_count": len(threats),
                     "total_risk_score": analysis.total_risk_score,
@@ -98,9 +114,11 @@ class AnalysisWorkflowService:
             db.refresh(analysis)
             total_elapsed = perf_counter() - request_start
             logger.info(
-                "Analysis created user_id=%s analysis_id=%s threats=%s llm_time=%.2fs total=%.2fs",
+                "Analysis created user_id=%s project_id=%s analysis_id=%s source=%s threats=%s llm_time=%.2fs total=%.2fs",
                 current_user.id,
+                project.id,
                 analysis.id,
+                source,
                 len(threats),
                 analysis_time,
                 total_elapsed,
