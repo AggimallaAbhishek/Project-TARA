@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
@@ -48,42 +48,83 @@ export default function HomePage() {
   const [searchParams] = useSearchParams();
   const remainingDescriptionChars = DESCRIPTION_MAX_LENGTH - description.length;
   const requestedProjectId = searchParams.get('project_id') || '';
+  const isMountedRef = useRef(true);
+  const latestProjectsLoadRequestIdRef = useRef(0);
 
   useEffect(() => {
-    let isMounted = true;
-    const loadProjects = async () => {
-      setProjectsLoading(true);
-      try {
-        const data = await getProjects({ limit: 100 });
-        if (!isMounted) return;
-        const nextProjects = data.items || [];
-        setProjects(nextProjects);
-        setProjectError(null);
-        setSelectedProjectId((current) => {
-          if (requestedProjectId && nextProjects.some((project) => String(project.id) === requestedProjectId)) {
-            return requestedProjectId;
-          }
-          if (current && nextProjects.some((project) => String(project.id) === String(current))) {
-            return String(current);
-          }
-          return nextProjects[0] ? String(nextProjects[0].id) : '';
-        });
-      } catch (loadProjectsError) {
-        if (!isMounted) return;
-        setProjectError(getApiErrorMessage(loadProjectsError, {
-          fallbackMessage: 'Failed to load projects',
-          operation: 'projects.load',
-        }));
-      } finally {
-        if (isMounted) setProjectsLoading(false);
-      }
-    };
-
-    loadProjects();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
+  }, []);
+
+  const loadProjects = useCallback(async ({ reason = 'initial' } = {}) => {
+    const requestId = latestProjectsLoadRequestIdRef.current + 1;
+    latestProjectsLoadRequestIdRef.current = requestId;
+    if (import.meta.env.DEV) {
+      console.debug('projects.load.start', { reason, requestId, requestedProjectId });
+    }
+    setProjectsLoading(true);
+    try {
+      const data = await getProjects({ limit: 100 });
+      if (!isMountedRef.current || requestId !== latestProjectsLoadRequestIdRef.current) {
+        return;
+      }
+      const nextProjects = data.items || [];
+      setProjects(nextProjects);
+      setProjectError(null);
+      setSelectedProjectId((current) => {
+        if (requestedProjectId && nextProjects.some((project) => String(project.id) === requestedProjectId)) {
+          return requestedProjectId;
+        }
+        if (current && nextProjects.some((project) => String(project.id) === String(current))) {
+          return String(current);
+        }
+        return nextProjects[0] ? String(nextProjects[0].id) : '';
+      });
+      if (import.meta.env.DEV) {
+        console.debug('projects.load.success', {
+          reason,
+          requestId,
+          projectCount: nextProjects.length,
+        });
+      }
+    } catch (loadProjectsError) {
+      if (!isMountedRef.current || requestId !== latestProjectsLoadRequestIdRef.current) {
+        return;
+      }
+      const normalizedErrorMessage = getApiErrorMessage(loadProjectsError, {
+        fallbackMessage: 'Failed to load projects',
+        operation: 'projects.load',
+      });
+      setProjects([]);
+      setProjectError(normalizedErrorMessage);
+      setSelectedProjectId('');
+      if (import.meta.env.DEV) {
+        console.debug('projects.load.error', {
+          reason,
+          requestId,
+          message: normalizedErrorMessage,
+          code: loadProjectsError?.code || null,
+          status: loadProjectsError?.response?.status || null,
+        });
+      }
+    } finally {
+      if (isMountedRef.current && requestId === latestProjectsLoadRequestIdRef.current) {
+        setProjectsLoading(false);
+      }
+    }
   }, [requestedProjectId]);
+
+  useEffect(() => {
+    loadProjects({ reason: 'initial' });
+  }, [loadProjects]);
+
+  const handleRetryProjectsLoad = () => {
+    if (import.meta.env.DEV) {
+      console.debug('projects.load.retry', { requestedProjectId });
+    }
+    loadProjects({ reason: 'retry' });
+  };
 
   const resetExtractedState = () => {
     setExtractId('');
@@ -244,13 +285,6 @@ export default function HomePage() {
               </motion.div>
             )}
 
-            {projectError && (
-              <div className="mb-6 p-4 bg-risk-critical/10 border border-risk-critical/30 rounded-lg flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-risk-critical flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-risk-critical">{projectError}</p>
-              </div>
-            )}
-
             <ProjectSelector
               projects={projects}
               selectedProjectId={selectedProjectId}
@@ -258,6 +292,8 @@ export default function HomePage() {
               onCreateProject={handleCreateProject}
               loading={projectsLoading}
               disabled={isLoading || isExtracting}
+              loadError={projectError}
+              onRetryLoadProjects={handleRetryProjectsLoad}
             />
 
             {/* Title Input */}

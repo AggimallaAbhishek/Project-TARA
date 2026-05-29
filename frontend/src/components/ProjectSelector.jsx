@@ -8,14 +8,28 @@ export default function ProjectSelector({
   onCreateProject,
   loading = false,
   disabled = false,
+  loadError = null,
+  onRetryLoadProjects = null,
 }) {
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const hasLoadError = Boolean(loadError);
+  const hasProjects = projects.length > 0;
+  const selectorDisabled = loading || disabled || hasLoadError || !hasProjects;
+  const createDisabled = disabled || creating || hasLoadError || loading;
+
+  const selectorPlaceholder = loading
+    ? 'Loading projects...'
+    : hasLoadError
+      ? 'Projects unavailable'
+      : hasProjects
+        ? 'Select a project'
+        : 'Create a project first';
 
   const handleCreateProject = async () => {
     const trimmedName = newProjectName.trim();
-    if (!trimmedName || creating) return;
+    if (!trimmedName || creating || hasLoadError || loading) return;
     setCreating(true);
     setError('');
     try {
@@ -42,12 +56,10 @@ export default function ProjectSelector({
         value={selectedProjectId}
         onChange={(event) => onProjectChange(event.target.value)}
         className="input-dark"
-        disabled={loading || disabled || projects.length === 0}
+        disabled={selectorDisabled}
         aria-label="Project"
       >
-        <option value="">
-          {loading ? 'Loading projects...' : projects.length === 0 ? 'Create a project first' : 'Select a project'}
-        </option>
+        <option value="">{selectorPlaceholder}</option>
         {projects.map((project) => (
           <option key={project.id} value={project.id}>
             {project.name}
@@ -63,13 +75,13 @@ export default function ProjectSelector({
           placeholder="Create a new project folder"
           maxLength={255}
           className="input-dark"
-          disabled={disabled || creating}
+          disabled={createDisabled}
           aria-label="New project name"
         />
         <button
           type="button"
           onClick={handleCreateProject}
-          disabled={!newProjectName.trim() || disabled || creating}
+          disabled={!newProjectName.trim() || createDisabled}
           className="btn-secondary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
@@ -77,8 +89,23 @@ export default function ProjectSelector({
         </button>
       </div>
 
-      {error && <p className="text-xs text-risk-critical mt-2">{error}</p>}
-      {!loading && projects.length === 0 && (
+      {hasLoadError && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-risk-critical">{loadError}</p>
+          {typeof onRetryLoadProjects === 'function' && (
+            <button
+              type="button"
+              onClick={onRetryLoadProjects}
+              disabled={loading || disabled}
+              className="inline-flex items-center rounded-md border border-dark-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:border-cyber-cyan/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Retrying...' : 'Retry project load'}
+            </button>
+          )}
+        </div>
+      )}
+      {!hasLoadError && error && <p className="text-xs text-risk-critical mt-2">{error}</p>}
+      {!loading && !hasLoadError && projects.length === 0 && (
         <p className="text-xs text-text-muted mt-2">
           Projects group related analyses so future changes stay in one workspace.
         </p>

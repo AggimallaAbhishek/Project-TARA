@@ -26,6 +26,6 @@ describe('AppErrorBoundary', () => {
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reload Page' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Go to Welcome' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Go to Home' })).toBeInTheDocument()
   })
 })

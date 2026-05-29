@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -18,6 +18,20 @@ const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ComparePage = lazy(() => import('./pages/ComparePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
+function RootEntryRoute() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <LoadingSpinner text="Checking authentication..." />
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <HomePage /> : <LandingPage />;
+}
 
 function App() {
   const [googleClientId, setGoogleClientId] = useState('');
@@ -97,7 +111,7 @@ function App() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               <Suspense fallback={<LoadingSpinner text="Loading page..." />}>
                 <Routes>
-                  <Route path="/welcome" element={<LandingPage />} />
+                  <Route path="/welcome" element={<Navigate to="/" replace />} />
                   <Route
                     path="/login"
                     element={
@@ -109,11 +123,7 @@ function App() {
                       />
                     }
                   />
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <HomePage />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="/" element={<RootEntryRoute />} />
                   <Route path="/analysis/:id" element={
                     <ProtectedRoute>
                       <AnalysisPage />

@@ -328,6 +328,22 @@ test('redirects unauthenticated users from protected routes to login', async ({ 
   await expect(page.getByRole('heading', { name: /Welcome to TARA/i })).toBeVisible();
 });
 
+test('shows landing at root and opens login when Sign In is clicked', async ({ page }) => {
+  await mockApi(page, { authenticated: false });
+
+  await page.goto('/welcome');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: /Project TARA/i })).toBeVisible();
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Project TARA/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole('heading', { name: /Welcome to TARA/i })).toBeVisible();
+});
+
 test('runs text analysis from the protected home page', async ({ page }) => {
   await mockApi(page);
 

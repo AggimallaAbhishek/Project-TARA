@@ -21,7 +21,7 @@ export default class AppErrorBoundary extends Component {
   }
 
   handleSafeNavigation = () => {
-    window.location.assign('/welcome')
+    window.location.assign('/')
   }
 
   render() {
@@ -47,7 +47,7 @@ export default class AppErrorBoundary extends Component {
               onClick={this.handleSafeNavigation}
               className="btn-secondary w-full sm:w-auto"
             >
-              Go to Welcome
+              Go to Home
             </button>
           </div>
         </div>

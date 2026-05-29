@@ -156,6 +156,56 @@ describe('HomePage', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows projects unavailable state and retries project loading when backend is unreachable', async () => {
+    getProjects
+      .mockRejectedValueOnce({
+        code: 'ERR_NETWORK',
+        message: 'Network Error',
+        config: { url: '/projects' },
+      })
+      .mockResolvedValueOnce({
+        items: [{ id: 7, name: 'Banking Mobile App' }],
+        total: 1,
+        skip: 0,
+        limit: 100,
+        has_more: false,
+      })
+
+    renderHomePage()
+
+    expect(await screen.findByDisplayValue('Projects unavailable')).toBeInTheDocument()
+    expect(screen.getByText(/Cannot reach the backend service/i)).toBeInTheDocument()
+    expect(screen.queryByText('Create a project first')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('New project name')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Retry project load' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry project load' }))
+
+    await waitFor(() => {
+      expect(getProjects).toHaveBeenCalledTimes(2)
+      expect(screen.getByDisplayValue('Banking Mobile App')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('button', { name: 'Retry project load' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('New project name')).not.toBeDisabled()
+  })
+
+  it('shows create-first helper only for empty but reachable project list', async () => {
+    getProjects.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      skip: 0,
+      limit: 100,
+      has_more: false,
+    })
+
+    renderHomePage()
+
+    expect(await screen.findByDisplayValue('Create a project first')).toBeInTheDocument()
+    expect(screen.getByText(/Projects group related analyses/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('New project name')).not.toBeDisabled()
+  })
+
   it('submits document mode analysis', async () => {
     renderHomePage()
 

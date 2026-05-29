@@ -57,4 +57,16 @@ describe('Navbar', () => {
     expect(screen.getByTestId('navbar-avatar-fallback')).toBeInTheDocument()
     expect(screen.getByText('U')).toBeInTheDocument()
   })
+
+  it('links public brand to root landing page', () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      logout: vi.fn(),
+      isAuthenticated: false,
+    })
+
+    renderNavbar()
+
+    expect(screen.getByRole('link', { name: /TARA/i })).toHaveAttribute('href', '/')
+  })
 })
