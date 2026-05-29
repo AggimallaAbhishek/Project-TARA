@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { runtimeConfig } from '../config/runtimeConfig';
+import { getLoopbackFailoverApiBaseUrl, isLoopbackHost } from '../config/runtimeConfigUtils';
 
 const API_BASE_URL = runtimeConfig.apiBaseUrl;
 const DEBUG_API = import.meta.env.DEV && runtimeConfig.debugApi;
@@ -8,6 +9,9 @@ const DEFAULT_LONG_TASK_TIMEOUT_MS = 600000;
 const CSRF_COOKIE_NAME = 'tara_csrf_token';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 const CSRF_PROTECTED_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+const LOOPBACK_NETWORK_ERROR_CODES = new Set(['ERR_NETWORK', 'ECONNREFUSED']);
+
+let activeApiBaseUrl = API_BASE_URL;
 
 function parseTimeoutEnv(rawValue, fallbackValue) {
   const numeric = Number(rawValue);
@@ -40,6 +44,55 @@ function shouldSuppressApiErrorLog(status, rawUrl) {
   return status === 401 && path.endsWith('/auth/me');
 }
 
+function getActiveApiBaseUrl() {
+  return activeApiBaseUrl || API_BASE_URL;
+}
+
+function updateActiveApiBaseUrl(nextApiBaseUrl) {
+  if (!nextApiBaseUrl || nextApiBaseUrl === activeApiBaseUrl) {
+    return;
+  }
+  activeApiBaseUrl = nextApiBaseUrl;
+}
+
+function isLoopbackNetworkFailure(error) {
+  if (error?.response) {
+    return false;
+  }
+  if (LOOPBACK_NETWORK_ERROR_CODES.has(error?.code)) {
+    return true;
+  }
+  return error?.code === 'ERR_NETWORK' || error?.message === 'Network Error';
+}
+
+function isLoopbackApiBaseUrl(apiBaseUrl) {
+  if (!apiBaseUrl) {
+    return false;
+  }
+  try {
+    return isLoopbackHost(new URL(apiBaseUrl, window.location.origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function shouldAttemptLoopbackFailover(error, requestConfig) {
+  if (!requestConfig || requestConfig.__loopbackFailoverAttempted) {
+    return false;
+  }
+  if (!isLoopbackNetworkFailure(error)) {
+    return false;
+  }
+  return Boolean(getLoopbackFailoverApiBaseUrl(requestConfig.baseURL || getActiveApiBaseUrl()));
+}
+
+function logLoopbackFailover(eventName, payload) {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+  console.debug(eventName, payload);
+}
+
 function resolveHealthUrl(apiBaseUrl) {
   if (!apiBaseUrl) {
     return '/health';
@@ -60,8 +113,6 @@ function resolveHealthUrl(apiBaseUrl) {
     return '/health';
   }
 }
-
-const BACKEND_HEALTH_URL = resolveHealthUrl(API_BASE_URL);
 const ANALYSES_LIMIT_MIN = 1;
 const ANALYSES_LIMIT_MAX = 100;
 
@@ -86,7 +137,7 @@ function readCookie(name) {
 }
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getActiveApiBaseUrl(),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -97,6 +148,10 @@ const api = axios.create({
 // Request interceptor for optional diagnostics
 api.interceptors.request.use(
   (config) => {
+    if (!config.__loopbackFailoverRetry) {
+      config.baseURL = getActiveApiBaseUrl();
+    }
+
     const method = (config.method || 'get').toLowerCase();
     const csrfToken = readCookie(CSRF_COOKIE_NAME);
     if (CSRF_PROTECTED_METHODS.has(method) && csrfToken) {
@@ -118,12 +173,60 @@ api.interceptors.request.use(
 // Handle responses and errors
 api.interceptors.response.use(
   (response) => {
+    const responseBaseUrl = response?.config?.baseURL;
+    if (isLoopbackApiBaseUrl(responseBaseUrl)) {
+      updateActiveApiBaseUrl(responseBaseUrl);
+    }
+
     if (DEBUG_API) {
       console.debug(`API Response: ${response.status} ${response.config.url}`);
     }
     return response;
   },
-  (error) => {
+  async (error) => {
+    const requestConfig = error?.config;
+
+    if (shouldAttemptLoopbackFailover(error, requestConfig)) {
+      const currentBaseUrl = requestConfig.baseURL || getActiveApiBaseUrl();
+      const failoverBaseUrl = getLoopbackFailoverApiBaseUrl(currentBaseUrl);
+
+      if (failoverBaseUrl) {
+        logLoopbackFailover('api.loopback_failover.attempt', {
+          from: currentBaseUrl,
+          to: failoverBaseUrl,
+          url: requestConfig.url || '',
+          method: (requestConfig.method || 'get').toUpperCase(),
+        });
+
+        try {
+          const retryResponse = await api.request({
+            ...requestConfig,
+            baseURL: failoverBaseUrl,
+            __loopbackFailoverAttempted: true,
+            __loopbackFailoverRetry: true,
+          });
+          updateActiveApiBaseUrl(failoverBaseUrl);
+          logLoopbackFailover('api.loopback_failover.success', {
+            from: currentBaseUrl,
+            to: failoverBaseUrl,
+            url: requestConfig.url || '',
+            method: (requestConfig.method || 'get').toUpperCase(),
+          });
+          return retryResponse;
+        } catch (retryError) {
+          logLoopbackFailover('api.loopback_failover.failed', {
+            from: currentBaseUrl,
+            to: failoverBaseUrl,
+            url: requestConfig.url || '',
+            method: (requestConfig.method || 'get').toUpperCase(),
+            code: retryError?.code || null,
+            status: retryError?.response?.status || null,
+          });
+          error = retryError;
+        }
+      }
+    }
+
     const status = error.response?.status;
     const url = error.config?.url || '';
 
@@ -158,11 +261,59 @@ export const getAuthConfig = async () => {
 };
 
 export const getBackendHealth = async () => {
-  const response = await axios.get(BACKEND_HEALTH_URL, {
-    withCredentials: true,
-    timeout: 10000,
-  });
-  return response.data;
+  const healthUrl = resolveHealthUrl(getActiveApiBaseUrl());
+  try {
+    const response = await axios.get(healthUrl, {
+      withCredentials: true,
+      timeout: 10000,
+    });
+    return response.data;
+  } catch (error) {
+    const failoverApiBaseUrl = getLoopbackFailoverApiBaseUrl(getActiveApiBaseUrl());
+    if (!failoverApiBaseUrl || !isLoopbackNetworkFailure(error)) {
+      throw error;
+    }
+
+    const failoverHealthUrl = resolveHealthUrl(failoverApiBaseUrl);
+    logLoopbackFailover('api.loopback_failover.attempt', {
+      from: healthUrl,
+      to: failoverHealthUrl,
+      url: '/health',
+      method: 'GET',
+    });
+
+    try {
+      const retryResponse = await axios.get(failoverHealthUrl, {
+        withCredentials: true,
+        timeout: 10000,
+      });
+      updateActiveApiBaseUrl(failoverApiBaseUrl);
+      logLoopbackFailover('api.loopback_failover.success', {
+        from: healthUrl,
+        to: failoverHealthUrl,
+        url: '/health',
+        method: 'GET',
+      });
+      return retryResponse.data;
+    } catch (retryError) {
+      logLoopbackFailover('api.loopback_failover.failed', {
+        from: healthUrl,
+        to: failoverHealthUrl,
+        url: '/health',
+        method: 'GET',
+        code: retryError?.code || null,
+        status: retryError?.response?.status || null,
+      });
+      throw retryError;
+    }
+  }
+};
+
+export const __apiInternal = {
+  getActiveApiBaseUrl,
+  resetActiveApiBaseUrl: () => {
+    activeApiBaseUrl = API_BASE_URL;
+  },
 };
 
 export const logoutRequest = async () => {

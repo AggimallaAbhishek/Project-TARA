@@ -1,6 +1,10 @@
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1'])
+const LOOPBACK_FAILOVER_HOSTS = {
+  localhost: '127.0.0.1',
+  '127.0.0.1': 'localhost',
+}
 
-function isLoopbackHost(hostname) {
+export function isLoopbackHost(hostname) {
   return LOOPBACK_HOSTS.has(hostname)
 }
 
@@ -23,5 +27,27 @@ export function normalizeLoopbackApiBaseUrl(apiBaseUrl, frontendHostname) {
     return apiBaseUrl
   } catch {
     return apiBaseUrl
+  }
+}
+
+export function getLoopbackFailoverApiBaseUrl(apiBaseUrl) {
+  if (!apiBaseUrl) {
+    return null
+  }
+
+  try {
+    const parsedApiUrl = new URL(apiBaseUrl)
+    if (!isLoopbackHost(parsedApiUrl.hostname)) {
+      return null
+    }
+    const failoverHostname = LOOPBACK_FAILOVER_HOSTS[parsedApiUrl.hostname]
+    if (!failoverHostname) {
+      return null
+    }
+    const failoverUrl = new URL(apiBaseUrl)
+    failoverUrl.hostname = failoverHostname
+    return failoverUrl.toString().replace(/\/$/, '')
+  } catch {
+    return null
   }
 }
