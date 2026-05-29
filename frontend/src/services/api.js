@@ -152,11 +152,21 @@ export const logoutRequest = async () => {
 };
 
 // Analysis endpoints
-export const analyzeSystem = async (title, systemDescription) => {
-  const response = await api.post('/analyze', {
+function appendProjectFields(payload, { projectId = null, projectName = '' } = {}) {
+  if (projectId) {
+    payload.project_id = Number(projectId);
+  }
+  if (projectName?.trim()) {
+    payload.project_name = projectName.trim();
+  }
+  return payload;
+}
+
+export const analyzeSystem = async (title, systemDescription, projectOptions = {}) => {
+  const response = await api.post('/analyze', appendProjectFields({
     title,
     system_description: systemDescription,
-  }, {
+  }, projectOptions), {
     timeout: LONG_TASK_TIMEOUT_MS,
   });
   return response.data;
@@ -174,11 +184,11 @@ export const extractDiagram = async (file) => {
   return response.data;
 };
 
-export const analyzeFromDiagram = async (title, extractId, editedDescription = '') => {
-  const payload = {
+export const analyzeFromDiagram = async (title, extractId, editedDescription = '', projectOptions = {}) => {
+  const payload = appendProjectFields({
     title,
     extract_id: extractId,
-  };
+  }, projectOptions);
   if (editedDescription.trim()) {
     payload.system_description = editedDescription.trim();
   }
@@ -188,9 +198,15 @@ export const analyzeFromDiagram = async (title, extractId, editedDescription = '
   return response.data;
 };
 
-export const analyzeDocument = async (title, file) => {
+export const analyzeDocument = async (title, file, projectOptions = {}) => {
   const formData = new FormData();
   formData.append('title', title);
+  if (projectOptions.projectId) {
+    formData.append('project_id', String(projectOptions.projectId));
+  }
+  if (projectOptions.projectName?.trim()) {
+    formData.append('project_name', projectOptions.projectName.trim());
+  }
   formData.append('file', file);
   const response = await api.post('/document/analyze', formData, {
     timeout: LONG_TASK_TIMEOUT_MS,
@@ -209,6 +225,7 @@ export const getAnalyses = async ({
   stride_category = '',
   date_from = '',
   date_to = '',
+  project_id = '',
 } = {}) => {
   const normalizedSkip = Math.max(0, normalizePositiveInt(skip, 0));
   const normalizedLimit = Math.min(
@@ -221,6 +238,7 @@ export const getAnalyses = async ({
   if (stride_category) params.stride_category = stride_category;
   if (date_from) params.date_from = date_from;
   if (date_to) params.date_to = date_to;
+  if (project_id) params.project_id = project_id;
 
   const response = await api.get('/analyses', {
     params,
@@ -250,6 +268,56 @@ export const deleteAnalysis = async (id) => {
 export const compareAnalyses = async (analysisIds) => {
   const response = await api.post('/compare', {
     analysis_ids: analysisIds,
+  });
+  return response.data;
+};
+
+export const getProjects = async ({ skip = 0, limit = 50, q = '' } = {}) => {
+  const normalizedSkip = Math.max(0, normalizePositiveInt(skip, 0));
+  const normalizedLimit = Math.min(
+    100,
+    Math.max(1, normalizePositiveInt(limit, 50)),
+  );
+  const params = { skip: normalizedSkip, limit: normalizedLimit };
+  if (q.trim()) params.q = q.trim();
+  const response = await api.get('/projects', { params });
+  return response.data;
+};
+
+export const createProject = async ({ name, description = '' }) => {
+  const response = await api.post('/projects', {
+    name,
+    description: description || null,
+  });
+  return response.data;
+};
+
+export const updateProject = async (id, payload) => {
+  const response = await api.patch(`/projects/${id}`, payload);
+  return response.data;
+};
+
+export const getProject = async (id) => {
+  const response = await api.get(`/projects/${id}`);
+  return response.data;
+};
+
+export const getProjectAnalyses = async (id, { skip = 0, limit = 20 } = {}) => {
+  const response = await api.get(`/projects/${id}/analyses`, {
+    params: {
+      skip: Math.max(0, normalizePositiveInt(skip, 0)),
+      limit: Math.min(100, Math.max(1, normalizePositiveInt(limit, 20))),
+    },
+  });
+  return response.data;
+};
+
+export const getProjectActivity = async (id, { skip = 0, limit = 50 } = {}) => {
+  const response = await api.get(`/projects/${id}/activity`, {
+    params: {
+      skip: Math.max(0, normalizePositiveInt(skip, 0)),
+      limit: Math.min(200, Math.max(1, normalizePositiveInt(limit, 50))),
+    },
   });
   return response.data;
 };

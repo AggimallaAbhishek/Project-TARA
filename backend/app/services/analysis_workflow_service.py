@@ -149,6 +149,16 @@ class AnalysisWorkflowService:
         except HTTPException:
             db.rollback()
             raise
+        except ValueError as exc:
+            db.rollback()
+            status_code = status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_409_CONFLICT
+            logger.warning(
+                "Analysis project resolution failed user_id=%s status=%s error=%s",
+                current_user.id,
+                status_code,
+                str(exc),
+            )
+            raise HTTPException(status_code=status_code, detail=str(exc))
         except RuntimeError as exc:
             db.rollback()
             logger.warning(

@@ -29,11 +29,16 @@ def test_initial_alembic_migration_creates_expected_tables():
 
         engine = create_engine(database_url)
         try:
-            tables = set(inspect(engine).get_table_names())
+            inspector = inspect(engine)
+            tables = set(inspector.get_table_names())
+            analysis_columns = {column["name"] for column in inspector.get_columns("analyses")}
+            audit_columns = {column["name"] for column in inspector.get_columns("audit_logs")}
         finally:
             engine.dispose()
 
-        assert {"users", "analyses", "threats", "audit_logs", "alembic_version"}.issubset(tables)
+        assert {"users", "projects", "analyses", "threats", "audit_logs", "alembic_version"}.issubset(tables)
+        assert "project_id" in analysis_columns
+        assert "project_id" in audit_columns
     finally:
         if previous_database_url is None:
             os.environ.pop("DATABASE_URL", None)

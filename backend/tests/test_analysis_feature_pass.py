@@ -19,6 +19,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models.analysis import Analysis, Threat
 from app.models.audit import AuditLog
+from app.models.project import Project
 from app.models.user import User
 from app.services.auth_service import get_current_user
 from app.services.llm_service import llm_service
@@ -116,6 +117,7 @@ class AnalysisFeaturePassTest(unittest.TestCase):
         db.query(AuditLog).delete()
         db.query(Threat).delete()
         db.query(Analysis).delete()
+        db.query(Project).delete()
         db.commit()
         db.close()
 
@@ -128,8 +130,16 @@ class AnalysisFeaturePassTest(unittest.TestCase):
         created_at: datetime,
     ) -> int:
         db = self.SessionLocal()
+        project = Project(
+            user_id=self.user_id,
+            name=title,
+            normalized_name=title.strip().lower(),
+        )
+        db.add(project)
+        db.flush()
         analysis = Analysis(
             user_id=self.user_id,
+            project_id=project.id,
             title=title,
             system_description=f"{title} description",
             created_at=created_at,

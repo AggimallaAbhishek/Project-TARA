@@ -1,7 +1,7 @@
 import logging
 import re
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.analysis import Analysis, Threat
@@ -54,15 +54,14 @@ class AnalysisVersionComparisonService:
         db: Session,
         *,
         current_analysis: Analysis,
-        normalized_title: str,
     ) -> Analysis | None:
         return (
             db.query(Analysis)
             .options(selectinload(Analysis.threats))
             .filter(
                 Analysis.user_id == current_analysis.user_id,
+                Analysis.project_id == current_analysis.project_id,
                 Analysis.id != current_analysis.id,
-                func.lower(func.trim(Analysis.title)) == normalized_title,
                 or_(
                     Analysis.created_at < current_analysis.created_at,
                     and_(
@@ -95,9 +94,10 @@ class AnalysisVersionComparisonService:
     def build_version_comparison(self, db: Session, *, current_analysis: Analysis) -> dict:
         normalized_title = self._normalize_text(current_analysis.title or "")
         logger.info(
-            "Version comparison start analysis_id=%s user_id=%s title_key=%s",
+            "Version comparison start analysis_id=%s user_id=%s project_id=%s title_key=%s",
             current_analysis.id,
             current_analysis.user_id,
+            current_analysis.project_id,
             normalized_title,
         )
 
@@ -105,7 +105,6 @@ class AnalysisVersionComparisonService:
         previous_analysis = self._find_previous_version(
             db,
             current_analysis=current_analysis,
-            normalized_title=normalized_title,
         )
 
         if not previous_analysis:

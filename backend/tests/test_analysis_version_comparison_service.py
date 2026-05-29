@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.database import Base
 from app.models.analysis import Analysis, Threat
+from app.models.project import Project
 from app.models.user import User
 from app.services.analysis_version_comparison_service import analysis_version_comparison_service
 
@@ -32,6 +33,14 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
         self.db.add(self.user)
         self.db.commit()
         self.db.refresh(self.user)
+        self.project = Project(
+            user_id=self.user.id,
+            name="Mobile Banking",
+            normalized_name="mobile banking",
+        )
+        self.db.add(self.project)
+        self.db.commit()
+        self.db.refresh(self.project)
 
     def tearDown(self):
         self.db.close()
@@ -44,9 +53,11 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
         title: str,
         created_at: datetime,
         threats: list[dict],
+        project_id: int | None = None,
     ) -> Analysis:
         analysis = Analysis(
             user_id=self.user.id,
+            project_id=project_id or self.project.id,
             title=title,
             system_description="System details with enough context.",
             created_at=created_at,
@@ -205,6 +216,53 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
         )
         self.assertTrue(report["has_previous_version"])
         self.assertEqual(report["unresolved_issues_count"], 1)
+
+    def test_previous_version_is_project_scoped(self):
+        now = datetime.now(timezone.utc)
+        other_project = Project(
+            user_id=self.user.id,
+            name="Other Portal",
+            normalized_name="other portal",
+        )
+        self.db.add(other_project)
+        self.db.commit()
+        self.db.refresh(other_project)
+
+        self._create_analysis(
+            title="Shared Title",
+            project_id=other_project.id,
+            created_at=now - timedelta(minutes=10),
+            threats=[
+                {
+                    "name": "Old Issue",
+                    "stride_category": "Spoofing",
+                    "affected_component": "Other App",
+                    "risk_level": "High",
+                    "risk_score": 12,
+                }
+            ],
+        )
+        current = self._create_analysis(
+            title="Shared Title",
+            project_id=self.project.id,
+            created_at=now,
+            threats=[
+                {
+                    "name": "Current Issue",
+                    "stride_category": "Tampering",
+                    "affected_component": "Current App",
+                    "risk_level": "Medium",
+                    "risk_score": 8,
+                }
+            ],
+        )
+
+        report = analysis_version_comparison_service.get_version_comparison(
+            self.db,
+            analysis_id=current.id,
+            user_id=self.user.id,
+        )
+        self.assertFalse(report["has_previous_version"])
 
 
 if __name__ == "__main__":
