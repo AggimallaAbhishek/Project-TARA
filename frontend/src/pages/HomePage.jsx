@@ -2,20 +2,23 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { 
-  Sparkles, AlertCircle, User, Edit3, FileX, 
-  Eye, Wifi, Shield, Clock, History, ArrowRight 
-} from 'lucide-react';
+import { Sparkles, AlertCircle } from 'lucide-react';
 import { analyzeDocument, analyzeFromDiagram, analyzeSystem, extractDiagram } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import { FullPageLoader } from '../components/LoadingSpinner';
+import {
+  DESCRIPTION_MAX_LENGTH,
+  DIAGRAM_ACCEPT_TYPES,
+  DOCUMENT_ACCEPT_TYPES,
+  examples,
+  MAX_DIAGRAM_UPLOAD_BYTES,
+  MAX_DOCUMENT_UPLOAD_BYTES,
+  quickActionIcons,
+  strideCategories,
+  TITLE_MAX_LENGTH,
+} from './homePageConfig';
 
-const TITLE_MAX_LENGTH = 255;
-const DESCRIPTION_MAX_LENGTH = 5000;
-const MAX_DIAGRAM_UPLOAD_BYTES = 10 * 1024 * 1024;
-const DIAGRAM_ACCEPT_TYPES = '.png,.jpg,.jpeg,.pdf,.mmd,.mermaid,.puml,.plantuml,.uml,.drawio,.xml';
-const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024;
-const DOCUMENT_ACCEPT_TYPES = '.pdf,.txt';
+const { ArrowRight, Clock, History, Shield } = quickActionIcons;
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -132,30 +135,6 @@ export default function HomePage() {
       setIsLoading(false);
     }
   };
-
-  const examples = [
-    {
-      title: 'E-Commerce Platform',
-      description: 'Online shopping platform with user authentication, product catalog, shopping cart, payment processing via Stripe, and order management. Uses React frontend, Node.js backend, PostgreSQL database.',
-    },
-    {
-      title: 'Healthcare Portal',
-      description: 'Patient portal for viewing medical records, scheduling appointments, messaging doctors. Integrates with hospital EHR via HL7 FHIR API. OAuth 2.0 authentication, encrypted database for PHI.',
-    },
-    {
-      title: 'Banking Mobile App',
-      description: 'Mobile banking app with biometric login, account management, fund transfers, bill payments. REST API backend with 2FA, transaction signing, real-time fraud detection.',
-    },
-  ];
-
-  const strideCategories = [
-    { letter: 'S', name: 'Spoofing', icon: User, color: 'text-purple-400' },
-    { letter: 'T', name: 'Tampering', icon: Edit3, color: 'text-blue-400' },
-    { letter: 'R', name: 'Repudiation', icon: FileX, color: 'text-pink-400' },
-    { letter: 'I', name: 'Info Disclosure', icon: Eye, color: 'text-cyan-400' },
-    { letter: 'D', name: 'Denial of Service', icon: Wifi, color: 'text-amber-400' },
-    { letter: 'E', name: 'Elevation of Privilege', icon: Shield, color: 'text-red-400' },
-  ];
 
   if (isLoading) {
     return <FullPageLoader text="Analyzing system threats..." />;

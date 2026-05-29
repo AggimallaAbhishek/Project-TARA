@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
-import LandingPage from './pages/LandingPage';
-import HomePage from './pages/HomePage';
-import AnalysisPage from './pages/AnalysisPage';
-import HistoryPage from './pages/HistoryPage';
-import ComparePage from './pages/ComparePage';
-import LoginPage from './pages/LoginPage';
-import NotFoundPage from './pages/NotFoundPage';
 import { runtimeConfig } from './config/runtimeConfig';
 import { getAuthConfig } from './services/api';
 import { resolveGoogleClientId } from './services/authConfig';
+
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const AnalysisPage = lazy(() => import('./pages/AnalysisPage'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
+const ComparePage = lazy(() => import('./pages/ComparePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function App() {
   const [googleClientId, setGoogleClientId] = useState('');
@@ -92,8 +92,8 @@ function App() {
         <BrowserRouter>
           <div className="min-h-screen bg-dark-primary bg-cyber-pattern">
             <Navbar />
-            <AnimatePresence mode="wait">
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <Suspense fallback={<LoadingSpinner text="Loading page..." />}>
                 <Routes>
                   <Route path="/welcome" element={<LandingPage />} />
                   <Route
@@ -129,8 +129,8 @@ function App() {
                   } />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
-              </main>
-            </AnimatePresence>
+              </Suspense>
+            </main>
           </div>
         </BrowserRouter>
       </AuthProvider>

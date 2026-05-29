@@ -30,19 +30,16 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
 import { compareAnalyses, getAnalyses } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
-
-const STRIDE_CATEGORIES = [
-  'Spoofing',
-  'Tampering',
-  'Repudiation',
-  'Information Disclosure',
-  'Denial of Service',
-  'Elevation of Privilege',
-];
-
-const CHART_COLORS = ['#06d6a0', '#118ab2', '#ef476f', '#ffd166', '#073b4c'];
-const ANALYSES_PAGE_SIZE = 100;
-const SEARCH_DEBOUNCE_MS = 300;
+import {
+  ANALYSES_PAGE_SIZE,
+  buildRadarData,
+  CHART_COLORS,
+  filterAnalysesByTitle,
+  getRiskBadgeLevel,
+  getRiskColor,
+  SEARCH_DEBOUNCE_MS,
+  STRIDE_CATEGORIES,
+} from './comparePageUtils';
 
 export default function ComparePage() {
   const [analyses, setAnalyses] = useState([]);
@@ -174,26 +171,7 @@ export default function ComparePage() {
     }
   };
 
-  const getRiskColor = (level) => {
-    switch (level) {
-      case 'Critical': return 'text-red-400';
-      case 'High': return 'text-orange-400';
-      case 'Medium': return 'text-yellow-400';
-      case 'Low': return 'text-green-400';
-      default: return 'text-text-secondary';
-    }
-  };
-
-  const getRiskBadgeLevel = (score) => {
-    if (score >= 16) return 'Critical';
-    if (score >= 10) return 'High';
-    if (score >= 5) return 'Medium';
-    return 'Low';
-  };
-
-  const filteredAnalyses = analyses.filter((a) =>
-    a.title.toLowerCase().includes(searchFilter.toLowerCase())
-  );
+  const filteredAnalyses = filterAnalysesByTitle(analyses, searchFilter);
 
   if (loadingList) {
     return (
@@ -203,16 +181,7 @@ export default function ComparePage() {
     );
   }
 
-  // Build radar chart data from comparison
-  const radarData = comparison
-    ? STRIDE_CATEGORIES.map((cat) => {
-        const point = { category: cat.length > 12 ? cat.split(' ')[0] : cat, fullCategory: cat };
-        comparison.analyses.forEach((a) => {
-          point[a.title] = a.stride_distribution[cat] || 0;
-        });
-        return point;
-      })
-    : [];
+  const radarData = buildRadarData(comparison);
 
   return (
     <div className="max-w-6xl mx-auto">
