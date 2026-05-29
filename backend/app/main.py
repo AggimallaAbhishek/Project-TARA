@@ -1,6 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -19,30 +23,70 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 DEFAULT_SECRET_KEY = "change-me-in-production"
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+ALEMBIC_INI_PATH = BACKEND_ROOT / "alembic.ini"
 
 if settings.is_production and settings.secret_key == DEFAULT_SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be configured in production")
 
+
+def _build_alembic_config() -> Config:
+    config = Config(str(ALEMBIC_INI_PATH))
+    config.set_main_option("sqlalchemy.url", settings.database_url)
+    return config
+
+
+def verify_database_migrations_current() -> bool:
+    """Fail if the connected database is not at the repository Alembic head."""
+    config = _build_alembic_config()
+    script = ScriptDirectory.from_config(config)
+    expected_heads = set(script.get_heads())
+
+    with engine.connect() as connection:
+        migration_context = MigrationContext.configure(connection)
+        current_heads = set(migration_context.get_current_heads())
+
+    if current_heads != expected_heads:
+        current_display = ", ".join(sorted(current_heads)) if current_heads else "none"
+        expected_display = ", ".join(sorted(expected_heads)) if expected_heads else "none"
+        raise RuntimeError(
+            "Database schema is not migrated to Alembic head "
+            f"(current={current_display}, expected={expected_display}). "
+            "Run `alembic upgrade head` before starting production."
+        )
+
+    logger.info("DB migration verification success heads=%s", sorted(expected_heads))
+    return True
+
+
 def initialize_database_for_startup() -> bool:
-    """Initialize database tables during app startup."""
+    """Validate or initialize database tables during app startup."""
+    if settings.is_production:
+        logger.info("DB migration verification attempt (mode=production)")
+        try:
+            return verify_database_migrations_current()
+        except Exception:
+            logger.exception("DB migration verification failed (mode=production)")
+            raise
+
     strict_startup = settings.is_db_startup_strict
     mode = "fail-fast" if strict_startup else "degraded"
-    logger.info("DB init attempt (mode=%s)", mode)
+    logger.info("DB local init attempt (mode=%s)", mode)
 
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as exc:
         if strict_startup:
-            logger.exception("DB init failed (mode=%s)", mode)
+            logger.exception("DB local init failed (mode=%s)", mode)
             raise
         logger.warning(
-            "DB init failed (mode=%s). Continuing in degraded mode. error=%s",
+            "DB local init failed (mode=%s). Continuing in degraded mode. error=%s",
             mode,
             str(exc),
         )
         return False
 
-    logger.info("DB init success")
+    logger.info("DB local init success")
     return True
 
 

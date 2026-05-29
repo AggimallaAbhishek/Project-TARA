@@ -11,7 +11,9 @@ class AuditLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=True, index=True)
+    # Keep the deleted analysis id for immutable audit history. This intentionally
+    # has no FK because analyses are physically deleted by the user.
+    analysis_id = Column(Integer, nullable=True, index=True)
     action = Column(String(64), nullable=False, index=True)
     event_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
