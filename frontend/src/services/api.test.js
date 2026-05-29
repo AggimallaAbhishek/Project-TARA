@@ -107,7 +107,7 @@ describe('api loopback failover', () => {
     vi.clearAllMocks()
   })
 
-  it('retries once on loopback network failure and persists successful failover base', async () => {
+  it('retries once on loopback network failure without persisting cross-loopback base URL', async () => {
     axiosMockState.dispatch
       .mockRejectedValueOnce({
         code: 'ERR_NETWORK',
@@ -133,7 +133,7 @@ describe('api loopback failover', () => {
     expect(axiosMockState.dispatch).toHaveBeenCalledTimes(2)
     expect(axiosMockState.dispatch.mock.calls[0][0].baseURL).toBe('http://localhost:8000/api')
     expect(axiosMockState.dispatch.mock.calls[1][0].baseURL).toBe('http://127.0.0.1:8000/api')
-    expect(__apiInternal.getActiveApiBaseUrl()).toBe('http://127.0.0.1:8000/api')
+    expect(__apiInternal.getActiveApiBaseUrl()).toBe('http://localhost:8000/api')
   })
 
   it('keeps backend-unreachable classification when both loopback hosts fail', async () => {
@@ -167,7 +167,7 @@ describe('api loopback failover', () => {
     expect(__apiInternal.getActiveApiBaseUrl()).toBe('http://localhost:8000/api')
   })
 
-  it('uses loopback failover for backend health checks and updates active base', async () => {
+  it('uses loopback failover for backend health checks without changing canonical API base', async () => {
     axiosMockState.get
       .mockRejectedValueOnce({
         code: 'ERR_NETWORK',
@@ -184,6 +184,6 @@ describe('api loopback failover', () => {
     expect(axiosMockState.get).toHaveBeenCalledTimes(2)
     expect(axiosMockState.get.mock.calls[0][0]).toBe('http://localhost:8000/health')
     expect(axiosMockState.get.mock.calls[1][0]).toBe('http://127.0.0.1:8000/health')
-    expect(__apiInternal.getActiveApiBaseUrl()).toBe('http://127.0.0.1:8000/api')
+    expect(__apiInternal.getActiveApiBaseUrl()).toBe('http://localhost:8000/api')
   })
 })

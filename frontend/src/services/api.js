@@ -10,6 +10,7 @@ const CSRF_COOKIE_NAME = 'tara_csrf_token';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 const CSRF_PROTECTED_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 const LOOPBACK_NETWORK_ERROR_CODES = new Set(['ERR_NETWORK', 'ECONNREFUSED']);
+const FRONTEND_HOSTNAME = globalThis.location?.hostname || '';
 
 let activeApiBaseUrl = API_BASE_URL;
 
@@ -52,6 +53,9 @@ function updateActiveApiBaseUrl(nextApiBaseUrl) {
   if (!nextApiBaseUrl || nextApiBaseUrl === activeApiBaseUrl) {
     return;
   }
+  if (!canPersistLoopbackApiBaseUrl(nextApiBaseUrl)) {
+    return;
+  }
   activeApiBaseUrl = nextApiBaseUrl;
 }
 
@@ -71,6 +75,25 @@ function isLoopbackApiBaseUrl(apiBaseUrl) {
   }
   try {
     return isLoopbackHost(new URL(apiBaseUrl, window.location.origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function canPersistLoopbackApiBaseUrl(apiBaseUrl) {
+  if (!apiBaseUrl) {
+    return false;
+  }
+  try {
+    const parsedApiUrl = new URL(apiBaseUrl, window.location.origin);
+    if (
+      isLoopbackHost(FRONTEND_HOSTNAME)
+      && isLoopbackHost(parsedApiUrl.hostname)
+      && parsedApiUrl.hostname !== FRONTEND_HOSTNAME
+    ) {
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
