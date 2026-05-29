@@ -21,11 +21,11 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  ResponsiveContainer,
   Tooltip,
   Legend,
 } from 'recharts';
 
+import ChartFrame from '../components/ChartFrame';
 import LoadingSpinner from '../components/LoadingSpinner';
 import RiskBadge from '../components/RiskBadge';
 import { compareAnalyses, getAnalyses, getProject } from '../services/api';
@@ -483,9 +483,9 @@ export default function ComparePage() {
               <BarChart3 className="w-5 h-5 text-cyber-cyan" />
               STRIDE Distribution Overlay
             </h2>
-            <div className="h-80 min-h-80 min-w-0" style={{ minWidth: 1 }}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={320}>
-                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+            <ChartFrame height={320} minWidth={420}>
+              {(width, height) => (
+                <RadarChart width={width} height={height} data={radarData} cx="50%" cy="50%" outerRadius="70%">
                   <PolarGrid stroke="#30363d" />
                   <PolarAngleAxis dataKey="category" tick={{ fill: '#8b949e', fontSize: 12 }} />
                   <PolarRadiusAxis tick={{ fill: '#484f58', fontSize: 10 }} />
@@ -512,8 +512,8 @@ export default function ComparePage() {
                     wrapperStyle={{ color: '#8b949e', fontSize: '12px' }}
                   />
                 </RadarChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ChartFrame>
           </div>
 
           {/* Risk Trend */}

@@ -170,6 +170,17 @@ async function fulfillJson(route, body, status = 200) {
   });
 }
 
+function captureConsoleIssues(page) {
+  const messages = [];
+  page.on('console', (message) => {
+    const type = message.type();
+    if (type === 'error' || type === 'warning') {
+      messages.push({ type, text: message.text() });
+    }
+  });
+  return messages;
+}
+
 async function mockApi(page, { authenticated = true, onDelete = () => {} } = {}) {
   await page.route('**/health', (route) => fulfillJson(route, { status: 'healthy' }));
   await page.route('**/api/**', async (route) => {
@@ -398,6 +409,7 @@ test('downloads a PDF report from the analysis page', async ({ page }) => {
 });
 
 test('compares selected analyses side-by-side', async ({ page }) => {
+  const consoleIssues = captureConsoleIssues(page);
   await mockApi(page);
 
   await page.goto('/compare');
@@ -408,4 +420,6 @@ test('compares selected analyses side-by-side', async ({ page }) => {
 
   await expect(page.getByText('Risk Score Comparison')).toBeVisible();
   await expect(page.getByText('STRIDE Distribution Overlay')).toBeVisible();
+
+  expect(consoleIssues).toEqual([]);
 });

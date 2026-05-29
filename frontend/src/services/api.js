@@ -23,6 +23,23 @@ const LONG_TASK_TIMEOUT_MS = Math.max(
   parseTimeoutEnv(import.meta.env.VITE_LONG_TASK_TIMEOUT_MS, DEFAULT_LONG_TASK_TIMEOUT_MS),
 );
 
+function normalizeRequestPath(rawUrl) {
+  if (!rawUrl) {
+    return '';
+  }
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    return parsed.pathname;
+  } catch {
+    return String(rawUrl).split('?')[0];
+  }
+}
+
+function shouldSuppressApiErrorLog(status, rawUrl) {
+  const path = normalizeRequestPath(rawUrl);
+  return status === 401 && path.endsWith('/auth/me');
+}
+
 function resolveHealthUrl(apiBaseUrl) {
   if (!apiBaseUrl) {
     return '/health';
@@ -109,8 +126,10 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || '';
-    
-    console.error(`API Error: ${status} ${url}`, error.response?.data);
+
+    if (!shouldSuppressApiErrorLog(status, url)) {
+      console.error(`API Error: ${status} ${url}`, error.response?.data);
+    }
     
     // Only redirect to login on 401 if NOT already on auth endpoints
     if (status === 401 && !url.includes('/auth/')) {

@@ -17,9 +17,14 @@ vi.mock('recharts', () => ({
   PolarGrid: () => <div />,
   PolarAngleAxis: () => <div />,
   PolarRadiusAxis: () => <div />,
-  ResponsiveContainer: ({ children }) => <div>{children}</div>,
   Tooltip: () => <div />,
   Legend: () => <div />,
+}))
+
+vi.mock('../components/ChartFrame', () => ({
+  default: ({ children, height = 320, minWidth = 320 }) => (
+    <div>{children(minWidth, height)}</div>
+  ),
 }))
 
 function renderComparePage() {
