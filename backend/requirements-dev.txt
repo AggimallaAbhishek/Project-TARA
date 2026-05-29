@@ -1,0 +1,5 @@
+-r requirements.txt
+# Development and security tooling. Regenerate with pip-tools when changing requirements-dev.in.
+pytest==9.0.3
+pip-audit==2.9.0
+pip-tools==7.5.1

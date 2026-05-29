@@ -10,6 +10,10 @@
 .DS_Store
 Thumbs.db
 
+# Exported source snapshots
+source_code/
+source_code.zip
+
 # IDE
 .vscode/
 .idea/
