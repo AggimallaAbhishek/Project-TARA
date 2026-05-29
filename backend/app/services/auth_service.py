@@ -29,7 +29,8 @@ def verify_google_token(token: str) -> dict:
         idinfo = id_token.verify_oauth2_token(
             token, 
             requests.Request(), 
-            settings.google_client_id
+            settings.google_client_id,
+            clock_skew_in_seconds=60
         )
         
         # Validate issuer
@@ -57,7 +58,7 @@ def verify_google_token(token: str) -> dict:
         logger.warning("Google token validation failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google token"
+            detail=f"Invalid Google token: {str(e)}"
         )
     except Exception:
         logger.exception("Failed to verify Google token")
