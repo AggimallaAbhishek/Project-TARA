@@ -22,4 +22,11 @@ if ! "$PYTHON_BIN" -m pip_audit --version >/dev/null 2>&1; then
   exit 1
 fi
 
-"$PYTHON_BIN" -m pip_audit -r "$BACKEND_DIR/requirements.txt"
+PIP_AUDIT_CACHE_DIR="${PIP_AUDIT_CACHE_DIR:-${TMPDIR:-/tmp}/tara-pip-audit-cache}"
+mkdir -p "$PIP_AUDIT_CACHE_DIR"
+
+"$PYTHON_BIN" -m pip_audit \
+  --cache-dir "$PIP_AUDIT_CACHE_DIR" \
+  --no-deps \
+  --disable-pip \
+  -r "$BACKEND_DIR/requirements.txt"

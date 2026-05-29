@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { 
   ArrowLeft, Clock, Shield, AlertTriangle, Download,
   TrendingUp, FileText
@@ -11,6 +11,7 @@ import { downloadAnalysisPdf, getAnalysis, getAnalysisVersionComparison } from '
 import { getApiErrorMessage } from '../services/apiError';
 import ThreatCard from '../components/ThreatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ChartFrame from '../components/ChartFrame';
 
 export default function AnalysisPage() {
   const { id } = useParams();
@@ -360,9 +361,9 @@ export default function AnalysisPage() {
             <AlertTriangle className="w-5 h-5 text-cyber-cyan" />
             Risk Distribution
           </h3>
-          <div className="h-48 min-h-48 min-w-0" style={{ minWidth: 1 }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={192}>
-              <PieChart>
+          <ChartFrame height={192} minWidth={320}>
+            {(width, height) => (
+              <PieChart width={width} height={height}>
                 <Pie
                   data={riskDistribution}
                   cx="50%"
@@ -385,8 +386,8 @@ export default function AnalysisPage() {
                   }}
                 />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
           <div className="flex flex-wrap justify-center gap-4 mt-4">
             {riskDistribution.map((item) => (
               <div key={item.name} className="flex items-center gap-2">
@@ -403,9 +404,9 @@ export default function AnalysisPage() {
             <Shield className="w-5 h-5 text-cyber-cyan" />
             STRIDE Categories
           </h3>
-          <div className="h-48 min-h-48 min-w-0" style={{ minWidth: 1 }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={192}>
-              <BarChart data={strideDistribution} layout="vertical">
+          <ChartFrame height={192} minWidth={420}>
+            {(width, height) => (
+              <BarChart width={width} height={height} data={strideDistribution} layout="vertical">
                 <XAxis type="number" tick={{ fill: '#9AA4B2' }} />
                 <YAxis 
                   type="category" 
@@ -423,8 +424,8 @@ export default function AnalysisPage() {
                 />
                 <Bar dataKey="count" fill="#00F5FF" radius={[0, 4, 4, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </div>
       </motion.div>
 
