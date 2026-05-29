@@ -87,6 +87,7 @@ class DocumentExtractService:
             raise DocumentExtractionError("TXT file must be valid UTF-8.") from exc
 
     def _extract_from_pdf(self, file_bytes: bytes) -> tuple[str, int]:
+        current_settings = get_settings()
         try:
             import fitz
         except ImportError as exc:
@@ -98,7 +99,7 @@ class DocumentExtractService:
             raise DocumentExtractionError("Failed to open PDF file.") from exc
 
         try:
-            pages_to_process = min(len(document), max(1, settings.document_pdf_max_pages))
+            pages_to_process = min(len(document), max(1, current_settings.document_pdf_max_pages))
             if pages_to_process <= 0:
                 raise DocumentExtractionError("PDF contains no pages to process.")
 

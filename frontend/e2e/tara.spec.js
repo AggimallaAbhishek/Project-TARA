@@ -10,6 +10,8 @@ const user = {
 
 const analysis = {
   id: 42,
+  project_id: 7,
+  project: { id: 7, name: 'Payment Service' },
   title: 'Payment Service',
   system_description: 'Gateway, auth service, payment API, PostgreSQL, and Redis cache.',
   created_at: '2026-01-01T10:00:00Z',
@@ -36,6 +38,8 @@ const analysis = {
 const analysesList = [
   {
     id: 42,
+    project_id: 7,
+    project: { id: 7, name: 'Payment Service' },
     title: 'Payment Service',
     created_at: '2026-01-01T10:00:00Z',
     total_risk_score: 16,
@@ -45,6 +49,8 @@ const analysesList = [
   },
   {
     id: 43,
+    project_id: 7,
+    project: { id: 7, name: 'Payment Service' },
     title: 'Inventory Core',
     created_at: '2026-01-02T10:00:00Z',
     total_risk_score: 8,
@@ -53,6 +59,22 @@ const analysesList = [
     analysis_time: 0.3,
   },
 ];
+
+const project = {
+  id: 7,
+  user_id: 1,
+  name: 'Payment Service',
+  description: 'Payment platform workspace',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-02T10:00:00Z',
+  analysis_count: 2,
+  latest_analysis_id: 43,
+  latest_analysis_title: 'Inventory Core',
+  latest_analysis_at: '2026-01-02T10:00:00Z',
+  latest_risk_score: 8,
+  total_threat_count: 2,
+  high_risk_count: 1,
+};
 
 const comparisonPayload = {
   analyses: [
@@ -163,6 +185,43 @@ async function mockApi(page, { authenticated = true, onDelete = () => {} } = {})
       return authenticated
         ? fulfillJson(route, user)
         : fulfillJson(route, { detail: 'Could not validate credentials' }, 401);
+    }
+    if (path === '/api/projects' && method === 'GET') {
+      return fulfillJson(route, {
+        items: [project],
+        total: 1,
+        skip: Number(url.searchParams.get('skip') || 0),
+        limit: Number(url.searchParams.get('limit') || 50),
+        has_more: false,
+      });
+    }
+    if (path === '/api/projects' && method === 'POST') {
+      return fulfillJson(route, { ...project, id: 8, name: 'Created Project', analysis_count: 0 }, 201);
+    }
+    if (path === '/api/projects/7' && method === 'GET') {
+      return fulfillJson(route, project);
+    }
+    if (path === '/api/projects/7/analyses' && method === 'GET') {
+      return fulfillJson(route, {
+        items: analysesList,
+        total: analysesList.length,
+        skip: Number(url.searchParams.get('skip') || 0),
+        limit: Number(url.searchParams.get('limit') || 20),
+        has_more: false,
+      });
+    }
+    if (path === '/api/projects/7/activity' && method === 'GET') {
+      return fulfillJson(route, [
+        {
+          id: 1,
+          user_id: 1,
+          project_id: 7,
+          analysis_id: 42,
+          action: 'analysis_created',
+          event_metadata: { title: 'Payment Service' },
+          created_at: '2026-01-01T10:00:00Z',
+        },
+      ]);
     }
     if (path === '/api/analyze' && method === 'POST') {
       return fulfillJson(route, { ...analysis, id: 101, title: 'E2E Text Analysis' }, 201);
@@ -311,6 +370,20 @@ test('filters history and confirms analysis deletion', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
   await expect.poll(() => deleteCalled).toBe(true);
+});
+
+test('opens projects section and project workspace', async ({ page }) => {
+  await mockApi(page);
+
+  await page.goto('/projects');
+  await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+  await expect(page.getByText('Payment Service')).toBeVisible();
+
+  await page.getByText('Payment Service').first().click();
+  await expect(page).toHaveURL(/\/projects\/7$/);
+  await expect(page.getByText('Project Workspace')).toBeVisible();
+  await expect(page.getByText('Analysis created')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Compare/i })).toHaveAttribute('href', '/compare?project_id=7');
 });
 
 test('downloads a PDF report from the analysis page', async ({ page }) => {

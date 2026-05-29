@@ -48,6 +48,7 @@ class DiagramExtractService:
         content_type: str | None,
         file_bytes: bytes,
     ) -> tuple[str, dict[str, Any]]:
+        current_settings = get_settings()
         extension = Path(file_name).suffix.lower()
         if extension not in SUPPORTED_EXTENSIONS:
             raise DiagramExtractionError(
@@ -65,7 +66,7 @@ class DiagramExtractService:
                 "file_name": file_name,
                 "file_size": len(file_bytes),
                 "pages_processed": None,
-                "extractor_used": f"ollama_vision:{settings.ollama_vision_model}",
+                "extractor_used": f"ollama_vision:{current_settings.ollama_vision_model}",
             }
             return self._normalize_extracted_text(extracted), metadata
 
@@ -77,7 +78,7 @@ class DiagramExtractService:
                 "file_name": file_name,
                 "file_size": len(file_bytes),
                 "pages_processed": pages_processed,
-                "extractor_used": f"ollama_vision:{settings.ollama_vision_model}",
+                "extractor_used": f"ollama_vision:{current_settings.ollama_vision_model}",
             }
             return self._normalize_extracted_text(extracted), metadata
 
@@ -169,7 +170,8 @@ class DiagramExtractService:
             raise DiagramExtractionError("Invalid image content. Use PNG or JPEG images.")
 
     async def _extract_from_image(self, image_bytes: bytes) -> str:
-        if not settings.ollama_vision_model:
+        current_settings = get_settings()
+        if not current_settings.ollama_vision_model:
             raise RuntimeError("OLLAMA_VISION_MODEL is not configured.")
 
         message = {
@@ -181,21 +183,21 @@ class DiagramExtractService:
             response = await asyncio.wait_for(
                 asyncio.to_thread(
                     ollama.chat,
-                    model=settings.ollama_vision_model,
+                    model=current_settings.ollama_vision_model,
                     messages=[message],
                     options={
                         "temperature": 0.1,
-                        "num_ctx": settings.ollama_num_ctx,
-                        "num_predict": settings.ollama_num_predict,
+                        "num_ctx": current_settings.ollama_num_ctx,
+                        "num_predict": current_settings.ollama_num_predict,
                     },
                 ),
-                timeout=settings.ollama_request_timeout_seconds,
+                timeout=current_settings.ollama_request_timeout_seconds,
             )
         except ConnectionError as exc:
             logger.warning(
                 "Diagram vision extraction provider_unreachable model=%s host=%s error=%s",
-                settings.ollama_vision_model,
-                settings.ollama_host,
+                current_settings.ollama_vision_model,
+                current_settings.ollama_host,
                 str(exc),
             )
             raise RuntimeError(
@@ -205,13 +207,13 @@ class DiagramExtractService:
             status_code = getattr(exc, "status_code", None)
             logger.warning(
                 "Diagram vision extraction provider_response_error model=%s status=%s error=%s",
-                settings.ollama_vision_model,
+                current_settings.ollama_vision_model,
                 status_code,
                 str(getattr(exc, "error", "") or str(exc)),
             )
             if status_code == 404:
                 raise RuntimeError(
-                    f"Ollama vision model '{settings.ollama_vision_model}' is unavailable. Pull it or set OLLAMA_VISION_MODEL."
+                    f"Ollama vision model '{current_settings.ollama_vision_model}' is unavailable. Pull it or set OLLAMA_VISION_MODEL."
                 ) from exc
             raise RuntimeError("Diagram vision extraction provider error from Ollama.") from exc
         message_payload = response.get("message", {}) if isinstance(response, dict) else {}
@@ -223,6 +225,7 @@ class DiagramExtractService:
         return extracted
 
     async def _extract_from_pdf(self, pdf_bytes: bytes) -> tuple[str, int]:
+        current_settings = get_settings()
         try:
             import fitz
         except ImportError as exc:
@@ -234,7 +237,7 @@ class DiagramExtractService:
             raise DiagramExtractionError("Failed to open PDF file.") from exc
 
         try:
-            pages_to_process = min(len(document), max(1, settings.diagram_pdf_max_pages))
+            pages_to_process = min(len(document), max(1, current_settings.diagram_pdf_max_pages))
             if pages_to_process <= 0:
                 raise DiagramExtractionError("PDF contains no pages to process.")
 
