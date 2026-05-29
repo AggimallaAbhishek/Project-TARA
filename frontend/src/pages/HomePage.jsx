@@ -52,6 +52,7 @@ export default function HomePage() {
   const latestProjectsLoadRequestIdRef = useRef(0);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
