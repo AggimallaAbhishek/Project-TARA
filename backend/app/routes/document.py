@@ -53,6 +53,8 @@ def enforce_document_analyze_rate_limit(current_user: User = Depends(get_current
 async def analyze_document(
     background_tasks: BackgroundTasks,
     title: str = Form(...),
+    project_id: int | None = Form(default=None),
+    project_name: str | None = Form(default=None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(enforce_document_analyze_rate_limit),
@@ -81,12 +83,17 @@ async def analyze_document(
         validated_request = AnalysisCreate(
             title=title,
             system_description=extracted_description,
+            project_id=project_id,
+            project_name=project_name,
         )
         analysis = await analysis_workflow_service.create_analysis(
             db=db,
             current_user=current_user,
             title=validated_request.title,
             system_description=validated_request.system_description,
+            project_id=validated_request.project_id,
+            project_name=validated_request.project_name,
+            source="document",
             background_tasks=background_tasks,
         )
         version_comparison = analysis_version_comparison_service.get_version_comparison(

@@ -13,7 +13,7 @@ from sqlalchemy import text
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, engine
-from app.routes import analysis, audit, auth, comparison, diagram, document
+from app.routes import analysis, audit, auth, comparison, diagram, document, projects
 from app.services.auth_service import ACCESS_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 
 # Configure logging before anything else
@@ -194,6 +194,7 @@ app.include_router(diagram.router, prefix="/api", tags=["Diagram"])
 app.include_router(document.router, prefix="/api", tags=["Document"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
 app.include_router(comparison.router, prefix="/api", tags=["Comparison"])
+app.include_router(projects.router, prefix="/api", tags=["Projects"])
 
 
 @app.get("/")

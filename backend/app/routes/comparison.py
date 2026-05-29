@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.schemas.comparison import ComparisonRequest, ComparisonResponse
+from app.services.audit_service import audit_service
 from app.services.auth_service import get_current_user
 from app.services.comparison_service import comparison_service
 
@@ -42,6 +43,20 @@ async def compare_analyses(
             analysis_ids=request.analysis_ids,
             user_id=current_user.id,
         )
+        for project_id in result.get("project_ids", []):
+            audit_service.record_event(
+                db,
+                user_id=current_user.id,
+                action="comparison_created",
+                project_id=project_id,
+                event_metadata={
+                    "project_id": project_id,
+                    "analysis_ids": request.analysis_ids,
+                },
+            )
+        if result.get("project_ids"):
+            db.commit()
+        result.pop("project_ids", None)
         return result
     except ValueError as exc:
         raise HTTPException(

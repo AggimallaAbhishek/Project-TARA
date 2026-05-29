@@ -22,6 +22,7 @@ from app.services.audit_service import audit_service
 from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
 from app.services.pdf_service import pdf_report_service
+from app.services.project_service import project_service
 from app.services.rate_limit_service import analyze_rate_limiter
 from app.services.risk_service import risk_service
 
@@ -50,6 +51,8 @@ def _build_analysis_summary(analysis: Analysis) -> AnalysisSummary:
     high_risk_count = sum(1 for threat in analysis.threats if threat.risk_level in ["High", "Critical"])
     return AnalysisSummary(
         id=analysis.id,
+        project_id=analysis.project_id,
+        project=project_service.analysis_project_reference(analysis),
         title=analysis.title,
         created_at=analysis.created_at,
         total_risk_score=analysis.total_risk_score,
@@ -76,7 +79,7 @@ def _get_user_analysis(
     user_id: int,
     include_threats: bool = True,
 ) -> Analysis | None:
-    query = db.query(Analysis)
+    query = db.query(Analysis).options(selectinload(Analysis.project))
     if include_threats:
         query = query.options(selectinload(Analysis.threats))
     return query.filter(Analysis.id == analysis_id, Analysis.user_id == user_id).first()
@@ -111,6 +114,9 @@ async def create_analysis(
         current_user=current_user,
         title=request.title,
         system_description=request.system_description,
+        project_id=request.project_id,
+        project_name=request.project_name,
+        source="text",
         background_tasks=background_tasks,
     )
 
@@ -128,6 +134,7 @@ async def list_analyses(
     stride_category: StrideCategory | None = Query(default=None, description="STRIDE category filter"),
     date_from: date | None = Query(default=None, description="Start date (inclusive), YYYY-MM-DD"),
     date_to: date | None = Query(default=None, description="End date (inclusive), YYYY-MM-DD"),
+    project_id: int | None = Query(default=None, ge=1, description="Project id filter"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -135,6 +142,13 @@ async def list_analyses(
 ):
     """List user's analyses with pagination and filters."""
     query = db.query(Analysis).filter(Analysis.user_id == current_user.id)
+
+    if project_id is not None:
+        try:
+            project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+        query = query.filter(Analysis.project_id == project_id)
 
     if q and q.strip():
         safe_q = q.strip().replace("%", r"\%").replace("_", r"\_")
@@ -157,6 +171,7 @@ async def list_analyses(
     total = query.count()
     analyses = (
         query.options(selectinload(Analysis.threats))
+        .options(selectinload(Analysis.project))
         .order_by(Analysis.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -282,6 +297,20 @@ async def export_analysis_pdf(
             detail=str(exc),
         ) from exc
 
+    audit_service.record_event(
+        db,
+        user_id=current_user.id,
+        action="pdf_exported",
+        analysis_id=analysis.id,
+        project_id=analysis.project_id,
+        event_metadata={
+            "analysis_id": analysis.id,
+            "project_id": analysis.project_id,
+            "title": analysis.title,
+        },
+    )
+    db.commit()
+
     filename = f"{_sanitize_filename(analysis.title)}-{analysis.id}.pdf"
     return Response(
         content=pdf_bytes,
@@ -315,8 +344,11 @@ async def delete_analysis(
         user_id=current_user.id,
         action="analysis_deleted",
         analysis_id=analysis.id,
+        project_id=analysis.project_id,
         event_metadata={
             "analysis_id": analysis.id,
+            "project_id": analysis.project_id,
+            "project_name": analysis.project.name if analysis.project else None,
             "title": analysis.title,
             "threat_count": len(analysis.threats),
             "total_risk_score": analysis.total_risk_score,

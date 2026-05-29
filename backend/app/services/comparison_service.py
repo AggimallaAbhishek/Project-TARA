@@ -137,6 +137,7 @@ class ComparisonService:
                 "unique_threats_per_analysis": unique_threats_per_analysis,
                 "risk_trend": risk_trend,
             },
+            "project_ids": sorted({analysis.project_id for analysis in analyses if analysis.project_id is not None}),
         }
 
 

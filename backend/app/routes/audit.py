@@ -20,6 +20,7 @@ router = APIRouter()
 async def list_audit_logs(
     action: str | None = Query(default=None, description="Optional action filter"),
     analysis_id: int | None = Query(default=None, description="Optional analysis id filter"),
+    project_id: int | None = Query(default=None, description="Optional project id filter"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -31,6 +32,8 @@ async def list_audit_logs(
         query = query.filter(AuditLog.action == action)
     if analysis_id is not None:
         query = query.filter(AuditLog.analysis_id == analysis_id)
+    if project_id is not None:
+        query = query.filter(AuditLog.project_id == project_id)
 
     logs = query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()
     return logs

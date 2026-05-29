@@ -189,6 +189,9 @@ async def analyze_diagram(
         current_user=current_user,
         title=request.title,
         system_description=system_description,
+        project_id=request.project_id,
+        project_name=request.project_name,
+        source="diagram",
         background_tasks=background_tasks,
     )
     extract_session_service.delete_session(request.extract_id)
