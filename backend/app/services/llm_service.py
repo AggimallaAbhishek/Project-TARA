@@ -1,10 +1,6 @@
 import asyncio
-import ast
-import hashlib
-import json
 import logging
 import os
-import re
 import time
 from typing import Any, Callable
 
@@ -14,33 +10,26 @@ except ImportError:
     raise ImportError("ollama package not installed. Run: pip install ollama")
 
 from app.config import get_settings
-from app.services.risk_service import risk_service
+from app.services.llm_internal.parsing import (
+    extract_json_payload,
+    format_step_text,
+    normalize_mitigation_steps,
+    parse_llm_response,
+    parse_serialized_mitigation_list,
+    validate_threat,
+)
+from app.services.llm_internal.prompting import (
+    build_cache_key,
+    build_stride_prompt,
+    estimate_target_threat_count,
+    normalize_description,
+)
+from app.services.llm_internal.transport import build_chat_request_kwargs
 from app.services.threat_cache_service import HybridThreatCache
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 os.environ.setdefault("OLLAMA_HOST", settings.ollama_host)
-
-STRIDE_PROMPT = """Analyze this system for security threats using STRIDE. Return JSON only.
-
-System: {system_description}
-
-Return a JSON array with as many meaningful threats as the architecture warrants.
-Prioritize broad coverage across components, trust boundaries, and data flows.
-Do not force a fixed count.
-Aim for at least {target_threat_count} distinct threats when the input has enough detail.
-
-Each threat must include:
-- name
-- description
-- stride_category (one of: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
-- affected_component
-- risk_level (Low, Medium, High, Critical)
-- likelihood (1-5)
-- impact (1-5)
-- mitigation (numbered implementation steps, 3-6 concise and actionable steps)
-
-Output only valid JSON array, no markdown or extra text."""
 
 
 class LLMService:
@@ -92,23 +81,15 @@ class LLMService:
 
     @staticmethod
     def _normalize_description(system_description: str) -> str:
-        # Normalize whitespace to make cache keys stable for semantically identical descriptions.
-        return " ".join(system_description.split()).strip().lower()
+        return normalize_description(system_description)
 
     @staticmethod
     def _build_cache_key(normalized_description: str) -> str:
-        return hashlib.sha256(normalized_description.encode("utf-8")).hexdigest()
+        return build_cache_key(normalized_description)
 
     @staticmethod
     def _estimate_target_threat_count(system_description: str) -> int:
-        char_count = len(system_description)
-        if char_count < 250:
-            return 6
-        if char_count < 700:
-            return 10
-        if char_count < 1400:
-            return 14
-        return 18
+        return estimate_target_threat_count(system_description)
 
     async def _request_threats(
         self,
@@ -117,24 +98,15 @@ class LLMService:
         num_predict: int,
         force_json: bool,
     ) -> dict[str, Any]:
-        request_kwargs: dict[str, Any] = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a security expert. Output valid JSON only, no explanations.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            "options": {
-                "temperature": self.temperature,
-                "num_predict": num_predict,
-                "num_ctx": self.num_ctx,
-            },
-            "keep_alive": self.keep_alive,
-        }
-        if force_json:
-            request_kwargs["format"] = "json"
+        request_kwargs = build_chat_request_kwargs(
+            model=self.model,
+            prompt=prompt,
+            temperature=self.temperature,
+            num_predict=num_predict,
+            num_ctx=self.num_ctx,
+            keep_alive=self.keep_alive,
+            force_json=force_json,
+        )
 
         return await asyncio.wait_for(
             asyncio.to_thread(ollama.chat, **request_kwargs),
@@ -142,23 +114,7 @@ class LLMService:
         )
 
     def _extract_json_payload(self, response_text: str) -> Any:
-        cleaned = response_text.strip()
-        if cleaned.startswith("```"):
-            cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE | re.DOTALL).strip()
-
-        # Fast path: whole payload is valid JSON.
-        try:
-            direct_parsed = json.loads(cleaned)
-            return direct_parsed
-        except json.JSONDecodeError:
-            pass
-
-        # Fallback: extract array-like payload from mixed text.
-        json_match = re.search(r"\[[\s\S]*\]", cleaned)
-        if not json_match:
-            raise ValueError("Could not find valid JSON array in LLM response")
-
-        return json.loads(json_match.group())
+        return extract_json_payload(response_text)
 
     async def analyze_system(self, system_description: str) -> tuple[list[dict[str, Any]], float]:
         """
@@ -189,11 +145,7 @@ class LLMService:
                 )
                 return cached_threats, round(elapsed, 2)
 
-        target_threat_count = self._estimate_target_threat_count(system_description)
-        prompt = STRIDE_PROMPT.format(
-            system_description=system_description,
-            target_threat_count=target_threat_count,
-        )
+        prompt = build_stride_prompt(system_description)
         attempts: list[tuple[int, bool]] = [(self.num_predict, False)]
         if self.retry_on_invalid_response:
             attempts.append((max(self.num_predict, self.retry_num_predict), True))
@@ -353,177 +305,22 @@ class LLMService:
             raise RuntimeError("Threat analysis request failed unexpectedly") from exc
 
     def _parse_response(self, response_text: str) -> list[dict[str, Any]]:
-        payload = self._extract_json_payload(response_text)
-
-        if isinstance(payload, dict):
-            threats = payload.get("threats", [])
-        elif isinstance(payload, list):
-            threats = payload
-        else:
-            raise ValueError("Unexpected JSON shape from LLM")
-
-        validated_threats: list[dict[str, Any]] = []
-        for threat in threats:
-            validated = self._validate_threat(threat)
-            if validated:
-                validated_threats.append(validated)
-
-        return validated_threats
+        return parse_llm_response(response_text, logger)
 
     @staticmethod
     def _format_step_text(step: str) -> str:
-        cleaned = step.strip()
-        for _ in range(3):
-            updated = cleaned.strip()
-            updated = re.sub(r"^[\[\]\"'`]+", "", updated)
-            updated = re.sub(r"[\[\]\"'`]+$", "", updated)
-            # Handle artifacts like "step']." or "step']:" where wrappers precede punctuation.
-            updated = re.sub(r"[\[\]\"'`]+(?=[\.,;:!?]+$)", "", updated)
-            updated = updated.strip()
-            if updated == cleaned:
-                break
-            cleaned = updated
-        cleaned = cleaned.strip(".,;")
-        if not cleaned:
-            return ""
-        return cleaned if cleaned.endswith(".") else f"{cleaned}."
+        return format_step_text(step)
 
     @classmethod
     def _parse_serialized_mitigation_list(cls, mitigation_text: str) -> list[str] | None:
-        trimmed = mitigation_text.strip()
-        if not (trimmed.startswith("[") and trimmed.endswith("]")):
-            return None
-
-        for parser in (json.loads, ast.literal_eval):
-            try:
-                parsed = parser(trimmed)
-            except Exception:
-                continue
-            if isinstance(parsed, list):
-                return [str(item) for item in parsed if str(item).strip()]
-        return None
+        return parse_serialized_mitigation_list(mitigation_text)
 
     @classmethod
     def _normalize_mitigation_steps(cls, mitigation_text: str) -> str:
-        cleaned = mitigation_text.strip()
-        if not cleaned:
-            return "Mitigation not provided."
-
-        serialized_steps = cls._parse_serialized_mitigation_list(cleaned)
-        if serialized_steps:
-            normalized_steps = [
-                formatted
-                for formatted in (cls._format_step_text(step) for step in serialized_steps)
-                if formatted
-            ]
-            if normalized_steps:
-                return "\n".join(
-                    f"{index}. {step}" for index, step in enumerate(normalized_steps[:6], start=1)
-                )
-
-        explicit_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-        step_prefix_pattern = re.compile(r"^(\d+[\).]?\s+|[-*•]\s+)")
-        if len(explicit_lines) >= 2 and any(step_prefix_pattern.match(line) for line in explicit_lines):
-            normalized_steps: list[str] = []
-            for raw_line in explicit_lines:
-                line = step_prefix_pattern.sub("", raw_line).strip()
-                formatted = cls._format_step_text(line)
-                if formatted:
-                    normalized_steps.append(formatted)
-            if normalized_steps:
-                return "\n".join(
-                    f"{index}. {step}" for index, step in enumerate(normalized_steps, start=1)
-                )
-
-        split_candidates = re.split(r";+|\n+", cleaned)
-        if len(split_candidates) <= 1:
-            split_candidates = re.split(r",\s+|\s+and\s+", cleaned)
-
-        normalized_candidates: list[str] = []
-        seen_lower: set[str] = set()
-        for candidate in split_candidates:
-            formatted = cls._format_step_text(candidate)
-            if not formatted:
-                continue
-            key = formatted.lower()
-            if key in seen_lower:
-                continue
-            seen_lower.add(key)
-            normalized_candidates.append(formatted)
-
-        if len(normalized_candidates) >= 2:
-            return "\n".join(
-                f"{index}. {step}"
-                for index, step in enumerate(normalized_candidates[:6], start=1)
-            )
-
-        fallback = cls._format_step_text(cleaned)
-        return fallback or "Mitigation not provided."
+        return normalize_mitigation_steps(mitigation_text)
 
     def _validate_threat(self, threat: dict[str, Any]) -> dict[str, Any] | None:
-        if not isinstance(threat, dict):
-            return None
-
-        def _as_str(value: Any, default: str) -> str:
-            if value is None:
-                return default
-            text = str(value).strip()
-            return text or default
-
-        normalized: dict[str, Any] = {}
-        normalized["name"] = _as_str(threat.get("name"), "Untitled threat")
-        normalized["description"] = _as_str(threat.get("description"), "No description provided.")
-        normalized["affected_component"] = _as_str(
-            threat.get("affected_component"),
-            "Unspecified component",
-        )
-        mitigation_text = _as_str(threat.get("mitigation"), "Mitigation not provided.")
-        normalized["mitigation"] = self._normalize_mitigation_steps(mitigation_text)
-
-        valid_categories = [
-            "Spoofing",
-            "Tampering",
-            "Repudiation",
-            "Information Disclosure",
-            "Denial of Service",
-            "Elevation of Privilege",
-        ]
-        stride = _as_str(threat.get("stride_category"), "")
-        if stride not in valid_categories:
-            for category in valid_categories:
-                if category.lower() in stride.lower() or stride.lower() in category.lower():
-                    stride = category
-                    break
-        if stride not in valid_categories:
-            logger.warning(
-                "Unknown STRIDE category '%s' from LLM, defaulting to Information Disclosure",
-                stride,
-            )
-            stride = "Information Disclosure"
-        normalized["stride_category"] = stride
-
-        try:
-            likelihood = int(threat.get("likelihood", 3))
-        except (TypeError, ValueError):
-            likelihood = 3
-
-        try:
-            impact = int(threat.get("impact", 3))
-        except (TypeError, ValueError):
-            impact = 3
-
-        normalized["likelihood"] = max(1, min(5, likelihood))
-        normalized["impact"] = max(1, min(5, impact))
-
-        valid_risks = ["Low", "Medium", "High", "Critical"]
-        risk = _as_str(threat.get("risk_level"), "")
-        if risk in valid_risks:
-            normalized["risk_level"] = risk
-        else:
-            derived_score = risk_service.calculate_risk_score(normalized["likelihood"], normalized["impact"])
-            normalized["risk_level"] = risk_service.get_risk_level_from_score(derived_score)
-
-        return normalized
+        return validate_threat(threat, logger)
 
 
 llm_service = LLMService()
