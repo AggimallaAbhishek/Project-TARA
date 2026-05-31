@@ -306,15 +306,30 @@ export default function HomePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setError('Enter an analysis title before running analysis.');
+      return;
+    }
     if (!selectedProjectId) {
       setError('Select or create a project before running analysis.');
       return;
     }
-    if (inputMode === 'text' && !description.trim()) return;
-    if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) return;
-    if (inputMode === 'document' && !documentFile) return;
-    if (inputMode === 'uml' && !umlCode.trim()) return;
+    if (inputMode === 'text' && !description.trim()) {
+      setError('Enter a system architecture description before analysis.');
+      return;
+    }
+    if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) {
+      setError('Extract architecture from the uploaded diagram before analysis.');
+      return;
+    }
+    if (inputMode === 'document' && !documentFile) {
+      setError('Upload a document before analysis.');
+      return;
+    }
+    if (inputMode === 'uml' && !umlCode.trim()) {
+      setError('Paste UML code or attach a UML file before analysis.');
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
@@ -643,8 +658,6 @@ export default function HomePage() {
               disabled={
                 isExtracting
                 || projectsLoading
-                || !selectedProjectId
-                || !title.trim()
                 || (
                   inputMode === 'text'
                     ? !description.trim()
