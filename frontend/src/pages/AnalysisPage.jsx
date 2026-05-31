@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import {
-  ArrowLeft, Clock, Shield, AlertTriangle, Download,
-  TrendingUp, FileText, ImageIcon, Code
+  ArrowLeft,
 } from 'lucide-react';
 import {
   downloadAnalysisPdf,
@@ -14,9 +12,18 @@ import {
   getAnalysisVersionComparison,
 } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
-import ThreatCard from '../components/ThreatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import ChartFrame from '../components/ChartFrame';
+import AnalysisHeaderCard from '../components/analysis/AnalysisHeaderCard';
+import VersionComparisonPanel from '../components/analysis/VersionComparisonPanel';
+import ThreatListSection from '../components/analysis/ThreatListSection';
+import {
+  buildRiskDistribution,
+  buildStrideDistribution,
+  getHighRiskCount,
+  sortThreatsByRisk,
+} from '../components/analysis/analysisMetrics';
+
+const AnalysisCharts = lazy(() => import('../components/analysis/AnalysisCharts'));
 
 export default function AnalysisPage() {
   const { id } = useParams();
@@ -32,6 +39,10 @@ export default function AnalysisPage() {
   const [diagramLoading, setDiagramLoading] = useState(false);
   const [diagramError, setDiagramError] = useState(null);
   const [isDiagramCodeExpanded, setIsDiagramCodeExpanded] = useState(false);
+  const svgToDataUrl = (svgText) => {
+    const encoded = window.btoa(unescape(encodeURIComponent(svgText)));
+    return `data:image/svg+xml;base64,${encoded}`;
+  };
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -61,11 +72,6 @@ export default function AnalysisPage() {
         isMounted = false;
       };
     }
-
-    const svgToDataUrl = (svgText) => {
-      const encoded = window.btoa(unescape(encodeURIComponent(svgText)));
-      return `data:image/svg+xml;base64,${encoded}`;
-    };
 
     const fetchDiagramSvg = async () => {
       setDiagramLoading(true);
