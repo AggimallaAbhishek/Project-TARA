@@ -111,11 +111,15 @@ class ExtractSessionService:
         user_id: int,
         extracted_system_description: str,
         source_metadata: dict[str, Any],
+        diagram_format: str | None = None,
+        diagram_code: str | None = None,
     ) -> str:
         payload = {
             "user_id": user_id,
             "extracted_system_description": extracted_system_description,
             "source_metadata": source_metadata,
+            "diagram_format": diagram_format,
+            "diagram_code": diagram_code,
         }
         extract_id = self._fallback.create(payload)
         self._set_redis(extract_id, payload)

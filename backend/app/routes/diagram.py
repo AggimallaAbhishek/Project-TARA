@@ -26,6 +26,16 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
+def _decode_text_diagram_payload(file_bytes: bytes) -> str:
+    try:
+        return file_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            return file_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise DiagramExtractionError("Text UML diagram files must be UTF-8 encoded.") from exc
+
+
 def enforce_diagram_extract_rate_limit(current_user: User = Depends(get_current_user)) -> User:
     key = f"user:{current_user.id}"
     is_allowed, retry_after = diagram_extract_rate_limiter.is_allowed(key)
@@ -87,18 +97,30 @@ async def extract_diagram(
             content_type=file.content_type,
             file_bytes=raw_bytes,
         )
+        diagram_format = None
+        diagram_code = None
+        input_type = source_metadata.get("input_type")
+        if input_type in {"mermaid", "plantuml"}:
+            diagram_code = _decode_text_diagram_payload(raw_bytes).strip()
+            if diagram_code:
+                diagram_format = input_type
+
         extract_id = extract_session_service.create_session(
             user_id=current_user.id,
             extracted_system_description=extracted_description,
             source_metadata=source_metadata,
+            diagram_format=diagram_format,
+            diagram_code=diagram_code,
         )
         elapsed = perf_counter() - request_start
         logger.info(
-            "Diagram extracted user_id=%s extract_id=%s input_type=%s size_bytes=%s elapsed=%.2fs",
+            "Diagram extracted user_id=%s extract_id=%s input_type=%s size_bytes=%s diagram_format=%s diagram_code_length=%s elapsed=%.2fs",
             current_user.id,
             extract_id,
             source_metadata.get("input_type"),
             source_metadata.get("file_size"),
+            diagram_format,
+            len(diagram_code or ""),
             elapsed,
         )
         return DiagramExtractResponse(
@@ -196,6 +218,8 @@ async def analyze_diagram(
         system_description=system_description,
         project_id=request.project_id,
         project_name=request.project_name,
+        diagram_format=session_payload.get("diagram_format"),
+        diagram_code=session_payload.get("diagram_code"),
         source="diagram",
         background_tasks=background_tasks,
     )

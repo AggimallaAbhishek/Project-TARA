@@ -145,6 +145,9 @@ class DiagramApiTest(unittest.TestCase):
         analysis = analyze_response.json()
         self.assertEqual(analysis["title"], "Diagram Analysis")
         self.assertEqual(len(analysis["threats"]), 1)
+        self.assertTrue(analysis["has_diagram"])
+        self.assertEqual(analysis["diagram_format"], "mermaid")
+        self.assertIn("graph TD", analysis["diagram_code"])
 
     def test_analyze_rejects_missing_extract_session(self):
         response = self.client.post(
