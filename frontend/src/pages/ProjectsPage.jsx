@@ -111,72 +111,30 @@ export default function ProjectsPage() {
         </Link>
       </motion.div>
 
-      <div className="grid lg:grid-cols-[1fr_360px] gap-6 mb-8 items-start">
-        <form
-          onSubmit={handleSearch}
-          className="card-dark p-4 h-fit"
-        >
-          <label className="sr-only" htmlFor="project-search">
-            Search projects
-          </label>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-              <input
-                id="project-search"
-                type="text"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search by project name"
-                className="input-dark pl-9"
-              />
-            </div>
-            <button type="submit" className="btn-secondary">
-              Search
-            </button>
-          </div>
-        </form>
-
-        <form
-          onSubmit={handleCreateProject}
-          className="card-dark p-4 h-fit"
-        >
-          <h2 className="text-lg font-semibold text-text-primary mb-3">Create Project</h2>
-          <div className="space-y-3">
+      <form
+        onSubmit={handleSearch}
+        className="card-dark p-4 mb-8"
+      >
+        <label className="sr-only" htmlFor="project-search">
+          Search projects
+        </label>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
+              id="project-search"
               type="text"
-              value={newProjectName}
-              onChange={(event) => setNewProjectName(event.target.value)}
-              placeholder="e.g., Banking Mobile App"
-              maxLength={255}
-              className="input-dark"
-              aria-label="Project name"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search by project name"
+              className="input-dark pl-9"
             />
-            <textarea
-              value={newProjectDescription}
-              onChange={(event) => setNewProjectDescription(event.target.value)}
-              placeholder="Optional project notes"
-              maxLength={2000}
-              rows={3}
-              className="textarea-dark"
-              aria-label="Project description"
-            />
-            {createError && (
-              <div className="p-3 rounded-lg bg-risk-critical/10 border border-risk-critical/30 text-risk-critical text-sm flex gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                {createError}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={!newProjectName.trim() || creating}
-              className="btn-secondary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {creating ? 'Creating...' : 'Create Project'}
-            </button>
           </div>
-        </form>
-      </div>
+          <button type="submit" className="btn-secondary">
+            Search
+          </button>
+        </div>
+      </form>
 
       {error && (
         <div className="p-4 mb-6 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-risk-critical">
@@ -212,6 +170,46 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
+
+      <form
+        onSubmit={handleCreateProject}
+        className="card-dark p-4 mt-8"
+      >
+        <h2 className="text-lg font-semibold text-text-primary mb-3">Create Project</h2>
+        <div className="grid lg:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+          <input
+            type="text"
+            value={newProjectName}
+            onChange={(event) => setNewProjectName(event.target.value)}
+            placeholder="e.g., Banking Mobile App"
+            maxLength={255}
+            className="input-dark"
+            aria-label="Project name"
+          />
+          <textarea
+            value={newProjectDescription}
+            onChange={(event) => setNewProjectDescription(event.target.value)}
+            placeholder="Optional project notes"
+            maxLength={2000}
+            rows={3}
+            className="textarea-dark"
+            aria-label="Project description"
+          />
+          <button
+            type="submit"
+            disabled={!newProjectName.trim() || creating}
+            className="btn-secondary w-full lg:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {creating ? 'Creating...' : 'Create Project'}
+          </button>
+        </div>
+        {createError && (
+          <div className="mt-3 p-3 rounded-lg bg-risk-critical/10 border border-risk-critical/30 text-risk-critical text-sm flex gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            {createError}
+          </div>
+        )}
+      </form>
     </div>
   );
 }

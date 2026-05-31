@@ -4,7 +4,9 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm 10 can fail strict peer resolution on some optional rolldown WASM peers.
+# Keep deterministic lockfile installs while allowing peer fallback in CI/Docker.
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 
