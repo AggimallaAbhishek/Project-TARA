@@ -4,10 +4,16 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Zap, Target, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getBackendHealth } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
+import {
+  clearGoogleLoginCallbacks,
+  dispatchGoogleLoginError,
+  dispatchGoogleLoginSuccess,
+  registerGoogleLoginCallbacks,
+} from '../services/googleLoginCallbacks';
 
 export default function LoginPage({ isGoogleConfigured = false, googleConfigSource = 'frontend-env' }) {
   const { login, isAuthenticated, loading } = useAuth();
@@ -51,7 +57,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
     return <Navigate to="/" replace />;
   }
 
-  const handleSuccess = async (credentialResponse) => {
+  const handleSuccess = useCallback(async (credentialResponse) => {
     setIsLoggingIn(true);
     setError(null);
     try {
@@ -67,11 +73,21 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
       console.error('Login error:', err);
       setIsLoggingIn(false);
     }
-  };
+  }, [login, navigate]);
 
-  const handleError = () => {
+  const handleError = useCallback(() => {
     setError('Google login failed. Please try again.');
-  };
+  }, []);
+
+  useEffect(() => {
+    registerGoogleLoginCallbacks({
+      onSuccess: handleSuccess,
+      onError: handleError,
+    });
+    return () => {
+      clearGoogleLoginCallbacks();
+    };
+  }, [handleError, handleSuccess]);
 
   const features = [
     { icon: Zap, text: 'AI-powered threat analysis' },
@@ -139,8 +155,8 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
                 </div>
               ) : isBackendReachable ? (
                 <GoogleLogin
-                  onSuccess={handleSuccess}
-                  onError={handleError}
+                  onSuccess={dispatchGoogleLoginSuccess}
+                  onError={dispatchGoogleLoginError}
                   useOneTap={false}
                   auto_select={false}
                   use_fedcm_for_button={false}

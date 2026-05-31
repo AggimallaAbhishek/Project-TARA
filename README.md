@@ -181,11 +181,12 @@ docker compose up -d postgres redis
 docker compose up -d --build backend
 
 # Build and start frontend
-docker compose up -d frontend
+docker compose up -d --build frontend
 
 # Verify everything is running
 docker compose ps
 curl -fsS http://localhost:8000/health
+./scripts/check-runtime-drift.sh
 ```
 
 **Access the application:**

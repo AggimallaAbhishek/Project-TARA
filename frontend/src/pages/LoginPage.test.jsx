@@ -4,9 +4,14 @@ import { MemoryRouter } from 'react-router-dom'
 
 import LoginPage from './LoginPage'
 import { getBackendHealth } from '../services/api'
+import {
+  dispatchGoogleLoginError,
+  dispatchGoogleLoginSuccess,
+} from '../services/googleLoginCallbacks'
 
 const mockNavigate = vi.fn()
 const mockLogin = vi.fn()
+const observedGoogleLoginProps = []
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -17,14 +22,17 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('@react-oauth/google', () => ({
-  GoogleLogin: ({ onSuccess }) => (
-    <button
-      type="button"
-      onClick={() => onSuccess({ credential: 'credential-token' })}
-    >
-      Google Login Button
-    </button>
-  ),
+  GoogleLogin: (props) => {
+    observedGoogleLoginProps.push(props)
+    return (
+      <button
+        type="button"
+        onClick={() => props.onSuccess({ credential: 'credential-token' })}
+      >
+        Google Login Button
+      </button>
+    )
+  },
 }))
 
 vi.mock('../context/AuthContext', () => ({
@@ -51,6 +59,7 @@ describe('LoginPage backend reachability', () => {
   beforeEach(() => {
     mockLogin.mockResolvedValue({ user: { id: 1 } })
     mockNavigate.mockReset()
+    observedGoogleLoginProps.length = 0
   })
 
   afterEach(() => {
@@ -92,5 +101,19 @@ describe('LoginPage backend reachability', () => {
       expect(mockLogin).toHaveBeenCalledWith('credential-token')
       expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true })
     })
+  })
+
+  it('uses stable Google callback dispatchers for widget initialization', async () => {
+    getBackendHealth.mockResolvedValue({ status: 'healthy' })
+
+    renderLoginPage()
+
+    await waitFor(() => {
+      expect(observedGoogleLoginProps.length).toBeGreaterThan(0)
+    })
+
+    const latestProps = observedGoogleLoginProps.at(-1)
+    expect(latestProps.onSuccess).toBe(dispatchGoogleLoginSuccess)
+    expect(latestProps.onError).toBe(dispatchGoogleLoginError)
   })
 })

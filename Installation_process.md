@@ -293,10 +293,11 @@ docker compose ps backend
 # STATUS should show "healthy"
 
 # 5. Build and start the frontend
-docker compose up -d frontend
+docker compose up -d --build frontend
 
 # 6. Verify all services are running
 docker compose ps
+./scripts/check-runtime-drift.sh
 ```
 
 Expected output:

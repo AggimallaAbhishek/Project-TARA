@@ -7,8 +7,8 @@ docker compose up -d postgres redis
 echo "[dev-up] Rebuilding and starting backend..."
 docker compose up -d --build backend
 
-echo "[dev-up] Starting frontend..."
-docker compose up -d frontend
+echo "[dev-up] Rebuilding and starting frontend..."
+docker compose up -d --build frontend
 
 echo "[dev-up] Backend container status:"
 docker compose ps backend
@@ -39,3 +39,8 @@ if ! docker compose exec -T backend python scripts/check_ollama.py; then
 fi
 
 echo "[dev-up] Ollama connectivity: OK"
+
+echo "[dev-up] Verifying runtime image/asset alignment..."
+./scripts/check-runtime-drift.sh
+
+echo "[dev-up] Runtime alignment: OK"

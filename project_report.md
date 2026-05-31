@@ -575,8 +575,9 @@ backend  → ollama (host machine)
 # Manual equivalent
 docker compose up -d postgres redis
 docker compose up -d --build backend
-docker compose up -d frontend
+docker compose up -d --build frontend
 curl -fsS http://localhost:8000/health
+./scripts/check-runtime-drift.sh
 ```
 
 ### 13.4 Health Checks
