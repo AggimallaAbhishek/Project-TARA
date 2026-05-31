@@ -49,23 +49,16 @@ assert_service_uses_latest_image() {
 assert_service_uses_latest_image "backend" "project-tara-backend:latest"
 assert_service_uses_latest_image "frontend" "project-tara-frontend:latest"
 
-local_bundle=""
-if [[ -f "frontend/dist/index.html" ]]; then
-  local_bundle="$(grep -Eo 'assets/index-[^"]+\.js' frontend/dist/index.html | head -n1 || true)"
-fi
-
 served_bundle="$(docker compose exec -T frontend sh -lc "grep -Eo 'assets/index-[^\"]+\\.js' /usr/share/nginx/html/index.html | head -n1" || true)"
+latest_image_bundle="$(docker run --rm --entrypoint sh project-tara-frontend:latest -lc "grep -Eo 'assets/index-[^\"]+\\.js' /usr/share/nginx/html/index.html | head -n1" || true)"
 
-if [[ -n "${local_bundle}" ]]; then
-  echo "[runtime-check] local frontend bundle =${local_bundle}"
-  echo "[runtime-check] served frontend bundle=${served_bundle}"
-  if [[ -z "${served_bundle}" || "${served_bundle}" != "${local_bundle}" ]]; then
-    echo "[runtime-check] served frontend bundle does not match local build output." >&2
-    echo "[runtime-check] Rebuild/recreate frontend: docker compose up -d --build frontend" >&2
-    exit 1
-  fi
-else
-  echo "[runtime-check] local frontend dist not found; skipping bundle hash comparison."
+echo "[runtime-check] latest-image frontend bundle=${latest_image_bundle}"
+echo "[runtime-check] served frontend bundle=${served_bundle}"
+
+if [[ -z "${served_bundle}" || -z "${latest_image_bundle}" || "${served_bundle}" != "${latest_image_bundle}" ]]; then
+  echo "[runtime-check] served frontend bundle does not match latest frontend image." >&2
+  echo "[runtime-check] Rebuild/recreate frontend: docker compose up -d --build frontend" >&2
+  exit 1
 fi
 
 curl -fsS http://localhost:8000/health >/dev/null

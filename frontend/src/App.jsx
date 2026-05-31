@@ -98,7 +98,7 @@ function App() {
     );
   }
 
-  if (!googleClientId && import.meta.env.DEV) {
+  if (!googleClientId && import.meta.env.DEV && import.meta.env.VITE_E2E !== 'true') {
     console.warn('Google Client ID not configured. Google login will not work.');
   }
 

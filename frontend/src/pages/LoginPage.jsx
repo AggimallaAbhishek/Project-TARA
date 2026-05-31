@@ -23,6 +23,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
   const [isCheckingBackend, setIsCheckingBackend] = useState(true);
   const [isBackendReachable, setIsBackendReachable] = useState(true);
   const [backendError, setBackendError] = useState('');
+  const [isGoogleWidgetReady, setIsGoogleWidgetReady] = useState(false);
   const shouldRedirect = !loading && isAuthenticated;
 
   const probeBackendReachability = async () => {
@@ -51,11 +52,6 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
     }
     probeBackendReachability();
   }, [shouldRedirect]);
-
-  // Redirect if already logged in
-  if (shouldRedirect) {
-    return <Navigate to="/" replace />;
-  }
 
   const handleSuccess = useCallback(async (credentialResponse) => {
     setIsLoggingIn(true);
@@ -88,6 +84,23 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
       clearGoogleLoginCallbacks();
     };
   }, [handleError, handleSuccess]);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setIsGoogleWidgetReady(true);
+      if (import.meta.env.DEV) {
+        console.debug('auth.google_widget.ready');
+      }
+    }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, []);
+
+  // Redirect if already logged in
+  if (shouldRedirect) {
+    return <Navigate to="/" replace />;
+  }
 
   const features = [
     { icon: Zap, text: 'AI-powered threat analysis' },
@@ -154,20 +167,26 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
                   Checking backend connectivity...
                 </div>
               ) : isBackendReachable ? (
-                <GoogleLogin
-                  onSuccess={dispatchGoogleLoginSuccess}
-                  onError={dispatchGoogleLoginError}
-                  useOneTap={false}
-                  auto_select={false}
-                  use_fedcm_for_button={false}
-                  context="signin"
-                  type="standard"
-                  theme="filled_black"
-                  size="large"
-                  text="signin_with"
-                  shape="rectangular"
-                  width="300"
-                />
+                isGoogleWidgetReady ? (
+                  <GoogleLogin
+                    onSuccess={dispatchGoogleLoginSuccess}
+                    onError={dispatchGoogleLoginError}
+                    useOneTap={false}
+                    auto_select={false}
+                    use_fedcm_for_button={false}
+                    context="signin"
+                    type="standard"
+                    theme="filled_black"
+                    size="large"
+                    text="signin_with"
+                    shape="rectangular"
+                    width="300"
+                  />
+                ) : (
+                  <div className="w-full max-w-[300px] p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 rounded-lg text-sm text-cyber-cyan text-center">
+                    Preparing sign-in...
+                  </div>
+                )
               ) : (
                 <div className="w-full max-w-[300px] space-y-3">
                   <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">

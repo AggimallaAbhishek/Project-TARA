@@ -190,7 +190,7 @@ async function mockApi(page, { authenticated = true, onDelete = () => {} } = {})
     const method = request.method();
 
     if (path === '/api/auth/config') {
-      return fulfillJson(route, { google_client_id: 'e2e-client' });
+      return fulfillJson(route, { google_client_id: '' });
     }
     if (path === '/api/auth/me') {
       return authenticated

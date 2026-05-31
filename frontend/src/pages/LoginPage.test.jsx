@@ -95,7 +95,7 @@ describe('LoginPage backend reachability', () => {
       expect(getBackendHealth).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Google Login Button' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Google Login Button' }))
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('credential-token')
