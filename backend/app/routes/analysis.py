@@ -223,6 +223,7 @@ async def get_analysis(
 )
 async def get_analysis_diagram_svg(
     analysis_id: int,
+    refresh: bool = Query(default=False, description="Force renderer refresh and overwrite cached output"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -247,6 +248,7 @@ async def get_analysis_diagram_svg(
         svg_content = diagram_render_service.render_svg(
             analysis.diagram_format or "",
             analysis.diagram_code or "",
+            force_refresh=refresh,
         )
     except DiagramRendererUnavailableError as exc:
         raise HTTPException(
@@ -260,13 +262,81 @@ async def get_analysis_diagram_svg(
         ) from exc
 
     logger.debug(
-        "Diagram SVG rendered user_id=%s analysis_id=%s format=%s bytes=%s",
+        "Diagram SVG rendered user_id=%s analysis_id=%s format=%s refresh=%s bytes=%s",
         current_user.id,
         analysis.id,
         analysis.diagram_format,
+        refresh,
         len(svg_content.encode("utf-8")),
     )
     return Response(content=svg_content, media_type="image/svg+xml")
+
+
+@router.get(
+    "/analyses/{analysis_id}/diagram.png",
+    summary="Render persisted UML diagram as PNG",
+    response_description="Rendered PNG diagram for one analysis",
+    responses={
+        401: {"description": "Authentication required"},
+        404: {"description": "Analysis not found or does not include UML code"},
+        502: {"description": "Diagram render failed due to invalid stored UML code"},
+        503: {"description": "Diagram renderer unavailable"},
+    },
+)
+async def get_analysis_diagram_png(
+    analysis_id: int,
+    refresh: bool = Query(default=False, description="Force renderer refresh and overwrite cached output"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    analysis = _get_user_analysis(
+        db,
+        analysis_id=analysis_id,
+        user_id=current_user.id,
+        include_threats=False,
+    )
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Analysis with id {analysis_id} not found",
+        )
+    if not analysis.has_diagram:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis does not include UML diagram code.",
+        )
+
+    try:
+        png_bytes = diagram_render_service.render_png(
+            analysis.diagram_format or "",
+            analysis.diagram_code or "",
+            force_refresh=refresh,
+        )
+    except DiagramRendererUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except DiagramRenderError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    filename = f"{_sanitize_filename(analysis.title)}-{analysis.id}.png"
+    logger.debug(
+        "Diagram PNG rendered user_id=%s analysis_id=%s format=%s refresh=%s bytes=%s",
+        current_user.id,
+        analysis.id,
+        analysis.diagram_format,
+        refresh,
+        len(png_bytes),
+    )
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get(

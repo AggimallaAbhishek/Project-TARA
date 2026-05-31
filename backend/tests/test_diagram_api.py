@@ -284,6 +284,28 @@ class DiagramApiTest(unittest.TestCase):
         self.assertIn("image/svg+xml", svg_response.headers["content-type"])
         self.assertIn("<svg>", svg_response.text)
 
+    def test_diagram_svg_endpoint_honors_refresh_flag(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Refresh SVG Analysis",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_svg",
+            return_value="<svg><rect/></svg>",
+        ) as render_mock:
+            svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg?refresh=true")
+
+        self.assertEqual(svg_response.status_code, 200)
+        self.assertEqual(render_mock.call_count, 1)
+        self.assertTrue(render_mock.call_args.kwargs.get("force_refresh"))
+
     def test_diagram_svg_endpoint_returns_404_for_non_diagram_analysis(self):
         response = self.client.post(
             "/api/analyze",
@@ -370,6 +392,116 @@ class DiagramApiTest(unittest.TestCase):
             svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
 
         self.assertEqual(svg_response.status_code, 502)
+
+    def test_diagram_png_endpoint_returns_png(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "PNG Analysis",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_png",
+            return_value=b"\x89PNG\r\n\x1a\nfakepng",
+        ):
+            png_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.png")
+
+        self.assertEqual(png_response.status_code, 200)
+        self.assertIn("image/png", png_response.headers["content-type"])
+        self.assertIn("attachment; filename=", png_response.headers.get("content-disposition", ""))
+        self.assertTrue(png_response.content.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_diagram_png_endpoint_returns_404_for_non_diagram_analysis(self):
+        response = self.client.post(
+            "/api/analyze",
+            json={
+                "title": "Text Analysis Without Diagram",
+                "system_description": "Gateway with auth and database plus queue integration.",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        analysis_id = response.json()["id"]
+
+        png_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.png")
+        self.assertEqual(png_response.status_code, 404)
+
+    def test_diagram_png_endpoint_returns_404_for_foreign_user(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Foreign Ownership PNG",
+                "uml_format": "mermaid",
+                "uml_code": "graph TD\nA-->B",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        def override_foreign_user():
+            return User(
+                id=9999,
+                email="foreign@example.com",
+                name="Foreign User",
+                google_id="foreign-user-google-id",
+            )
+
+        app.dependency_overrides[get_current_user] = override_foreign_user
+        try:
+            png_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.png")
+        finally:
+            app.dependency_overrides[get_current_user] = lambda: User(
+                id=self.user_id,
+                email="diagram-test-user@example.com",
+                name="Diagram Test User",
+                google_id="diagram-test-google-id",
+            )
+
+        self.assertEqual(png_response.status_code, 404)
+
+    def test_diagram_png_endpoint_maps_renderer_unavailable_to_503(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Renderer Unavailable PNG",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_png",
+            side_effect=DiagramRendererUnavailableError("Renderer unavailable"),
+        ):
+            png_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.png")
+
+        self.assertEqual(png_response.status_code, 503)
+
+    def test_diagram_png_endpoint_maps_render_error_to_502(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Renderer Bad PNG",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_png",
+            side_effect=DiagramRenderError("Renderer rejected UML payload"),
+        ):
+            png_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.png")
+
+        self.assertEqual(png_response.status_code, 502)
 
     def test_extract_reports_runtime_failure(self):
         with patch.object(

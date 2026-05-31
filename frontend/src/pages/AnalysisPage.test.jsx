@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import AnalysisPage from './AnalysisPage'
 import {
+  downloadAnalysisDiagramPng,
   downloadAnalysisPdf,
   getAnalysis,
   getAnalysisDiagramSvg,
@@ -13,6 +14,7 @@ import {
 vi.mock('../services/api', () => ({
   getAnalysis: vi.fn(),
   getAnalysisDiagramSvg: vi.fn(),
+  downloadAnalysisDiagramPng: vi.fn(),
   downloadAnalysisPdf: vi.fn(),
   getAnalysisVersionComparison: vi.fn(),
 }))
@@ -56,6 +58,10 @@ describe('AnalysisPage PDF export', () => {
       threats: [],
     })
     getAnalysisDiagramSvg.mockResolvedValue('<svg xmlns="http://www.w3.org/2000/svg"></svg>')
+    downloadAnalysisDiagramPng.mockResolvedValue({
+      data: new Blob(['png-content'], { type: 'image/png' }),
+      headers: { 'content-disposition': 'attachment; filename="diagram.png"' },
+    })
     getAnalysisVersionComparison.mockResolvedValue({
       current_analysis_id: 42,
       current_created_at: '2026-01-01T10:00:00',
@@ -202,6 +208,100 @@ describe('AnalysisPage PDF export', () => {
     await waitFor(() => {
       expect(getAnalysisDiagramSvg.mock.calls.length).toBeGreaterThanOrEqual(2)
       expect(screen.getByAltText('Payments Platform UML diagram')).toBeInTheDocument()
+    })
+  })
+
+  it('shows diagram export and refresh controls when diagram exists', async () => {
+    getAnalysis.mockResolvedValueOnce({
+      id: 42,
+      title: 'Payments Platform',
+      created_at: '2026-01-01T10:00:00',
+      analysis_time: 0.3,
+      total_risk_score: 8.0,
+      system_description: 'System description',
+      has_diagram: true,
+      diagram_format: 'mermaid',
+      diagram_code: 'graph TD\nA-->B',
+      threats: [],
+    })
+
+    renderAnalysisPage()
+
+    await screen.findByText('Diagram (MERMAID)')
+    expect(screen.getByRole('button', { name: 'Download SVG' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download PNG' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Refresh Render Cache' })).toBeInTheDocument()
+  })
+
+  it('downloads diagram SVG when user clicks Download SVG', async () => {
+    getAnalysis.mockResolvedValueOnce({
+      id: 42,
+      title: 'Payments Platform',
+      created_at: '2026-01-01T10:00:00',
+      analysis_time: 0.3,
+      total_risk_score: 8.0,
+      system_description: 'System description',
+      has_diagram: true,
+      diagram_format: 'mermaid',
+      diagram_code: 'graph TD\nA-->B',
+      threats: [],
+    })
+
+    renderAnalysisPage()
+
+    await screen.findByText('Diagram (MERMAID)')
+    fireEvent.click(screen.getByRole('button', { name: 'Download SVG' }))
+
+    await waitFor(() => {
+      expect(getAnalysisDiagramSvg.mock.calls.length).toBeGreaterThanOrEqual(2)
+    })
+  })
+
+  it('downloads diagram PNG when user clicks Download PNG', async () => {
+    getAnalysis.mockResolvedValueOnce({
+      id: 42,
+      title: 'Payments Platform',
+      created_at: '2026-01-01T10:00:00',
+      analysis_time: 0.3,
+      total_risk_score: 8.0,
+      system_description: 'System description',
+      has_diagram: true,
+      diagram_format: 'mermaid',
+      diagram_code: 'graph TD\nA-->B',
+      threats: [],
+    })
+
+    renderAnalysisPage()
+
+    await screen.findByText('Diagram (MERMAID)')
+    fireEvent.click(screen.getByRole('button', { name: 'Download PNG' }))
+
+    await waitFor(() => {
+      expect(downloadAnalysisDiagramPng).toHaveBeenCalledWith('42')
+    })
+  })
+
+  it('refreshes diagram cache when user clicks Refresh Render Cache', async () => {
+    getAnalysis.mockResolvedValueOnce({
+      id: 42,
+      title: 'Payments Platform',
+      created_at: '2026-01-01T10:00:00',
+      analysis_time: 0.3,
+      total_risk_score: 8.0,
+      system_description: 'System description',
+      has_diagram: true,
+      diagram_format: 'mermaid',
+      diagram_code: 'graph TD\nA-->B',
+      threats: [],
+    })
+
+    renderAnalysisPage()
+
+    await screen.findByText('Diagram (MERMAID)')
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh Render Cache' }))
+
+    await waitFor(() => {
+      expect(getAnalysisDiagramSvg).toHaveBeenCalledWith('42', { refresh: true })
     })
   })
 })

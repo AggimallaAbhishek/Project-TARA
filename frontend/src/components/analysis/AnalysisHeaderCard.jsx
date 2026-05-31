@@ -20,8 +20,13 @@ export default function AnalysisHeaderCard({
   diagramError,
   diagramSvgDataUrl,
   isDiagramCodeExpanded,
+  diagramActionError,
+  activeDiagramAction,
   onToggleDiagramCode,
   onRetryDiagramRender,
+  onDownloadDiagramSvg,
+  onDownloadDiagramPng,
+  onRefreshDiagramCache,
 }) {
   return (
     <motion.div
@@ -105,8 +110,13 @@ export default function AnalysisHeaderCard({
           diagramError={diagramError}
           diagramSvgDataUrl={diagramSvgDataUrl}
           isDiagramCodeExpanded={isDiagramCodeExpanded}
+          diagramActionError={diagramActionError}
+          activeDiagramAction={activeDiagramAction}
           onToggleCode={onToggleDiagramCode}
           onRetryRender={onRetryDiagramRender}
+          onDownloadSvg={onDownloadDiagramSvg}
+          onDownloadPng={onDownloadDiagramPng}
+          onRefreshCache={onRefreshDiagramCache}
         />
       )}
 

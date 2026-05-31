@@ -28,8 +28,12 @@ def _build_settings():
 
 class _FakeClient:
     def __init__(self, response_or_exception):
-        self.response_or_exception = response_or_exception
+        if isinstance(response_or_exception, list):
+            self.responses_or_exceptions = response_or_exception
+        else:
+            self.responses_or_exceptions = [response_or_exception]
         self.post_calls = []
+        self._call_index = 0
 
     def __enter__(self):
         return self
@@ -39,9 +43,11 @@ class _FakeClient:
 
     def post(self, url, content, headers):
         self.post_calls.append((url, content, headers))
-        if isinstance(self.response_or_exception, Exception):
-            raise self.response_or_exception
-        return self.response_or_exception
+        value = self.responses_or_exceptions[min(self._call_index, len(self.responses_or_exceptions) - 1)]
+        self._call_index += 1
+        if isinstance(value, Exception):
+            raise value
+        return value
 
 
 class DiagramRenderServiceTest(unittest.TestCase):
@@ -89,6 +95,58 @@ class DiagramRenderServiceTest(unittest.TestCase):
             with patch("app.services.diagram_render_service.httpx.Client", return_value=fake_client):
                 with self.assertRaises(DiagramRendererUnavailableError):
                     service.render_svg("plantuml", "@startuml\nA->B\n@enduml")
+
+    def test_render_png_cache_is_separate_from_svg_cache(self):
+        service = DiagramRenderService(cache_max_entries=8)
+        svg_response = httpx.Response(
+            status_code=200,
+            text="<svg><rect/></svg>",
+            request=httpx.Request("POST", "http://kroki:8000/mermaid/svg"),
+        )
+        png_response = httpx.Response(
+            status_code=200,
+            content=b"\x89PNG\r\n\x1a\npngbytes",
+            request=httpx.Request("POST", "http://kroki:8000/mermaid/png"),
+        )
+        fake_client = _FakeClient([svg_response, png_response])
+
+        with patch("app.services.diagram_render_service.get_settings", return_value=_build_settings()):
+            with patch("app.services.diagram_render_service.httpx.Client", return_value=fake_client):
+                svg = service.render_svg("mermaid", "graph TD\nA-->B")
+                png_first = service.render_png("mermaid", "graph TD\nA-->B")
+                png_second = service.render_png("mermaid", "graph TD\nA-->B")
+
+        self.assertEqual(svg, "<svg><rect/></svg>")
+        self.assertTrue(png_first.startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertEqual(png_first, png_second)
+        self.assertEqual(len(fake_client.post_calls), 2)
+
+    def test_force_refresh_bypasses_cache_and_updates_entry(self):
+        service = DiagramRenderService(cache_max_entries=8)
+        first_svg_response = httpx.Response(
+            status_code=200,
+            text="<svg><text>first</text></svg>",
+            request=httpx.Request("POST", "http://kroki:8000/mermaid/svg"),
+        )
+        second_svg_response = httpx.Response(
+            status_code=200,
+            text="<svg><text>second</text></svg>",
+            request=httpx.Request("POST", "http://kroki:8000/mermaid/svg"),
+        )
+        fake_client = _FakeClient([first_svg_response, second_svg_response])
+
+        with patch("app.services.diagram_render_service.get_settings", return_value=_build_settings()):
+            with patch("app.services.diagram_render_service.httpx.Client", return_value=fake_client):
+                first = service.render_svg("mermaid", "graph TD\nA-->B")
+                cached = service.render_svg("mermaid", "graph TD\nA-->B")
+                refreshed = service.render_svg("mermaid", "graph TD\nA-->B", force_refresh=True)
+                post_refresh_cached = service.render_svg("mermaid", "graph TD\nA-->B")
+
+        self.assertEqual(first, "<svg><text>first</text></svg>")
+        self.assertEqual(cached, "<svg><text>first</text></svg>")
+        self.assertEqual(refreshed, "<svg><text>second</text></svg>")
+        self.assertEqual(post_refresh_cached, "<svg><text>second</text></svg>")
+        self.assertEqual(len(fake_client.post_calls), 2)
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import {
+  downloadAnalysisDiagramPng,
   downloadAnalysisPdf,
   getAnalysis,
   getAnalysisDiagramSvg,
@@ -43,6 +44,8 @@ export default function AnalysisPage() {
   const [diagramSvgDataUrl, setDiagramSvgDataUrl] = useState('');
   const [diagramLoading, setDiagramLoading] = useState(false);
   const [diagramError, setDiagramError] = useState(null);
+  const [diagramActionError, setDiagramActionError] = useState(null);
+  const [activeDiagramAction, setActiveDiagramAction] = useState(null);
   const [isDiagramCodeExpanded, setIsDiagramCodeExpanded] = useState(false);
 
   useEffect(() => {
@@ -68,6 +71,8 @@ export default function AnalysisPage() {
     if (!analysis?.has_diagram) {
       setDiagramSvgDataUrl('');
       setDiagramError(null);
+      setDiagramActionError(null);
+      setActiveDiagramAction(null);
       setDiagramLoading(false);
       return () => {
         isMounted = false;
@@ -142,6 +147,27 @@ export default function AnalysisPage() {
     return standardMatch ? standardMatch[1] : null;
   };
 
+  const buildSafeDownloadName = (extension) => {
+    const normalizedTitle = (analysis?.title || `analysis-${id}`)
+      .trim()
+      .replace(/[^a-z0-9-_]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+    const baseName = normalizedTitle || `analysis-${id}`;
+    return `${baseName}-${id}.${extension}`;
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const blobUrl = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = blobUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  };
+
   const handleDownloadPdf = async () => {
     if (isDownloadingPdf) return;
     setPdfError(null);
@@ -150,14 +176,7 @@ export default function AnalysisPage() {
       const response = await downloadAnalysisPdf(id);
       const filename =
         parseFilenameFromHeader(response.headers?.['content-disposition']) || `analysis-${id}.pdf`;
-      const blobUrl = window.URL.createObjectURL(response.data);
-      const anchor = document.createElement('a');
-      anchor.href = blobUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      downloadBlob(response.data, filename);
     } catch (downloadError) {
       console.error('Failed to download PDF report:', downloadError);
       setPdfError(getApiErrorMessage(downloadError, {
@@ -210,6 +229,71 @@ export default function AnalysisPage() {
     }
   };
 
+  const beginDiagramAction = (actionType) => {
+    setDiagramActionError(null);
+    setActiveDiagramAction(actionType);
+  };
+
+  const endDiagramAction = () => {
+    setActiveDiagramAction(null);
+  };
+
+  const handleDownloadDiagramSvg = async () => {
+    if (activeDiagramAction || !analysis?.has_diagram) return;
+    beginDiagramAction('downloadSvg');
+    try {
+      const svgContent = await getAnalysisDiagramSvg(id);
+      const fileName = buildSafeDownloadName('svg');
+      downloadBlob(new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' }), fileName);
+    } catch (actionError) {
+      setDiagramActionError(getApiErrorMessage(actionError, {
+        fallbackMessage: 'Failed to download SVG diagram',
+        operation: 'analysis.diagram_svg_download',
+      }));
+    } finally {
+      endDiagramAction();
+    }
+  };
+
+  const handleDownloadDiagramPng = async () => {
+    if (activeDiagramAction || !analysis?.has_diagram) return;
+    beginDiagramAction('downloadPng');
+    try {
+      const response = await downloadAnalysisDiagramPng(id);
+      const fileName =
+        parseFilenameFromHeader(response.headers?.['content-disposition']) || buildSafeDownloadName('png');
+      downloadBlob(response.data, fileName);
+    } catch (actionError) {
+      setDiagramActionError(getApiErrorMessage(actionError, {
+        fallbackMessage: 'Failed to download PNG diagram',
+        operation: 'analysis.diagram_png_download',
+      }));
+    } finally {
+      endDiagramAction();
+    }
+  };
+
+  const handleRefreshDiagramCache = async () => {
+    if (activeDiagramAction || !analysis?.has_diagram) return;
+    beginDiagramAction('refreshCache');
+    setDiagramLoading(true);
+    setDiagramError(null);
+    try {
+      const svgContent = await getAnalysisDiagramSvg(id, { refresh: true });
+      setDiagramSvgDataUrl(svgToDataUrl(svgContent));
+    } catch (actionError) {
+      const normalizedMessage = getApiErrorMessage(actionError, {
+        fallbackMessage: 'Failed to refresh diagram render cache',
+        operation: 'analysis.diagram_refresh',
+      });
+      setDiagramError(normalizedMessage);
+      setDiagramActionError(normalizedMessage);
+    } finally {
+      setDiagramLoading(false);
+      endDiagramAction();
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       {/* Breadcrumb */}
@@ -237,8 +321,13 @@ export default function AnalysisPage() {
         diagramError={diagramError}
         diagramSvgDataUrl={diagramSvgDataUrl}
         isDiagramCodeExpanded={isDiagramCodeExpanded}
+        diagramActionError={diagramActionError}
+        activeDiagramAction={activeDiagramAction}
         onToggleDiagramCode={() => setIsDiagramCodeExpanded((value) => !value)}
         onRetryDiagramRender={handleRetryDiagramRender}
+        onDownloadDiagramSvg={handleDownloadDiagramSvg}
+        onDownloadDiagramPng={handleDownloadDiagramPng}
+        onRefreshDiagramCache={handleRefreshDiagramCache}
       />
 
       <VersionComparisonPanel

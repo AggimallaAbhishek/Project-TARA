@@ -1,5 +1,5 @@
-import { __apiInternal, api, getBackendHealth } from './api/internal/client';
-import { getAuthConfig, getMe, googleAuth, logoutRequest } from './api/endpoints/auth';
+import { __apiInternal, api, getBackendHealth } from './apiClient/internal/client';
+import { getAuthConfig, getMe, googleAuth, logoutRequest } from './apiClient/endpoints/auth';
 import {
   analyzeDocument,
   analyzeFromDiagram,
@@ -7,6 +7,7 @@ import {
   analyzeSystem,
   compareAnalyses,
   deleteAnalysis,
+  downloadAnalysisDiagramPng,
   downloadAnalysisPdf,
   extractDiagram,
   getAnalyses,
@@ -14,7 +15,7 @@ import {
   getAnalysisDiagramSvg,
   getAnalysisSummary,
   getAnalysisVersionComparison,
-} from './api/endpoints/analysis';
+} from './apiClient/endpoints/analysis';
 import {
   createProject,
   getProject,
@@ -22,7 +23,7 @@ import {
   getProjectAnalyses,
   getProjects,
   updateProject,
-} from './api/endpoints/projects';
+} from './apiClient/endpoints/projects';
 
 export {
   __apiInternal,
@@ -33,6 +34,7 @@ export {
   compareAnalyses,
   createProject,
   deleteAnalysis,
+  downloadAnalysisDiagramPng,
   downloadAnalysisPdf,
   extractDiagram,
   getAnalyses,

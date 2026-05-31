@@ -193,7 +193,14 @@ function captureConsoleIssues(page) {
   return messages;
 }
 
-async function mockApi(page, { authenticated = true, onDelete = () => {} } = {}) {
+async function mockApi(
+  page,
+  {
+    authenticated = true,
+    onDelete = () => {},
+    onDiagramRefresh = () => {},
+  } = {},
+) {
   await page.route('**/health', (route) => fulfillJson(route, { status: 'healthy' }));
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -319,10 +326,21 @@ async function mockApi(page, { authenticated = true, onDelete = () => {} } = {})
       return route.fulfill({ status: 204 });
     }
     if (path === '/api/analyses/404/diagram.svg') {
+      if (url.searchParams.get('refresh') === 'true') {
+        onDiagramRefresh();
+      }
       return route.fulfill({
         status: 200,
         contentType: 'image/svg+xml',
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="140"><rect width="320" height="140" fill="#111"/><text x="12" y="72" fill="#0ff">UML Diagram</text></svg>',
+      });
+    }
+    if (path === '/api/analyses/404/diagram.png') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        headers: { 'Content-Disposition': 'attachment; filename="uml-code-analysis-404.png"' },
+        body: Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'),
       });
     }
     if (path === '/api/analyses/404') {
@@ -411,7 +429,8 @@ test('runs diagram and document upload flows', async ({ page }) => {
 
 test('runs UML code analysis and shows rendered diagram in analysis page', async ({ page }) => {
   const consoleIssues = captureConsoleIssues(page);
-  await mockApi(page);
+  let diagramRefreshSeen = false;
+  await mockApi(page, { onDiagramRefresh: () => { diagramRefreshSeen = true; } });
 
   await page.goto('/');
   await page.getByLabel('Analysis Title').fill('UML Code Analysis');
@@ -423,6 +442,13 @@ test('runs UML code analysis and shows rendered diagram in analysis page', async
   await expect(page).toHaveURL(/\/analysis\/404$/);
   await expect(page.getByText('Diagram (MERMAID)')).toBeVisible();
   await expect(page.getByAltText('UML Code Analysis UML diagram')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download SVG' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download PNG' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Refresh Render Cache' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Refresh Render Cache' }).click();
+  await expect.poll(() => diagramRefreshSeen).toBe(true);
+
   await page.getByRole('button', { name: 'Show UML code' }).click();
   await expect(page.getByText(/Client\[Browser\]/)).toBeVisible();
 

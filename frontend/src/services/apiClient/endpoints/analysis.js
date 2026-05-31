@@ -127,14 +127,25 @@ export async function getAnalysis(id) {
   return response.data;
 }
 
-export async function getAnalysisDiagramSvg(id) {
+export async function getAnalysisDiagramSvg(id, { refresh = false } = {}) {
   const response = await api.get(`/analyses/${id}/diagram.svg`, {
+    params: refresh ? { refresh: true } : undefined,
     responseType: 'text',
     headers: {
       Accept: 'image/svg+xml',
     },
   });
   return response.data;
+}
+
+export async function downloadAnalysisDiagramPng(id, { refresh = false } = {}) {
+  return api.get(`/analyses/${id}/diagram.png`, {
+    params: refresh ? { refresh: true } : undefined,
+    responseType: 'blob',
+    headers: {
+      Accept: 'image/png',
+    },
+  });
 }
 
 export async function getAnalysisVersionComparison(id) {
