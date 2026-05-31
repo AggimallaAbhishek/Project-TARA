@@ -262,9 +262,9 @@ Frontend runs at: http://localhost:5173
 
 1. **Login** → Authenticate with Google OAuth
 2. **Text Analysis** → Enter a system architecture description → Click Analyze → View STRIDE threats
-3. **Diagram Upload** → Switch to "Upload Diagram" → Upload a PNG/PDF architecture diagram → Extract Architecture → Review text → Analyze
+3. **Diagram Upload** → Switch to "Upload File" → Choose Upload Source "Diagram" → Upload a PNG/PDF architecture diagram → Extract Architecture → Review text → Analyze
 4. **UML Code Analysis** → Switch to "UML Code" → Choose Mermaid or PlantUML → Paste UML code (or attach UML file) → Analyze → View rendered diagram in analysis detail
-5. **Document Analysis** → Switch to "Upload Document" → Upload a security document (PDF/TXT) → Analyze → View version comparison
+5. **Document Analysis** → Switch to "Upload File" → Choose Upload Source "Document" → Upload a security document (PDF/TXT) → Analyze → View version comparison
 6. **History** → Browse past analyses with search and filters
 7. **PDF Export** → Open any analysis → Click Export PDF
 8. **Compare** → View resolved/unresolved/new issues between document versions
@@ -372,13 +372,14 @@ OLLAMA_HOST=http://host.docker.internal:11435 ./scripts/dev-up.sh
 
 ## Diagram Upload Workflow
 
-1. Enter an analysis title and switch to **Upload Diagram** mode.
-2. Upload one of the supported formats:
+1. Enter an analysis title and switch to **Upload File** mode.
+2. Set **Upload Source** to **Diagram**.
+3. Upload one of the supported formats:
    - Images: `png`, `jpg`, `jpeg`
    - PDF: first 3 pages are extracted
    - Text diagrams: Mermaid (`.mmd/.mermaid`), PlantUML (`.puml/.plantuml/.uml`), draw.io XML (`.drawio/.xml`)
-3. Click **Extract Architecture** and review/edit extracted text.
-4. Click **Analyze Diagram Threats** to run STRIDE analysis.
+4. Click **Extract Architecture** and review/edit extracted text.
+5. Click **Analyze Diagram Threats** to run STRIDE analysis.
 
 File uploads are processed ephemerally and not persisted.
 
@@ -402,10 +403,11 @@ UML rendering is performed by a self-hosted Kroki service configured via `DIAGRA
 
 ## Document Upload Workflow
 
-1. Enter an analysis title and switch to **Upload Document** mode.
-2. Upload a supported document (`.pdf` or `.txt`).
-3. Click **Analyze Document Threats** to extract text, run STRIDE analysis, and auto-compare with the previous same-title version.
-4. Open the analysis detail page to review:
+1. Enter an analysis title and switch to **Upload File** mode.
+2. Set **Upload Source** to **Document**.
+3. Upload a supported document (`.pdf` or `.txt`).
+4. Click **Analyze Document Threats** to extract text, run STRIDE analysis, and auto-compare with the previous same-title version.
+5. Open the analysis detail page to review:
    - Previous issue count
    - Resolved issues
    - Unresolved issues

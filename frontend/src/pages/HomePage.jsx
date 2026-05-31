@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
@@ -15,6 +15,10 @@ import {
 import { getApiErrorMessage } from '../services/apiError';
 import { FullPageLoader } from '../components/LoadingSpinner';
 import ProjectSelector from '../components/ProjectSelector';
+import UploadSection from '../components/home/UploadSection';
+import UmlCodeSection from '../components/home/UmlCodeSection';
+import useProjectLoading from '../hooks/useProjectLoading';
+import useUploadFlow from '../hooks/useUploadFlow';
 import {
   DESCRIPTION_MAX_LENGTH,
   DIAGRAM_ACCEPT_TYPES,
@@ -35,112 +39,52 @@ const { ArrowRight, Clock, History, Shield } = quickActionIcons;
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState(null);
   const [title, setTitle] = useState('');
   const [inputMode, setInputMode] = useState('text');
-  const [uploadSource, setUploadSource] = useState('diagram');
   const [description, setDescription] = useState('');
-  const [diagramFile, setDiagramFile] = useState(null);
-  const [documentFile, setDocumentFile] = useState(null);
   const [umlFormat, setUmlFormat] = useState('mermaid');
   const [umlCode, setUmlCode] = useState('');
   const [umlFileName, setUmlFileName] = useState('');
-  const [extractId, setExtractId] = useState('');
-  const [extractedDescription, setExtractedDescription] = useState('');
-  const [sourceMetadata, setSourceMetadata] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
-  const [projectError, setProjectError] = useState(null);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const remainingDescriptionChars = DESCRIPTION_MAX_LENGTH - description.length;
   const requestedProjectId = searchParams.get('project_id') || '';
-  const isMountedRef = useRef(true);
-  const latestProjectsLoadRequestIdRef = useRef(0);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  const loadProjects = useCallback(async ({ reason = 'initial' } = {}) => {
-    const requestId = latestProjectsLoadRequestIdRef.current + 1;
-    latestProjectsLoadRequestIdRef.current = requestId;
-    if (import.meta.env.DEV) {
-      console.debug('projects.load.start', { reason, requestId, requestedProjectId });
-    }
-    setProjectsLoading(true);
-    try {
-      const data = await getProjects({ limit: 100 });
-      if (!isMountedRef.current || requestId !== latestProjectsLoadRequestIdRef.current) {
-        return;
-      }
-      const nextProjects = data.items || [];
-      setProjects(nextProjects);
-      setProjectError(null);
-      setSelectedProjectId((current) => {
-        if (requestedProjectId && nextProjects.some((project) => String(project.id) === requestedProjectId)) {
-          return requestedProjectId;
-        }
-        if (current && nextProjects.some((project) => String(project.id) === String(current))) {
-          return String(current);
-        }
-        return nextProjects[0] ? String(nextProjects[0].id) : '';
-      });
-      if (import.meta.env.DEV) {
-        console.debug('projects.load.success', {
-          reason,
-          requestId,
-          projectCount: nextProjects.length,
-        });
-      }
-    } catch (loadProjectsError) {
-      if (!isMountedRef.current || requestId !== latestProjectsLoadRequestIdRef.current) {
-        return;
-      }
-      const normalizedErrorMessage = getApiErrorMessage(loadProjectsError, {
-        fallbackMessage: 'Failed to load projects',
-        operation: 'projects.load',
-      });
-      setProjects([]);
-      setProjectError(normalizedErrorMessage);
-      setSelectedProjectId('');
-      if (import.meta.env.DEV) {
-        console.debug('projects.load.error', {
-          reason,
-          requestId,
-          message: normalizedErrorMessage,
-          code: loadProjectsError?.code || null,
-          status: loadProjectsError?.response?.status || null,
-        });
-      }
-    } finally {
-      if (isMountedRef.current && requestId === latestProjectsLoadRequestIdRef.current) {
-        setProjectsLoading(false);
-      }
-    }
-  }, [requestedProjectId]);
-
-  useEffect(() => {
-    loadProjects({ reason: 'initial' });
-  }, [loadProjects]);
-
-  const handleRetryProjectsLoad = () => {
-    if (import.meta.env.DEV) {
-      console.debug('projects.load.retry', { requestedProjectId });
-    }
-    loadProjects({ reason: 'retry' });
-  };
-
-  const resetExtractedState = () => {
-    setExtractId('');
-    setExtractedDescription('');
-    setSourceMetadata(null);
-  };
+  const {
+    projects,
+    projectsLoading,
+    projectError,
+    selectedProjectId,
+    setSelectedProjectId,
+    handleRetryProjectsLoad,
+    handleCreateProject,
+  } = useProjectLoading({
+    requestedProjectId,
+    getProjects,
+    createProject,
+    getApiErrorMessage,
+  });
+  const {
+    isExtracting,
+    uploadSource,
+    diagramFile,
+    documentFile,
+    extractId,
+    extractedDescription,
+    sourceMetadata,
+    setExtractedDescription,
+    resetUploadState,
+    handleUploadSourceChange,
+    handleDiagramFileChange,
+    handleExtractDiagram,
+    handleDocumentFileChange,
+  } = useUploadFlow({
+    extractDiagram,
+    getApiErrorMessage,
+    maxDiagramUploadBytes: MAX_DIAGRAM_UPLOAD_BYTES,
+    maxDocumentUploadBytes: MAX_DOCUMENT_UPLOAD_BYTES,
+    setError,
+  });
 
   const detectUmlFormatFromFileName = (fileName) => {
     const normalizedName = (fileName || '').toLowerCase();
@@ -177,74 +121,13 @@ export default function HomePage() {
     setInputMode(mode);
     setError(null);
     if (mode !== 'upload') {
-      setDiagramFile(null);
-      setDocumentFile(null);
-      resetExtractedState();
-      setUploadSource('diagram');
+      resetUploadState();
     }
     if (mode !== 'uml') {
       setUmlCode('');
       setUmlFormat('mermaid');
       setUmlFileName('');
     }
-  };
-
-  const handleUploadSourceChange = (source) => {
-    setUploadSource(source);
-    setError(null);
-    if (source === 'diagram') {
-      setDocumentFile(null);
-      return;
-    }
-    setDiagramFile(null);
-    resetExtractedState();
-  };
-
-  const handleDiagramFileChange = (event) => {
-    const file = event.target.files?.[0] || null;
-    setError(null);
-    setDiagramFile(null);
-    resetExtractedState();
-
-    if (!file) return;
-    if (file.size > MAX_DIAGRAM_UPLOAD_BYTES) {
-      setError('Diagram file is too large. Maximum size is 10 MB.');
-      return;
-    }
-    setDiagramFile(file);
-  };
-
-  const handleExtractDiagram = async () => {
-    if (!diagramFile || !title.trim()) return;
-    setError(null);
-    setIsExtracting(true);
-    try {
-      const extracted = await extractDiagram(diagramFile);
-      setExtractId(extracted.extract_id);
-      setExtractedDescription(extracted.extracted_system_description || '');
-      setSourceMetadata(extracted.source_metadata || null);
-    } catch (err) {
-      console.error('Diagram extraction failed:', err);
-      setError(getApiErrorMessage(err, {
-        fallbackMessage: 'Failed to extract architecture from diagram. Please try another file.',
-        operation: 'diagram.extract',
-      }));
-    } finally {
-      setIsExtracting(false);
-    }
-  };
-
-  const handleDocumentFileChange = (event) => {
-    const file = event.target.files?.[0] || null;
-    setError(null);
-    setDocumentFile(null);
-
-    if (!file) return;
-    if (file.size > MAX_DOCUMENT_UPLOAD_BYTES) {
-      setError('Document file is too large. Maximum size is 10 MB.');
-      return;
-    }
-    setDocumentFile(file);
   };
 
   const handleUmlCodeFileChange = async (event) => {
@@ -299,19 +182,6 @@ export default function HomePage() {
       setUmlFileName('');
     } finally {
       event.target.value = '';
-    }
-  };
-
-  const handleCreateProject = async (projectName) => {
-    try {
-      const createdProject = await createProject({ name: projectName });
-      setProjects((currentProjects) => [createdProject, ...currentProjects]);
-      setSelectedProjectId(String(createdProject.id));
-    } catch (createProjectError) {
-      throw new Error(getApiErrorMessage(createProjectError, {
-        fallbackMessage: 'Failed to create project',
-        operation: 'projects.create',
-      }));
     }
   };
 
@@ -506,181 +376,36 @@ export default function HomePage() {
                 </p>
               </div>
             ) : inputMode === 'upload' ? (
-              <div className="mb-6 space-y-4">
-                <div>
-                  <span className="block text-sm font-medium text-text-secondary mb-2">
-                    Upload Source
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleUploadSourceChange('diagram')}
-                      className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                        uploadSource === 'diagram'
-                          ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
-                          : 'border-dark-border text-text-secondary bg-dark-tertiary'
-                      }`}
-                    >
-                      Diagram
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUploadSourceChange('document')}
-                      className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                        uploadSource === 'document'
-                          ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
-                          : 'border-dark-border text-text-secondary bg-dark-tertiary'
-                      }`}
-                    >
-                      Document
-                    </button>
-                  </div>
-                </div>
-                {uploadSource === 'diagram' ? (
-                  <>
-                <div>
-                  <label htmlFor="diagram-file" className="block text-sm font-medium text-text-secondary mb-2">
-                    Upload Architecture Diagram
-                  </label>
-                  <input
-                    id="diagram-file"
-                    type="file"
-                    accept={DIAGRAM_ACCEPT_TYPES}
-                    onChange={handleDiagramFileChange}
-                    className="input-dark cursor-pointer"
-                  />
-                  <p className="mt-2 text-xs text-text-muted">
-                    Supported: PNG, JPG, JPEG, PDF, Mermaid, PlantUML, draw.io XML. Max size: 10 MB.
-                  </p>
-                  {diagramFile && (
-                    <p className="mt-1 text-xs text-text-secondary">
-                      Selected: {diagramFile.name} ({Math.ceil(diagramFile.size / 1024)} KB)
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleExtractDiagram}
-                    disabled={!title.trim() || !diagramFile || isExtracting}
-                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isExtracting ? 'Extracting Architecture...' : extractId ? 'Re-extract Architecture' : 'Extract Architecture'}
-                  </motion.button>
-                  {sourceMetadata && (
-                    <span className="text-xs text-text-muted">
-                      {sourceMetadata.input_type} | {sourceMetadata.extractor_used}
-                      {sourceMetadata.pages_processed ? ` | pages: ${sourceMetadata.pages_processed}` : ''}
-                    </span>
-                  )}
-                </div>
-
-                {extractId && (
-                  <div>
-                    <label htmlFor="extracted-description" className="block text-sm font-medium text-text-secondary mb-2">
-                      Review Extracted Architecture
-                    </label>
-                    <textarea
-                      id="extracted-description"
-                      value={extractedDescription}
-                      onChange={(event) => setExtractedDescription(event.target.value)}
-                      rows={8}
-                      maxLength={DESCRIPTION_MAX_LENGTH}
-                      className="textarea-dark"
-                      placeholder="Extracted architecture description will appear here..."
-                    />
-                    <p className="mt-2 text-xs text-text-muted">
-                      Edit this text before running threat analysis.
-                    </p>
-                  </div>
-                )}
-                  </>
-                ) : (
-                  <div>
-                    <label htmlFor="document-file" className="block text-sm font-medium text-text-secondary mb-2">
-                      Upload Document
-                    </label>
-                    <input
-                      id="document-file"
-                      type="file"
-                      accept={DOCUMENT_ACCEPT_TYPES}
-                      onChange={handleDocumentFileChange}
-                      className="input-dark cursor-pointer"
-                    />
-                    <p className="mt-2 text-xs text-text-muted">
-                      Supported: PDF, TXT. Max size: 10 MB.
-                    </p>
-                    {documentFile && (
-                      <p className="mt-1 text-xs text-text-secondary">
-                        Selected: {documentFile.name} ({Math.ceil(documentFile.size / 1024)} KB)
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+              <UploadSection
+                uploadSource={uploadSource}
+                onUploadSourceChange={handleUploadSourceChange}
+                title={title}
+                diagramFile={diagramFile}
+                documentFile={documentFile}
+                isExtracting={isExtracting}
+                extractId={extractId}
+                extractedDescription={extractedDescription}
+                sourceMetadata={sourceMetadata}
+                onExtractedDescriptionChange={setExtractedDescription}
+                onDiagramFileChange={handleDiagramFileChange}
+                onDocumentFileChange={handleDocumentFileChange}
+                onExtractDiagram={() => handleExtractDiagram({ title })}
+                diagramAcceptTypes={DIAGRAM_ACCEPT_TYPES}
+                documentAcceptTypes={DOCUMENT_ACCEPT_TYPES}
+                descriptionMaxLength={DESCRIPTION_MAX_LENGTH}
+              />
             ) : (
-              <div className="mb-6 space-y-4">
-                <div>
-                  <label htmlFor="uml-format" className="block text-sm font-medium text-text-secondary mb-2">
-                    UML Format
-                  </label>
-                  <select
-                    id="uml-format"
-                    value={umlFormat}
-                    onChange={(event) => setUmlFormat(event.target.value)}
-                    className="input-dark"
-                  >
-                    {UML_FORMAT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="uml-code-file" className="block text-sm font-medium text-text-secondary mb-2">
-                    Attach UML/Mermaid File (Optional)
-                  </label>
-                  <input
-                    id="uml-code-file"
-                    type="file"
-                    accept={UML_CODE_ACCEPT_TYPES}
-                    onChange={handleUmlCodeFileChange}
-                    className="input-dark cursor-pointer"
-                  />
-                  <p className="mt-2 text-xs text-text-muted">
-                    Supported: .mmd, .mermaid, .puml, .plantuml, .uml, .txt (max 2 MB).
-                  </p>
-                  {umlFileName && (
-                    <p className="mt-1 text-xs text-text-secondary">
-                      Loaded file: {umlFileName}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label htmlFor="uml-code" className="block text-sm font-medium text-text-secondary mb-2">
-                    UML Code
-                  </label>
-                  <textarea
-                    id="uml-code"
-                    value={umlCode}
-                    onChange={(event) => setUmlCode(event.target.value)}
-                    placeholder={umlFormat === 'mermaid'
-                      ? 'graph TD\nClient[Browser] --> API[Gateway]\nAPI --> DB[(Database)]'
-                      : '@startuml\nactor User\ncomponent API\ndatabase DB\nUser -> API\nAPI -> DB\n@enduml'}
-                    rows={10}
-                    maxLength={UML_CODE_MAX_LENGTH}
-                    className="textarea-dark font-mono text-sm"
-                  />
-                  <p className="mt-2 text-xs text-text-muted flex items-center justify-between gap-2">
-                    <span>Paste Mermaid or PlantUML code to run threat analysis and render a diagram in the Analysis page.</span>
-                    <span>{umlCode.length.toLocaleString()} / {UML_CODE_MAX_LENGTH.toLocaleString()}</span>
-                  </p>
-                </div>
-              </div>
+              <UmlCodeSection
+                umlFormat={umlFormat}
+                umlCode={umlCode}
+                umlFileName={umlFileName}
+                onUmlFormatChange={setUmlFormat}
+                onUmlCodeChange={setUmlCode}
+                onUmlCodeFileChange={handleUmlCodeFileChange}
+                umlFormatOptions={UML_FORMAT_OPTIONS}
+                umlCodeAcceptTypes={UML_CODE_ACCEPT_TYPES}
+                umlCodeMaxLength={UML_CODE_MAX_LENGTH}
+              />
             )}
 
             {/* Submit Button */}

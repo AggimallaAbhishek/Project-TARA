@@ -512,7 +512,7 @@ Records all significant user actions for compliance and accountability.
 | **Landing / Root Entry** | `/` | Public landing page for unauthenticated users; authenticated users are routed to dashboard |
 | **Welcome Alias** | `/welcome` | Backward-compatible redirect to `/` |
 | **Login Page** | `/login` | Google OAuth sign-in with animated UI |
-| **Home Dashboard** | `/` | Main analysis dashboard with input form (text, diagram, or document upload) for signed-in users |
+| **Home Dashboard** | `/` | Main analysis dashboard with input modes: text description, Upload File (source: diagram/document), and UML code for signed-in users |
 | **Analysis Detail** | `/analysis/:id` | Full threat report with filtering, STRIDE badges, risk badges, and PDF export |
 | **History** | `/history` | Paginated list of past analyses with search and filters |
 | **Projects** | `/projects` | Project workspace listing with summaries and navigation to project detail |
@@ -525,7 +525,7 @@ Records all significant user actions for compliance and accountability.
 | Component | Purpose |
 |-----------|---------|
 | `Navbar` | Navigation with auth state, user avatar, and responsive menu |
-| `SystemInputForm` | Multi-mode input form (text / diagram / document upload) |
+| `SystemInputForm` | Multi-mode input form (text / Upload File with Diagram or Document source / UML code) |
 | `ThreatCard` | Detailed threat display with expandable mitigation steps |
 | `ThreatTable` | Sortable table view of threats |
 | `RiskBadge` | Colour-coded risk level indicator (Low/Medium/High/Critical) |
