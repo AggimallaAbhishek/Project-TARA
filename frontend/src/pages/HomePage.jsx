@@ -156,6 +156,22 @@ export default function HomePage() {
     return null;
   };
 
+  const readTextFromFile = (file) => {
+    if (file && typeof file.text === 'function') {
+      return file.text();
+    }
+    return new Promise((resolve, reject) => {
+      const fileReader = new FileReader();
+      fileReader.onload = () => {
+        resolve(typeof fileReader.result === 'string' ? fileReader.result : '');
+      };
+      fileReader.onerror = () => {
+        reject(fileReader.error || new Error('Failed to read file'));
+      };
+      fileReader.readAsText(file);
+    });
+  };
+
   const handleModeChange = (mode) => {
     setInputMode(mode);
     setError(null);
@@ -240,7 +256,7 @@ export default function HomePage() {
     }
 
     try {
-      const fileContent = await file.text();
+      const fileContent = await readTextFromFile(file);
       if (!fileContent.trim()) {
         setError('UML file is empty.');
         setUmlFileName('');
