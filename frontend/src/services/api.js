@@ -391,6 +391,22 @@ export const analyzeFromDiagram = async (title, extractId, editedDescription = '
   return response.data;
 };
 
+export const analyzeFromUmlCode = async (
+  title,
+  umlFormat,
+  umlCode,
+  projectOptions = {},
+) => {
+  const response = await api.post('/diagram/analyze-code', appendProjectFields({
+    title,
+    uml_format: umlFormat,
+    uml_code: umlCode,
+  }, projectOptions), {
+    timeout: LONG_TASK_TIMEOUT_MS,
+  });
+  return response.data;
+};
+
 export const analyzeDocument = async (title, file, projectOptions = {}) => {
   const formData = new FormData();
   formData.append('title', title);
@@ -441,6 +457,16 @@ export const getAnalyses = async ({
 
 export const getAnalysis = async (id) => {
   const response = await api.get(`/analyses/${id}`);
+  return response.data;
+};
+
+export const getAnalysisDiagramSvg = async (id) => {
+  const response = await api.get(`/analyses/${id}/diagram.svg`, {
+    responseType: 'text',
+    headers: {
+      Accept: 'image/svg+xml',
+    },
+  });
   return response.data;
 };
 

@@ -3,11 +3,16 @@ import { useParams, Link } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { 
+import {
   ArrowLeft, Clock, Shield, AlertTriangle, Download,
-  TrendingUp, FileText
+  TrendingUp, FileText, ImageIcon, Code
 } from 'lucide-react';
-import { downloadAnalysisPdf, getAnalysis, getAnalysisVersionComparison } from '../services/api';
+import {
+  downloadAnalysisPdf,
+  getAnalysis,
+  getAnalysisDiagramSvg,
+  getAnalysisVersionComparison,
+} from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import ThreatCard from '../components/ThreatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -23,6 +28,10 @@ export default function AnalysisPage() {
   const [versionComparison, setVersionComparison] = useState(null);
   const [versionComparisonLoading, setVersionComparisonLoading] = useState(true);
   const [versionComparisonError, setVersionComparisonError] = useState(null);
+  const [diagramSvgDataUrl, setDiagramSvgDataUrl] = useState('');
+  const [diagramLoading, setDiagramLoading] = useState(false);
+  const [diagramError, setDiagramError] = useState(null);
+  const [isDiagramCodeExpanded, setIsDiagramCodeExpanded] = useState(false);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -41,6 +50,49 @@ export default function AnalysisPage() {
 
     fetchAnalysis();
   }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!analysis?.has_diagram) {
+      setDiagramSvgDataUrl('');
+      setDiagramError(null);
+      setDiagramLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const svgToDataUrl = (svgText) => {
+      const encoded = window.btoa(unescape(encodeURIComponent(svgText)));
+      return `data:image/svg+xml;base64,${encoded}`;
+    };
+
+    const fetchDiagramSvg = async () => {
+      setDiagramLoading(true);
+      setDiagramError(null);
+      try {
+        const svgContent = await getAnalysisDiagramSvg(id);
+        if (!isMounted) return;
+        setDiagramSvgDataUrl(svgToDataUrl(svgContent));
+      } catch (err) {
+        if (!isMounted) return;
+        setDiagramSvgDataUrl('');
+        setDiagramError(getApiErrorMessage(err, {
+          fallbackMessage: 'Failed to render UML diagram',
+          operation: 'analysis.diagram_render',
+        }));
+      } finally {
+        if (isMounted) {
+          setDiagramLoading(false);
+        }
+      }
+    };
+
+    fetchDiagramSvg();
+    return () => {
+      isMounted = false;
+    };
+  }, [analysis?.has_diagram, id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -251,6 +303,74 @@ export default function AnalysisPage() {
             )}
           </div>
         </div>
+
+        {analysis.has_diagram && (
+          <div className="mt-6 p-4 bg-dark-tertiary rounded-lg">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                <ImageIcon className="w-4 h-4" />
+                Diagram ({analysis.diagram_format?.toUpperCase() || 'UML'})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsDiagramCodeExpanded((value) => !value)}
+                className="text-xs text-cyber-cyan hover:text-cyber-cyan/80 transition-colors inline-flex items-center gap-1"
+              >
+                <Code className="w-3 h-3" />
+                {isDiagramCodeExpanded ? 'Hide UML code' : 'Show UML code'}
+              </button>
+            </div>
+
+            {diagramLoading ? (
+              <p className="text-sm text-text-secondary">Rendering diagram...</p>
+            ) : diagramError ? (
+              <div className="space-y-2">
+                <p className="text-sm text-risk-critical">{diagramError}</p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setDiagramLoading(true);
+                    setDiagramError(null);
+                    try {
+                      const svgContent = await getAnalysisDiagramSvg(id);
+                      const encoded = window.btoa(unescape(encodeURIComponent(svgContent)));
+                      setDiagramSvgDataUrl(`data:image/svg+xml;base64,${encoded}`);
+                    } catch (retryError) {
+                      setDiagramError(getApiErrorMessage(retryError, {
+                        fallbackMessage: 'Failed to render UML diagram',
+                        operation: 'analysis.diagram_render_retry',
+                      }));
+                    } finally {
+                      setDiagramLoading(false);
+                    }
+                  }}
+                  className="btn-secondary text-xs px-3 py-1.5"
+                >
+                  Retry Diagram Render
+                </button>
+              </div>
+            ) : diagramSvgDataUrl ? (
+              <div className="rounded-lg border border-dark-border bg-dark-secondary p-3 overflow-auto">
+                <img
+                  src={diagramSvgDataUrl}
+                  alt={`${analysis.title} UML diagram`}
+                  className="w-full h-auto"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">Diagram preview unavailable.</p>
+            )}
+
+            {isDiagramCodeExpanded && analysis.diagram_code && (
+              <div className="mt-3">
+                <p className="text-xs text-text-muted mb-2">UML Code</p>
+                <pre className="text-xs text-text-primary whitespace-pre-wrap bg-dark-secondary rounded-lg p-3 border border-dark-border overflow-auto max-h-64">
+                  {analysis.diagram_code}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* System Description */}
         <div className="mt-6 p-4 bg-dark-tertiary rounded-lg">

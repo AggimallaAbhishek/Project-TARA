@@ -6,6 +6,7 @@ import { Sparkles, AlertCircle, FolderKanban } from 'lucide-react';
 import {
   analyzeDocument,
   analyzeFromDiagram,
+  analyzeFromUmlCode,
   analyzeSystem,
   createProject,
   extractDiagram,
@@ -21,6 +22,8 @@ import {
   examples,
   MAX_DIAGRAM_UPLOAD_BYTES,
   MAX_DOCUMENT_UPLOAD_BYTES,
+  UML_CODE_MAX_LENGTH,
+  UML_FORMAT_OPTIONS,
   quickActionIcons,
   strideCategories,
   TITLE_MAX_LENGTH,
@@ -37,6 +40,8 @@ export default function HomePage() {
   const [description, setDescription] = useState('');
   const [diagramFile, setDiagramFile] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
+  const [umlFormat, setUmlFormat] = useState('mermaid');
+  const [umlCode, setUmlCode] = useState('');
   const [extractId, setExtractId] = useState('');
   const [extractedDescription, setExtractedDescription] = useState('');
   const [sourceMetadata, setSourceMetadata] = useState(null);
@@ -143,6 +148,10 @@ export default function HomePage() {
     if (mode !== 'document') {
       setDocumentFile(null);
     }
+    if (mode !== 'uml') {
+      setUmlCode('');
+      setUmlFormat('mermaid');
+    }
   };
 
   const handleDiagramFileChange = (event) => {
@@ -215,6 +224,7 @@ export default function HomePage() {
     if (inputMode === 'text' && !description.trim()) return;
     if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) return;
     if (inputMode === 'document' && !documentFile) return;
+    if (inputMode === 'uml' && !umlCode.trim()) return;
     
     setIsLoading(true);
     setError(null);
@@ -225,7 +235,9 @@ export default function HomePage() {
         ? await analyzeSystem(title, description, projectOptions)
         : inputMode === 'diagram'
           ? await analyzeFromDiagram(title, extractId, extractedDescription, projectOptions)
-          : await analyzeDocument(title, documentFile, projectOptions);
+          : inputMode === 'document'
+            ? await analyzeDocument(title, documentFile, projectOptions)
+            : await analyzeFromUmlCode(title, umlFormat, umlCode, projectOptions);
       const analysisId = result?.id ?? result?.analysis?.id;
       if (!analysisId) {
         throw new Error('Missing analysis ID in API response');
@@ -239,7 +251,9 @@ export default function HomePage() {
           ? 'analysis.create'
           : inputMode === 'diagram'
             ? 'diagram.analyze'
-            : 'document.analyze',
+            : inputMode === 'document'
+              ? 'document.analyze'
+              : 'diagram.analyze_code',
       }));
     } finally {
       setIsLoading(false);
@@ -318,7 +332,7 @@ export default function HomePage() {
               <span className="block text-sm font-medium text-text-secondary mb-2">
                 Input Mode
               </span>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => handleModeChange('text')}
@@ -351,6 +365,17 @@ export default function HomePage() {
                   }`}
                 >
                   Upload Document
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('uml')}
+                  className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    inputMode === 'uml'
+                      ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
+                      : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                  }`}
+                >
+                  UML Code
                 </button>
               </div>
             </div>
@@ -439,7 +464,7 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : inputMode === 'document' ? (
               <div className="mb-6">
                 <label htmlFor="document-file" className="block text-sm font-medium text-text-secondary mb-2">
                   Upload Document
@@ -460,6 +485,45 @@ export default function HomePage() {
                   </p>
                 )}
               </div>
+            ) : (
+              <div className="mb-6 space-y-4">
+                <div>
+                  <label htmlFor="uml-format" className="block text-sm font-medium text-text-secondary mb-2">
+                    UML Format
+                  </label>
+                  <select
+                    id="uml-format"
+                    value={umlFormat}
+                    onChange={(event) => setUmlFormat(event.target.value)}
+                    className="input-dark"
+                  >
+                    {UML_FORMAT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="uml-code" className="block text-sm font-medium text-text-secondary mb-2">
+                    UML Code
+                  </label>
+                  <textarea
+                    id="uml-code"
+                    value={umlCode}
+                    onChange={(event) => setUmlCode(event.target.value)}
+                    placeholder={umlFormat === 'mermaid'
+                      ? 'graph TD\nClient[Browser] --> API[Gateway]\nAPI --> DB[(Database)]'
+                      : '@startuml\nactor User\ncomponent API\ndatabase DB\nUser -> API\nAPI -> DB\n@enduml'}
+                    rows={10}
+                    maxLength={UML_CODE_MAX_LENGTH}
+                    className="textarea-dark font-mono text-sm"
+                  />
+                  <p className="mt-2 text-xs text-text-muted">
+                    Paste Mermaid or PlantUML code to run threat analysis and render a diagram in the Analysis page.
+                  </p>
+                </div>
+              </div>
             )}
 
             {/* Submit Button */}
@@ -475,7 +539,9 @@ export default function HomePage() {
                     ? !description.trim()
                     : inputMode === 'diagram'
                       ? (!extractId || !extractedDescription.trim())
-                      : !documentFile
+                      : inputMode === 'document'
+                        ? !documentFile
+                        : !umlCode.trim()
                 )
               }
               whileHover={{ scale: 1.02 }}
@@ -487,7 +553,9 @@ export default function HomePage() {
                 ? 'Analyze System Threats'
                 : inputMode === 'diagram'
                   ? 'Analyze Diagram Threats'
-                  : 'Analyze Document Threats'}
+                  : inputMode === 'document'
+                    ? 'Analyze Document Threats'
+                    : 'Analyze UML Threats'}
             </motion.button>
           </form>
 

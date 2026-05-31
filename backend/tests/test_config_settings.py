@@ -42,7 +42,7 @@ class SettingsConfigTest(unittest.TestCase):
         self.assertEqual(settings.document_pdf_max_pages, 20)
 
     def test_diagram_renderer_settings_defaults_are_available(self):
-        settings = Settings()
+        settings = Settings(_env_file=None)
         self.assertEqual(settings.diagram_renderer_url, "http://kroki:8000")
         self.assertEqual(settings.diagram_render_timeout_seconds, 20)
         self.assertEqual(settings.diagram_render_max_chars, 50000)
