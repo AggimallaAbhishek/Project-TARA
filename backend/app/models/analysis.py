@@ -16,11 +16,17 @@ class Analysis(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     total_risk_score = Column(Float, default=0.0)
     analysis_time = Column(Float, default=0.0)  # Time in seconds
+    diagram_format = Column(String(32), nullable=True)
+    diagram_code = Column(Text, nullable=True)
     
     # Relationships
     user = relationship("User", backref="analyses")
     project = relationship("Project", back_populates="analyses")
     threats = relationship("Threat", back_populates="analysis", cascade="all, delete-orphan")
+
+    @property
+    def has_diagram(self) -> bool:
+        return bool(self.diagram_format and self.diagram_code)
 
 
 class Threat(Base):

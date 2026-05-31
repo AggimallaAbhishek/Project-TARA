@@ -19,6 +19,11 @@ class StrideCategory(str, Enum):
     ELEVATION_OF_PRIVILEGE = "Elevation of Privilege"
 
 
+class DiagramFormat(str, Enum):
+    MERMAID = "mermaid"
+    PLANTUML = "plantuml"
+
+
 # Request Schemas
 class AnalysisCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255, description="Title for the analysis")
@@ -90,6 +95,9 @@ class AnalysisResponse(AnalysisBase):
     created_at: datetime
     total_risk_score: float
     analysis_time: float = 0.0
+    diagram_format: DiagramFormat | None = None
+    diagram_code: str | None = None
+    has_diagram: bool = False
     threats: list[ThreatResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

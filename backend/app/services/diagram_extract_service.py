@@ -116,6 +116,26 @@ class DiagramExtractService:
         }
         return self._normalize_extracted_text(extracted), metadata
 
+    def extract_from_uml_code(self, *, uml_format: str, uml_code: str) -> str:
+        normalized_format = (uml_format or "").strip().lower()
+        normalized_code = (uml_code or "").strip()
+        if not normalized_code:
+            raise DiagramExtractionError("UML code cannot be blank.")
+
+        if normalized_format == "mermaid":
+            extracted = self._extract_from_mermaid(normalized_code)
+        elif normalized_format == "plantuml":
+            extracted = self._extract_from_plantuml(normalized_code)
+        else:
+            raise DiagramExtractionError("Unsupported UML format. Use Mermaid or PlantUML.")
+
+        logger.debug(
+            "UML code extracted format=%s chars=%s",
+            normalized_format,
+            len(normalized_code),
+        )
+        return self._normalize_extracted_text(extracted)
+
     @staticmethod
     def _validate_content_type(*, extension: str, content_type: str | None) -> None:
         if not content_type:

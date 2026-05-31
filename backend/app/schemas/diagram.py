@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.analysis import DiagramFormat
+
 
 class DiagramSourceMetadata(BaseModel):
     input_type: str
@@ -42,4 +44,22 @@ class DiagramAnalyzeRequest(BaseModel):
             raise ValueError("system description cannot be blank")
         if len(cleaned) < 10:
             raise ValueError("system description must be at least 10 characters")
+        return cleaned
+
+
+class DiagramCodeAnalyzeRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    uml_format: DiagramFormat
+    uml_code: str = Field(..., min_length=1, max_length=50000)
+    project_id: int | None = Field(default=None, ge=1)
+    project_name: str | None = Field(default=None, min_length=1, max_length=255)
+
+    @field_validator("title", "uml_code", "project_name")
+    @classmethod
+    def validate_trimmed_fields(cls, value: str | None, info) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError(f"{info.field_name.replace('_', ' ')} cannot be blank")
         return cleaned

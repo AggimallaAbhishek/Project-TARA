@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     diagram_extract_ttl_seconds: int = 1800
     document_max_upload_mb: int = 10
     document_pdf_max_pages: int = 20
+    diagram_renderer_url: str = "http://kroki:8000"
+    diagram_render_timeout_seconds: int = 20
+    diagram_render_max_chars: int = 50000
     db_startup_strict: bool | None = None
 
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH)

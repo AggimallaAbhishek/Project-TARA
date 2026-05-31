@@ -9,7 +9,12 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.analysis import AnalysisResponse
-from app.schemas.diagram import DiagramAnalyzeRequest, DiagramExtractResponse, DiagramSourceMetadata
+from app.schemas.diagram import (
+    DiagramAnalyzeRequest,
+    DiagramCodeAnalyzeRequest,
+    DiagramExtractResponse,
+    DiagramSourceMetadata,
+)
 from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
 from app.services.diagram_extract_service import DiagramExtractionError, diagram_extract_service
@@ -195,4 +200,54 @@ async def analyze_diagram(
         background_tasks=background_tasks,
     )
     extract_session_service.delete_session(request.extract_id)
+    return analysis
+
+
+@router.post(
+    "/diagram/analyze-code",
+    response_model=AnalysisResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Analyze Mermaid or PlantUML code",
+    response_description="Created analysis with generated threats from UML code",
+    responses={
+        400: {"description": "Invalid UML format or UML code"},
+        401: {"description": "Authentication required"},
+        429: {"description": "Analyze rate limit exceeded"},
+    },
+)
+async def analyze_diagram_code(
+    request: DiagramCodeAnalyzeRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(enforce_diagram_analyze_rate_limit),
+):
+    try:
+        extracted_description = diagram_extract_service.extract_from_uml_code(
+            uml_format=request.uml_format.value,
+            uml_code=request.uml_code,
+        )
+    except DiagramExtractionError as exc:
+        logger.warning(
+            "UML code extraction rejected user_id=%s format=%s error=%s",
+            current_user.id,
+            request.uml_format.value,
+            str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    analysis = await analysis_workflow_service.create_analysis(
+        db=db,
+        current_user=current_user,
+        title=request.title,
+        system_description=extracted_description,
+        project_id=request.project_id,
+        project_name=request.project_name,
+        diagram_format=request.uml_format.value,
+        diagram_code=request.uml_code,
+        source="uml_code",
+        background_tasks=background_tasks,
+    )
     return analysis

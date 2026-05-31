@@ -25,6 +25,8 @@ class AnalysisWorkflowService:
         system_description: str,
         project_id: int | None = None,
         project_name: str | None = None,
+        diagram_format: str | None = None,
+        diagram_code: str | None = None,
         source: str = "text",
         background_tasks: BackgroundTasks | None = None,
     ) -> Analysis:
@@ -45,6 +47,8 @@ class AnalysisWorkflowService:
                 title=title,
                 system_description=system_description,
                 analysis_time=analysis_time,
+                diagram_format=(diagram_format or None),
+                diagram_code=(diagram_code or None),
             )
             db.add(analysis)
             db.flush()
@@ -104,6 +108,8 @@ class AnalysisWorkflowService:
                     "project_id": project.id,
                     "project_name": project.name,
                     "source": source,
+                    "diagram_format": (diagram_format or None),
+                    "diagram_code_length": len(diagram_code or ""),
                     "title": analysis.title,
                     "threat_count": len(threats),
                     "total_risk_score": analysis.total_risk_score,
