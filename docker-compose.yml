@@ -33,6 +33,13 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── Kroki (diagram rendering for Mermaid/PlantUML) ──
+  kroki:
+    image: yuzutech/kroki:latest
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+
   # ── Backend (FastAPI) ──
   backend:
     build:
@@ -49,6 +56,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       # Host-managed Ollama endpoint for local development.
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      DIAGRAM_RENDERER_URL: http://kroki:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -56,6 +64,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kroki:
+        condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s

@@ -15,6 +15,30 @@ from app.services.diagram_extract_service import ollama
 
 
 class DiagramExtractServiceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_extract_from_uml_code_for_mermaid(self):
+        service = DiagramExtractService()
+        result = service.extract_from_uml_code(
+            uml_format="mermaid",
+            uml_code="graph TD\nClient[Browser] --> API[API Gateway]",
+        )
+        self.assertIn("Browser -> API Gateway", result)
+
+    async def test_extract_from_uml_code_for_plantuml(self):
+        service = DiagramExtractService()
+        result = service.extract_from_uml_code(
+            uml_format="plantuml",
+            uml_code='@startuml\nactor "User"\ncomponent API\nUser -> API\n@enduml',
+        )
+        self.assertIn("User -> API", result)
+
+    async def test_extract_from_uml_code_rejects_invalid_format(self):
+        service = DiagramExtractService()
+        with self.assertRaises(DiagramExtractionError):
+            service.extract_from_uml_code(
+                uml_format="unknown",
+                uml_code="diagram text",
+            )
+
     async def test_mermaid_extraction_normalizes_components_and_flows(self):
         service = DiagramExtractService()
         content = b"graph TD\nClient[Browser] --> API[API Gateway]\nsubgraph Internal Network"

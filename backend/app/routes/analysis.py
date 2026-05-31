@@ -22,6 +22,11 @@ from app.services.audit_service import audit_service
 from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
 from app.services.pdf_service import pdf_report_service
+from app.services.diagram_render_service import (
+    DiagramRenderError,
+    DiagramRendererUnavailableError,
+    diagram_render_service,
+)
 from app.services.project_service import project_service
 from app.services.rate_limit_service import analyze_rate_limiter
 from app.services.risk_service import risk_service
@@ -203,6 +208,65 @@ async def get_analysis(
             detail=f"Analysis with id {analysis_id} not found",
         )
     return analysis
+
+
+@router.get(
+    "/analyses/{analysis_id}/diagram.svg",
+    summary="Render persisted UML diagram as SVG",
+    response_description="Rendered SVG diagram for one analysis",
+    responses={
+        401: {"description": "Authentication required"},
+        404: {"description": "Analysis not found or does not include UML code"},
+        502: {"description": "Diagram render failed due to invalid stored UML code"},
+        503: {"description": "Diagram renderer unavailable"},
+    },
+)
+async def get_analysis_diagram_svg(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    analysis = _get_user_analysis(
+        db,
+        analysis_id=analysis_id,
+        user_id=current_user.id,
+        include_threats=False,
+    )
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Analysis with id {analysis_id} not found",
+        )
+    if not analysis.has_diagram:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis does not include UML diagram code.",
+        )
+
+    try:
+        svg_content = diagram_render_service.render_svg(
+            analysis.diagram_format or "",
+            analysis.diagram_code or "",
+        )
+    except DiagramRendererUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except DiagramRenderError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    logger.debug(
+        "Diagram SVG rendered user_id=%s analysis_id=%s format=%s bytes=%s",
+        current_user.id,
+        analysis.id,
+        analysis.diagram_format,
+        len(svg_content.encode("utf-8")),
+    )
+    return Response(content=svg_content, media_type="image/svg+xml")
 
 
 @router.get(

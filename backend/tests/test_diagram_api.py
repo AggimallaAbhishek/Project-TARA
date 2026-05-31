@@ -191,6 +191,69 @@ class DiagramApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"], "Unsupported file type.")
 
+    def test_analyze_code_happy_path(self):
+        response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "UML Code Analysis",
+                "uml_format": "mermaid",
+                "uml_code": "graph TD\nClient[Browser] --> API[Gateway]",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["title"], "UML Code Analysis")
+        self.assertEqual(payload["diagram_format"], "mermaid")
+        self.assertIn("Client[Browser]", payload["diagram_code"])
+        self.assertTrue(payload["has_diagram"])
+
+    def test_analyze_code_rejects_invalid_format(self):
+        response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Invalid UML Format",
+                "uml_format": "bpmn",
+                "uml_code": "graph TD\nA-->B",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_diagram_svg_endpoint_returns_svg(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "SVG Analysis",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_svg",
+            return_value="<svg><rect/></svg>",
+        ):
+            svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
+
+        self.assertEqual(svg_response.status_code, 200)
+        self.assertIn("image/svg+xml", svg_response.headers["content-type"])
+        self.assertIn("<svg>", svg_response.text)
+
+    def test_diagram_svg_endpoint_returns_404_for_non_diagram_analysis(self):
+        response = self.client.post(
+            "/api/analyze",
+            json={
+                "title": "Text Analysis Without Diagram",
+                "system_description": "Gateway with auth and database plus queue integration.",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        analysis_id = response.json()["id"]
+
+        svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
+        self.assertEqual(svg_response.status_code, 404)
+
     def test_extract_reports_runtime_failure(self):
         with patch.object(
             diagram_extract_service,

@@ -223,14 +223,14 @@ async def analyze_diagram_code(
 ):
     try:
         extracted_description = diagram_extract_service.extract_from_uml_code(
-            uml_format=request.uml_format.value,
+            uml_format=request.uml_format,
             uml_code=request.uml_code,
         )
     except DiagramExtractionError as exc:
         logger.warning(
             "UML code extraction rejected user_id=%s format=%s error=%s",
             current_user.id,
-            request.uml_format.value,
+            request.uml_format,
             str(exc),
         )
         raise HTTPException(
@@ -245,7 +245,7 @@ async def analyze_diagram_code(
         system_description=extracted_description,
         project_id=request.project_id,
         project_name=request.project_name,
-        diagram_format=request.uml_format.value,
+        diagram_format=request.uml_format,
         diagram_code=request.uml_code,
         source="uml_code",
         background_tasks=background_tasks,

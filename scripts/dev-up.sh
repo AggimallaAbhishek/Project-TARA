@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[dev-up] Starting PostgreSQL and Redis..."
-docker compose up -d postgres redis
+echo "[dev-up] Starting PostgreSQL, Redis, and Kroki..."
+docker compose up -d postgres redis kroki
 
 echo "[dev-up] Rebuilding and starting backend..."
 docker compose up -d --build backend

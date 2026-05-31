@@ -1,7 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.analysis import DiagramFormat
-
 
 class DiagramSourceMetadata(BaseModel):
     input_type: str
@@ -49,7 +47,7 @@ class DiagramAnalyzeRequest(BaseModel):
 
 class DiagramCodeAnalyzeRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    uml_format: DiagramFormat
+    uml_format: str = Field(..., min_length=1, max_length=32)
     uml_code: str = Field(..., min_length=1, max_length=50000)
     project_id: int | None = Field(default=None, ge=1)
     project_name: str | None = Field(default=None, min_length=1, max_length=255)
@@ -63,3 +61,8 @@ class DiagramCodeAnalyzeRequest(BaseModel):
         if not cleaned:
             raise ValueError(f"{info.field_name.replace('_', ' ')} cannot be blank")
         return cleaned
+
+    @field_validator("uml_format")
+    @classmethod
+    def normalize_uml_format(cls, value: str) -> str:
+        return value.strip().lower()
