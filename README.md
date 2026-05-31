@@ -347,6 +347,43 @@ Override it if your Ollama runs on a different host/port:
 OLLAMA_HOST=http://host.docker.internal:11435 ./scripts/dev-up.sh
 ```
 
+## Backend Dependency & Security Maintenance
+
+### Regenerate pinned requirements
+
+```bash
+cd backend
+
+# Runtime lock file
+./venv/bin/pip-compile requirements.in -o requirements.txt
+
+# Dev/security lock file
+./venv/bin/pip-compile requirements-dev.in -o requirements-dev.txt
+```
+
+### Optional hash-locked artifact
+
+If you need hash-verified installs (for stricter supply-chain workflows), generate a separate hash-locked file:
+
+```bash
+cd backend
+./venv/bin/pip-compile --generate-hashes requirements.in -o requirements-hashed.txt
+```
+
+`requirements-hashed.txt` is optional and additive; normal local/dev flow continues to use `requirements.txt`.
+
+### Security scan gate
+
+```bash
+cd backend
+./scripts/security_check.sh
+```
+
+Interpretation:
+- **Pass**: exits `0` and prints no known vulnerabilities.
+- **Fail**: non-zero exit (vulnerabilities found, interpreter missing, or `pip-audit` unavailable).
+- **Informational warnings**: hash-related messages can appear when auditing non-hash lock files; these do not indicate a vulnerability by themselves.
+
 ---
 
 ## API Endpoints

@@ -25,6 +25,11 @@ import {
 
 const AnalysisCharts = lazy(() => import('../components/analysis/AnalysisCharts'));
 
+function svgToDataUrl(svgText) {
+  const encoded = window.btoa(unescape(encodeURIComponent(svgText)));
+  return `data:image/svg+xml;base64,${encoded}`;
+}
+
 export default function AnalysisPage() {
   const { id } = useParams();
   const [analysis, setAnalysis] = useState(null);
@@ -39,10 +44,6 @@ export default function AnalysisPage() {
   const [diagramLoading, setDiagramLoading] = useState(false);
   const [diagramError, setDiagramError] = useState(null);
   const [isDiagramCodeExpanded, setIsDiagramCodeExpanded] = useState(false);
-  const svgToDataUrl = (svgText) => {
-    const encoded = window.btoa(unescape(encodeURIComponent(svgText)));
-    return `data:image/svg+xml;base64,${encoded}`;
-  };
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -188,36 +189,26 @@ export default function AnalysisPage() {
     );
   }
 
-  // Calculate chart data
-  const riskDistribution = [
-    { name: 'Critical', value: analysis.threats.filter(t => t.risk_level === 'Critical').length, color: '#FF4D4D' },
-    { name: 'High', value: analysis.threats.filter(t => t.risk_level === 'High').length, color: '#FF6B6B' },
-    { name: 'Medium', value: analysis.threats.filter(t => t.risk_level === 'Medium').length, color: '#FFA500' },
-    { name: 'Low', value: analysis.threats.filter(t => t.risk_level === 'Low').length, color: '#00FF94' },
-  ].filter(d => d.value > 0);
+  const riskDistribution = buildRiskDistribution(analysis.threats);
+  const strideDistribution = buildStrideDistribution(analysis.threats);
+  const highRiskCount = getHighRiskCount(analysis.threats);
+  const sortedThreats = sortThreatsByRisk(analysis.threats);
 
-  const strideDistribution = [
-    { name: 'Spoofing', count: analysis.threats.filter(t => t.stride_category === 'Spoofing').length },
-    { name: 'Tampering', count: analysis.threats.filter(t => t.stride_category === 'Tampering').length },
-    { name: 'Repudiation', count: analysis.threats.filter(t => t.stride_category === 'Repudiation').length },
-    { name: 'Info Disclosure', count: analysis.threats.filter(t => t.stride_category === 'Information Disclosure').length },
-    { name: 'DoS', count: analysis.threats.filter(t => t.stride_category === 'Denial of Service').length },
-    { name: 'Elevation', count: analysis.threats.filter(t => t.stride_category === 'Elevation of Privilege').length },
-  ].filter(d => d.count > 0);
-
-  const highRiskCount = analysis.threats.filter(t => ['Critical', 'High'].includes(t.risk_level)).length;
-  const sortedThreats = [...analysis.threats].sort((a, b) => b.risk_score - a.risk_score);
-  const formatIssueLine = (issue) => (
-    <li key={`${issue.name}-${issue.stride_category}-${issue.affected_component}`} className="text-sm text-text-secondary">
-      <span className="text-text-primary font-medium">{issue.name}</span>
-      {' · '}
-      {issue.stride_category}
-      {' · '}
-      {issue.affected_component}
-      {' · '}
-      {issue.risk_level} ({Number(issue.risk_score || 0).toFixed(1)})
-    </li>
-  );
+  const handleRetryDiagramRender = async () => {
+    setDiagramLoading(true);
+    setDiagramError(null);
+    try {
+      const svgContent = await getAnalysisDiagramSvg(id);
+      setDiagramSvgDataUrl(svgToDataUrl(svgContent));
+    } catch (retryError) {
+      setDiagramError(getApiErrorMessage(retryError, {
+        fallbackMessage: 'Failed to render UML diagram',
+        operation: 'analysis.diagram_render_retry',
+      }));
+    } finally {
+      setDiagramLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -236,342 +227,34 @@ export default function AnalysisPage() {
         </Link>
       </motion.div>
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card-dark p-6 mb-6"
-      >
-        <div className="flex justify-end mb-4">
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            disabled={isDownloadingPdf}
-            className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-4 h-4" />
-            {isDownloadingPdf ? 'Downloading...' : 'Download PDF Report'}
-          </button>
-        </div>
-        {pdfError && (
-          <div className="mb-4 p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
-            {pdfError}
-          </div>
-        )}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold font-display text-text-primary mb-2">
-              {analysis.title}
-            </h1>
-            {analysis.project && (
-              <Link
-                to={`/projects/${analysis.project.id}`}
-                className="inline-flex items-center px-2 py-1 mb-3 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/20 text-cyber-cyan text-xs hover:bg-cyber-cyan/20 transition-colors"
-              >
-                Project: {analysis.project.name}
-              </Link>
-            )}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary">
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {new Date(analysis.created_at).toLocaleString()}
-              </span>
-              {analysis.analysis_time > 0 && (
-                <span className="flex items-center gap-1 text-cyber-cyan">
-                  <TrendingUp className="w-4 h-4" />
-                  Analyzed in {analysis.analysis_time.toFixed(1)}s
-                </span>
-              )}
-            </div>
-          </div>
-          
-          {/* Risk Score */}
-          <div className="flex items-center gap-4">
-            <div className="text-center px-4 py-2 bg-dark-tertiary rounded-lg">
-              <div className="text-3xl font-bold text-cyber-cyan">
-                {analysis.total_risk_score.toFixed(1)}
-              </div>
-              <div className="text-xs text-text-muted">Avg Risk Score</div>
-            </div>
-            <div className="text-center px-4 py-2 bg-dark-tertiary rounded-lg">
-              <div className="text-3xl font-bold text-text-primary">
-                {analysis.threats.length}
-              </div>
-              <div className="text-xs text-text-muted">Threats Found</div>
-            </div>
-            {highRiskCount > 0 && (
-              <div className="text-center px-4 py-2 bg-risk-critical/10 border border-risk-critical/30 rounded-lg">
-                <div className="text-3xl font-bold text-risk-critical">
-                  {highRiskCount}
-                </div>
-                <div className="text-xs text-risk-critical">High/Critical</div>
-              </div>
-            )}
-          </div>
-        </div>
+      <AnalysisHeaderCard
+        analysis={analysis}
+        highRiskCount={highRiskCount}
+        isDownloadingPdf={isDownloadingPdf}
+        pdfError={pdfError}
+        onDownloadPdf={handleDownloadPdf}
+        diagramLoading={diagramLoading}
+        diagramError={diagramError}
+        diagramSvgDataUrl={diagramSvgDataUrl}
+        isDiagramCodeExpanded={isDiagramCodeExpanded}
+        onToggleDiagramCode={() => setIsDiagramCodeExpanded((value) => !value)}
+        onRetryDiagramRender={handleRetryDiagramRender}
+      />
 
-        {analysis.has_diagram && (
-          <div className="mt-6 p-4 bg-dark-tertiary rounded-lg">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" />
-                Diagram ({analysis.diagram_format?.toUpperCase() || 'UML'})
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsDiagramCodeExpanded((value) => !value)}
-                className="text-xs text-cyber-cyan hover:text-cyber-cyan/80 transition-colors inline-flex items-center gap-1"
-              >
-                <Code className="w-3 h-3" />
-                {isDiagramCodeExpanded ? 'Hide UML code' : 'Show UML code'}
-              </button>
-            </div>
+      <VersionComparisonPanel
+        loading={versionComparisonLoading}
+        error={versionComparisonError}
+        versionComparison={versionComparison}
+      />
 
-            {diagramLoading ? (
-              <p className="text-sm text-text-secondary">Rendering diagram...</p>
-            ) : diagramError ? (
-              <div className="space-y-2">
-                <p className="text-sm text-risk-critical">{diagramError}</p>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setDiagramLoading(true);
-                    setDiagramError(null);
-                    try {
-                      const svgContent = await getAnalysisDiagramSvg(id);
-                      const encoded = window.btoa(unescape(encodeURIComponent(svgContent)));
-                      setDiagramSvgDataUrl(`data:image/svg+xml;base64,${encoded}`);
-                    } catch (retryError) {
-                      setDiagramError(getApiErrorMessage(retryError, {
-                        fallbackMessage: 'Failed to render UML diagram',
-                        operation: 'analysis.diagram_render_retry',
-                      }));
-                    } finally {
-                      setDiagramLoading(false);
-                    }
-                  }}
-                  className="btn-secondary text-xs px-3 py-1.5"
-                >
-                  Retry Diagram Render
-                </button>
-              </div>
-            ) : diagramSvgDataUrl ? (
-              <div className="rounded-lg border border-dark-border bg-dark-secondary p-3 overflow-auto">
-                <img
-                  src={diagramSvgDataUrl}
-                  alt={`${analysis.title} UML diagram`}
-                  className="w-full h-auto"
-                />
-              </div>
-            ) : (
-              <p className="text-sm text-text-muted">Diagram preview unavailable.</p>
-            )}
+      <Suspense fallback={<LoadingSpinner text="Loading analysis charts..." />}>
+        <AnalysisCharts
+          riskDistribution={riskDistribution}
+          strideDistribution={strideDistribution}
+        />
+      </Suspense>
 
-            {isDiagramCodeExpanded && analysis.diagram_code && (
-              <div className="mt-3">
-                <p className="text-xs text-text-muted mb-2">UML Code</p>
-                <pre className="text-xs text-text-primary whitespace-pre-wrap bg-dark-secondary rounded-lg p-3 border border-dark-border overflow-auto max-h-64">
-                  {analysis.diagram_code}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* System Description */}
-        <div className="mt-6 p-4 bg-dark-tertiary rounded-lg">
-          <h3 className="text-sm font-medium text-text-secondary mb-2 flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            System Description
-          </h3>
-          <p className="text-sm text-text-primary whitespace-pre-wrap">
-            {analysis.system_description}
-          </p>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="card-dark p-6 mb-6"
-      >
-        <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-cyber-cyan" />
-          Version Comparison
-        </h2>
-
-        {versionComparisonLoading ? (
-          <p className="text-sm text-text-secondary">Loading version comparison...</p>
-        ) : versionComparisonError ? (
-          <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
-            {versionComparisonError}
-          </div>
-        ) : versionComparison ? (
-          <div className="space-y-4">
-            {versionComparison.has_previous_version ? (
-              <>
-                <div className="grid sm:grid-cols-4 gap-3">
-                  <div className="bg-dark-tertiary rounded-lg p-3">
-                    <p className="text-xs text-text-muted">Previous Issues</p>
-                    <p className="text-xl font-semibold text-text-primary">{versionComparison.previous_total_issues}</p>
-                  </div>
-                  <div className="bg-dark-tertiary rounded-lg p-3">
-                    <p className="text-xs text-text-muted">Resolved</p>
-                    <p className="text-xl font-semibold text-green-400">{versionComparison.resolved_issues_count}</p>
-                  </div>
-                  <div className="bg-dark-tertiary rounded-lg p-3">
-                    <p className="text-xs text-text-muted">Unresolved</p>
-                    <p className="text-xl font-semibold text-amber-400">{versionComparison.unresolved_issues_count}</p>
-                  </div>
-                  <div className="bg-dark-tertiary rounded-lg p-3">
-                    <p className="text-xs text-text-muted">New Issues</p>
-                    <p className="text-xl font-semibold text-risk-critical">{versionComparison.new_issues_count}</p>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-dark-tertiary rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-green-400 mb-2">Resolved Issues</h3>
-                    {versionComparison.resolved_issues.length === 0 ? (
-                      <p className="text-sm text-text-muted">No resolved issues.</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {versionComparison.resolved_issues.map(formatIssueLine)}
-                      </ul>
-                    )}
-                  </div>
-                  <div className="bg-dark-tertiary rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-amber-400 mb-2">Unresolved Issues</h3>
-                    {versionComparison.unresolved_issues.length === 0 ? (
-                      <p className="text-sm text-text-muted">No unresolved issues.</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {versionComparison.unresolved_issues.map(formatIssueLine)}
-                      </ul>
-                    )}
-                  </div>
-                  <div className="bg-dark-tertiary rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-risk-critical mb-2">Newly Introduced Issues</h3>
-                    {versionComparison.new_issues.length === 0 ? (
-                      <p className="text-sm text-text-muted">No newly introduced issues.</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {versionComparison.new_issues.map(formatIssueLine)}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-text-secondary">
-                This is the first version for this title. Future uploads with the same title will include progress comparison.
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-text-muted">No version comparison data available.</p>
-        )}
-      </motion.div>
-
-      {/* Charts Row */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid md:grid-cols-2 gap-6 mb-6"
-      >
-        {/* Risk Distribution Pie Chart */}
-        <div className="card-dark p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-cyber-cyan" />
-            Risk Distribution
-          </h3>
-          <ChartFrame height={192} minWidth={320}>
-            {(width, height) => (
-              <PieChart width={width} height={height}>
-                <Pie
-                  data={riskDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {riskDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#121826',
-                    border: '1px solid #2a3441',
-                    borderRadius: '8px',
-                    color: '#E6EAF2',
-                  }}
-                />
-              </PieChart>
-            )}
-          </ChartFrame>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
-            {riskDistribution.map((item) => (
-              <div key={item.name} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-text-secondary">{item.name}: {item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* STRIDE Bar Chart */}
-        <div className="card-dark p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-cyber-cyan" />
-            STRIDE Categories
-          </h3>
-          <ChartFrame height={192} minWidth={420}>
-            {(width, height) => (
-              <BarChart width={width} height={height} data={strideDistribution} layout="vertical">
-                <XAxis type="number" tick={{ fill: '#9AA4B2' }} />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  tick={{ fill: '#9AA4B2', fontSize: 12 }} 
-                  width={90}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#121826',
-                    border: '1px solid #2a3441',
-                    borderRadius: '8px',
-                    color: '#E6EAF2',
-                  }}
-                />
-                <Bar dataKey="count" fill="#00F5FF" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            )}
-          </ChartFrame>
-        </div>
-      </motion.div>
-
-      {/* Threats List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-cyber-cyan" />
-          Identified Threats ({analysis.threats.length})
-        </h2>
-        
-        <div className="space-y-4">
-          {sortedThreats.map((threat, index) => (
-            <ThreatCard key={threat.id} threat={threat} index={index} />
-          ))}
-        </div>
-      </motion.div>
+      <ThreatListSection threats={sortedThreats} />
     </div>
   );
 }
