@@ -19,6 +19,7 @@ from app.main import app
 from app.models.user import User
 from app.services.auth_service import get_current_user
 from app.services.diagram_extract_service import DiagramExtractionError, diagram_extract_service
+from app.services.diagram_render_service import DiagramRenderError, DiagramRendererUnavailableError
 from app.services.extract_session_service import extract_session_service
 from app.services.llm_service import llm_service
 from app.services.rate_limit_service import diagram_analyze_rate_limiter, diagram_extract_rate_limiter
@@ -218,6 +219,30 @@ class DiagramApiTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_analyze_code_rejects_blank_uml_code_with_400(self):
+        response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Blank UML",
+                "uml_format": "mermaid",
+                "uml_code": "   ",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("cannot be blank", response.json()["detail"].lower())
+
+    def test_analyze_code_rejects_blank_format_with_400(self):
+        response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Blank UML Format",
+                "uml_format": "   ",
+                "uml_code": "graph TD\nA-->B",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("unsupported uml format", response.json()["detail"].lower())
+
     def test_diagram_svg_endpoint_returns_svg(self):
         analyze_response = self.client.post(
             "/api/diagram/analyze-code",
@@ -253,6 +278,79 @@ class DiagramApiTest(unittest.TestCase):
 
         svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
         self.assertEqual(svg_response.status_code, 404)
+
+    def test_diagram_svg_endpoint_returns_404_for_foreign_user(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Foreign Ownership Check",
+                "uml_format": "mermaid",
+                "uml_code": "graph TD\nA-->B",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        def override_foreign_user():
+            return User(
+                id=9999,
+                email="foreign@example.com",
+                name="Foreign User",
+                google_id="foreign-user-google-id",
+            )
+
+        app.dependency_overrides[get_current_user] = override_foreign_user
+        try:
+            svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
+        finally:
+            app.dependency_overrides[get_current_user] = lambda: User(
+                id=self.user_id,
+                email="diagram-test-user@example.com",
+                name="Diagram Test User",
+                google_id="diagram-test-google-id",
+            )
+
+        self.assertEqual(svg_response.status_code, 404)
+
+    def test_diagram_svg_endpoint_maps_renderer_unavailable_to_503(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Renderer Unavailable",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_svg",
+            side_effect=DiagramRendererUnavailableError("Renderer unavailable"),
+        ):
+            svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
+
+        self.assertEqual(svg_response.status_code, 503)
+
+    def test_diagram_svg_endpoint_maps_render_error_to_502(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Renderer Bad SVG",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_svg",
+            side_effect=DiagramRenderError("Renderer rejected UML payload"),
+        ):
+            svg_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.svg")
+
+        self.assertEqual(svg_response.status_code, 502)
 
     def test_extract_reports_runtime_failure(self):
         with patch.object(

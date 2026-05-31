@@ -6,6 +6,7 @@ import HomePage from './HomePage'
 import {
   analyzeDocument,
   analyzeFromDiagram,
+  analyzeFromUmlCode,
   analyzeSystem,
   createProject,
   extractDiagram,
@@ -26,6 +27,7 @@ vi.mock('../services/api', () => ({
   analyzeSystem: vi.fn(),
   extractDiagram: vi.fn(),
   analyzeFromDiagram: vi.fn(),
+  analyzeFromUmlCode: vi.fn(),
   analyzeDocument: vi.fn(),
   getProjects: vi.fn(),
   createProject: vi.fn(),
@@ -59,6 +61,7 @@ describe('HomePage', () => {
       },
     })
     analyzeFromDiagram.mockResolvedValue({ id: 202 })
+    analyzeFromUmlCode.mockResolvedValue({ id: 404 })
     analyzeDocument.mockResolvedValue({
       analysis: { id: 303 },
       version_comparison: { has_previous_version: false },
@@ -230,6 +233,34 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(analyzeDocument).toHaveBeenCalledWith('Policy Document Analysis', documentFile, { projectId: 7 })
       expect(mockNavigate).toHaveBeenCalledWith('/analysis/303')
+    })
+  })
+
+  it('submits UML code mode analysis', async () => {
+    renderHomePage()
+
+    await screen.findByLabelText('Project')
+
+    fireEvent.click(screen.getByRole('button', { name: 'UML Code' }))
+    fireEvent.change(screen.getByLabelText('Analysis Title'), {
+      target: { value: 'UML Threat Model' },
+    })
+    fireEvent.change(screen.getByLabelText('UML Format'), {
+      target: { value: 'plantuml' },
+    })
+    fireEvent.change(screen.getByLabelText('UML Code'), {
+      target: { value: '@startuml\nClient -> API\nAPI -> DB\n@enduml' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze UML Threats' }))
+
+    await waitFor(() => {
+      expect(analyzeFromUmlCode).toHaveBeenCalledWith(
+        'UML Threat Model',
+        'plantuml',
+        '@startuml\nClient -> API\nAPI -> DB\n@enduml',
+        { projectId: 7 },
+      )
+      expect(mockNavigate).toHaveBeenCalledWith('/analysis/404')
     })
   })
 

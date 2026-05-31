@@ -47,12 +47,12 @@ class DiagramAnalyzeRequest(BaseModel):
 
 class DiagramCodeAnalyzeRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    uml_format: str = Field(..., min_length=1, max_length=32)
-    uml_code: str = Field(..., min_length=1, max_length=50000)
+    uml_format: str = Field(..., max_length=32)
+    uml_code: str = Field(..., max_length=50000)
     project_id: int | None = Field(default=None, ge=1)
     project_name: str | None = Field(default=None, min_length=1, max_length=255)
 
-    @field_validator("title", "uml_code", "project_name")
+    @field_validator("title", "project_name")
     @classmethod
     def validate_trimmed_fields(cls, value: str | None, info) -> str | None:
         if value is None:

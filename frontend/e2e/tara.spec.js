@@ -17,6 +17,9 @@ const analysis = {
   created_at: '2026-01-01T10:00:00Z',
   total_risk_score: 16,
   analysis_time: 0.4,
+  has_diagram: false,
+  diagram_format: null,
+  diagram_code: null,
   threats: [
     {
       id: 1,
@@ -33,6 +36,15 @@ const analysis = {
       created_at: '2026-01-01T10:00:00Z',
     },
   ],
+};
+
+const umlAnalysis = {
+  ...analysis,
+  id: 404,
+  title: 'UML Code Analysis',
+  has_diagram: true,
+  diagram_format: 'mermaid',
+  diagram_code: 'graph TD\nClient[Browser] --> API[Gateway]\nAPI --> DB[(Database)]',
 };
 
 const analysesList = [
@@ -253,6 +265,9 @@ async function mockApi(page, { authenticated = true, onDelete = () => {} } = {})
     if (path === '/api/diagram/analyze' && method === 'POST') {
       return fulfillJson(route, { ...analysis, id: 202, title: 'Diagram Analysis' }, 201);
     }
+    if (path === '/api/diagram/analyze-code' && method === 'POST') {
+      return fulfillJson(route, umlAnalysis, 201);
+    }
     if (path === '/api/document/analyze' && method === 'POST') {
       return fulfillJson(route, {
         analysis: { ...analysis, id: 303, title: 'Document Analysis' },
@@ -302,6 +317,16 @@ async function mockApi(page, { authenticated = true, onDelete = () => {} } = {})
     if (path === '/api/analyses/42' && method === 'DELETE') {
       onDelete();
       return route.fulfill({ status: 204 });
+    }
+    if (path === '/api/analyses/404/diagram.svg') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="140"><rect width="320" height="140" fill="#111"/><text x="12" y="72" fill="#0ff">UML Diagram</text></svg>',
+      });
+    }
+    if (path === '/api/analyses/404') {
+      return fulfillJson(route, umlAnalysis);
     }
     if (path === '/api/analyses/42' || path === '/api/analyses/101' || path === '/api/analyses/202' || path === '/api/analyses/303') {
       return fulfillJson(route, analysis);
@@ -381,6 +406,26 @@ test('runs diagram and document upload flows', async ({ page }) => {
   });
   await page.getByRole('button', { name: 'Analyze Document Threats' }).click();
   await expect(page).toHaveURL(/\/analysis\/303$/);
+});
+
+test('runs UML code analysis and shows rendered diagram in analysis page', async ({ page }) => {
+  const consoleIssues = captureConsoleIssues(page);
+  await mockApi(page);
+
+  await page.goto('/');
+  await page.getByLabel('Analysis Title').fill('UML Code Analysis');
+  await page.getByRole('button', { name: 'UML Code' }).click();
+  await page.getByLabel('UML Format').selectOption('mermaid');
+  await page.getByLabel('UML Code').fill('graph TD\nClient[Browser] --> API[Gateway]\nAPI --> DB[(Database)]');
+  await page.getByRole('button', { name: 'Analyze UML Threats' }).click();
+
+  await expect(page).toHaveURL(/\/analysis\/404$/);
+  await expect(page.getByText('Diagram (MERMAID)')).toBeVisible();
+  await expect(page.getByAltText('UML Code Analysis UML diagram')).toBeVisible();
+  await page.getByRole('button', { name: 'Show UML code' }).click();
+  await expect(page.getByText(/Client\[Browser\]/)).toBeVisible();
+
+  expect(consoleIssues).toEqual([]);
 });
 
 test('filters history and confirms analysis deletion', async ({ page }) => {

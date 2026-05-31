@@ -263,10 +263,11 @@ Frontend runs at: http://localhost:5173
 1. **Login** → Authenticate with Google OAuth
 2. **Text Analysis** → Enter a system architecture description → Click Analyze → View STRIDE threats
 3. **Diagram Upload** → Switch to "Upload Diagram" → Upload a PNG/PDF architecture diagram → Extract Architecture → Review text → Analyze
-4. **Document Analysis** → Switch to "Upload Document" → Upload a security document (PDF/TXT) → Analyze → View version comparison
-5. **History** → Browse past analyses with search and filters
-6. **PDF Export** → Open any analysis → Click Export PDF
-7. **Compare** → View resolved/unresolved/new issues between document versions
+4. **UML Code Analysis** → Switch to "UML Code" → Choose Mermaid or PlantUML → Paste UML code → Analyze → View rendered diagram in analysis detail
+5. **Document Analysis** → Switch to "Upload Document" → Upload a security document (PDF/TXT) → Analyze → View version comparison
+6. **History** → Browse past analyses with search and filters
+7. **PDF Export** → Open any analysis → Click Export PDF
+8. **Compare** → View resolved/unresolved/new issues between document versions
 
 ### Sample Input for Demo
 
@@ -322,6 +323,9 @@ FRONTEND_URL=http://localhost:5173
 DIAGRAM_MAX_UPLOAD_MB=10
 DIAGRAM_PDF_MAX_PAGES=3
 DIAGRAM_EXTRACT_TTL_SECONDS=1800
+DIAGRAM_RENDERER_URL=http://localhost:8001
+DIAGRAM_RENDER_TIMEOUT_SECONDS=20
+DIAGRAM_RENDER_MAX_CHARS=50000
 DOCUMENT_MAX_UPLOAD_MB=10
 DOCUMENT_PDF_MAX_PAGES=20
 ```
@@ -356,8 +360,10 @@ OLLAMA_HOST=http://host.docker.internal:11435 ./scripts/dev-up.sh
 | POST | `/api/document/analyze` | Analyze uploaded PDF/TXT document and auto-generate version comparison |
 | POST | `/api/diagram/extract` | Extract editable architecture text from uploaded diagram |
 | POST | `/api/diagram/analyze` | Analyze extracted (or edited) architecture text |
+| POST | `/api/diagram/analyze-code` | Analyze Mermaid/PlantUML code and persist diagram source on the analysis |
 | GET | `/api/analyses` | List analyses (pagination + search/filter) |
 | GET | `/api/analyses/{id}` | Get specific analysis |
+| GET | `/api/analyses/{id}/diagram.svg` | Render persisted UML diagram as SVG for an analysis |
 | GET | `/api/analyses/{id}/version-comparison` | Compare selected analysis against previous same-title version |
 | GET | `/api/analyses/{id}/summary` | Get risk summary |
 | GET | `/api/analyses/{id}/export.pdf` | Download analysis report PDF |
@@ -375,6 +381,19 @@ OLLAMA_HOST=http://host.docker.internal:11435 ./scripts/dev-up.sh
 4. Click **Analyze Diagram Threats** to run STRIDE analysis.
 
 File uploads are processed ephemerally and not persisted.
+
+## UML Code Workflow
+
+1. Enter an analysis title and switch to **UML Code** mode.
+2. Select UML format:
+   - Mermaid
+   - PlantUML
+3. Paste UML code and click **Analyze UML Threats**.
+4. Open analysis detail to view:
+   - Diagram panel rendered from persisted UML code
+   - Collapsible raw UML code block
+
+UML rendering is performed by a self-hosted Kroki service configured via `DIAGRAM_RENDERER_URL`.
 
 ## Document Upload Workflow
 
