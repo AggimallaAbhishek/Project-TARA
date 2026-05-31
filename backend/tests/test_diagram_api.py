@@ -219,6 +219,22 @@ class DiagramApiTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_analyze_code_accepts_payload_larger_than_previous_limit(self):
+        large_mermaid_code = "graph TD\n" + ("A-->B\n" * 9000)
+        self.assertGreater(len(large_mermaid_code), 50000)
+        response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Large UML Code Analysis",
+                "uml_format": "mermaid",
+                "uml_code": large_mermaid_code,
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["diagram_format"], "mermaid")
+        self.assertTrue(payload["has_diagram"])
+
     def test_analyze_code_rejects_blank_uml_code_with_400(self):
         response = self.client.post(
             "/api/diagram/analyze-code",

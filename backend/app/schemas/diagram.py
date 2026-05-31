@@ -48,7 +48,7 @@ class DiagramAnalyzeRequest(BaseModel):
 class DiagramCodeAnalyzeRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     uml_format: str = Field(..., max_length=32)
-    uml_code: str = Field(..., max_length=50000)
+    uml_code: str = Field(..., max_length=250000)
     project_id: int | None = Field(default=None, ge=1)
     project_name: str | None = Field(default=None, min_length=1, max_length=255)
 

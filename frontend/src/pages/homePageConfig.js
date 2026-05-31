@@ -12,7 +12,9 @@ import {
 
 export const TITLE_MAX_LENGTH = 255;
 export const DESCRIPTION_MAX_LENGTH = 5000;
-export const UML_CODE_MAX_LENGTH = 50000;
+export const UML_CODE_MAX_LENGTH = 250000;
+export const UML_CODE_MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+export const UML_CODE_ACCEPT_TYPES = '.mmd,.mermaid,.puml,.plantuml,.uml,.txt';
 export const MAX_DIAGRAM_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const DIAGRAM_ACCEPT_TYPES = '.png,.jpg,.jpeg,.pdf,.mmd,.mermaid,.puml,.plantuml,.uml,.drawio,.xml';
 export const MAX_DOCUMENT_UPLOAD_BYTES = 10 * 1024 * 1024;

@@ -45,7 +45,7 @@ class SettingsConfigTest(unittest.TestCase):
         settings = Settings(_env_file=None)
         self.assertEqual(settings.diagram_renderer_url, "http://kroki:8000")
         self.assertEqual(settings.diagram_render_timeout_seconds, 20)
-        self.assertEqual(settings.diagram_render_max_chars, 50000)
+        self.assertEqual(settings.diagram_render_max_chars, 250000)
 
 
 if __name__ == "__main__":

@@ -264,6 +264,30 @@ describe('HomePage', () => {
     })
   })
 
+  it('loads UML code from attached file and auto-detects format', async () => {
+    renderHomePage()
+
+    await screen.findByLabelText('Project')
+
+    fireEvent.click(screen.getByRole('button', { name: 'UML Code' }))
+    fireEvent.change(screen.getByLabelText('UML Format'), {
+      target: { value: 'plantuml' },
+    })
+
+    const umlFile = new File(['graph TD\nClient --> API\nAPI --> DB'], 'system.mmd', {
+      type: 'text/plain',
+    })
+    fireEvent.change(screen.getByLabelText('Attach UML/Mermaid File (Optional)'), {
+      target: { files: [umlFile] },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('UML Code')).toHaveValue('graph TD\nClient --> API\nAPI --> DB')
+      expect(screen.getByLabelText('UML Format')).toHaveValue('mermaid')
+      expect(screen.getByText('Loaded file: system.mmd')).toBeInTheDocument()
+    })
+  })
+
   it('creates a project inline and uses it for analysis', async () => {
     renderHomePage()
 

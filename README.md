@@ -263,7 +263,7 @@ Frontend runs at: http://localhost:5173
 1. **Login** → Authenticate with Google OAuth
 2. **Text Analysis** → Enter a system architecture description → Click Analyze → View STRIDE threats
 3. **Diagram Upload** → Switch to "Upload Diagram" → Upload a PNG/PDF architecture diagram → Extract Architecture → Review text → Analyze
-4. **UML Code Analysis** → Switch to "UML Code" → Choose Mermaid or PlantUML → Paste UML code → Analyze → View rendered diagram in analysis detail
+4. **UML Code Analysis** → Switch to "UML Code" → Choose Mermaid or PlantUML → Paste UML code (or attach UML file) → Analyze → View rendered diagram in analysis detail
 5. **Document Analysis** → Switch to "Upload Document" → Upload a security document (PDF/TXT) → Analyze → View version comparison
 6. **History** → Browse past analyses with search and filters
 7. **PDF Export** → Open any analysis → Click Export PDF
@@ -388,8 +388,13 @@ File uploads are processed ephemerally and not persisted.
 2. Select UML format:
    - Mermaid
    - PlantUML
-3. Paste UML code and click **Analyze UML Threats**.
-4. Open analysis detail to view:
+3. Paste UML code or attach a UML file (`.mmd`, `.mermaid`, `.puml`, `.plantuml`, `.uml`, `.txt`).
+4. Click **Analyze UML Threats**.
+5. Limits:
+   - UML text input: up to 250,000 characters
+   - UML file upload in UML mode: up to 2 MB
+   - SVG rendering limit: `DIAGRAM_RENDER_MAX_CHARS` (default 250,000)
+6. Open analysis detail to view:
    - Diagram panel rendered from persisted UML code
    - Collapsible raw UML code block
 

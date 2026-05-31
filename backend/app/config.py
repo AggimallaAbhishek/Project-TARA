@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     document_pdf_max_pages: int = 20
     diagram_renderer_url: str = "http://kroki:8000"
     diagram_render_timeout_seconds: int = 20
-    diagram_render_max_chars: int = 50000
+    diagram_render_max_chars: int = 250000
     db_startup_strict: bool | None = None
 
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH)

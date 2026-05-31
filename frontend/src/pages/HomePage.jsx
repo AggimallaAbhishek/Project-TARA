@@ -22,7 +22,9 @@ import {
   examples,
   MAX_DIAGRAM_UPLOAD_BYTES,
   MAX_DOCUMENT_UPLOAD_BYTES,
+  UML_CODE_ACCEPT_TYPES,
   UML_CODE_MAX_LENGTH,
+  UML_CODE_MAX_UPLOAD_BYTES,
   UML_FORMAT_OPTIONS,
   quickActionIcons,
   strideCategories,
@@ -42,6 +44,7 @@ export default function HomePage() {
   const [documentFile, setDocumentFile] = useState(null);
   const [umlFormat, setUmlFormat] = useState('mermaid');
   const [umlCode, setUmlCode] = useState('');
+  const [umlFileName, setUmlFileName] = useState('');
   const [extractId, setExtractId] = useState('');
   const [extractedDescription, setExtractedDescription] = useState('');
   const [sourceMetadata, setSourceMetadata] = useState(null);
@@ -138,6 +141,21 @@ export default function HomePage() {
     setSourceMetadata(null);
   };
 
+  const detectUmlFormatFromFileName = (fileName) => {
+    const normalizedName = (fileName || '').toLowerCase();
+    if (normalizedName.endsWith('.mmd') || normalizedName.endsWith('.mermaid')) {
+      return 'mermaid';
+    }
+    if (
+      normalizedName.endsWith('.puml')
+      || normalizedName.endsWith('.plantuml')
+      || normalizedName.endsWith('.uml')
+    ) {
+      return 'plantuml';
+    }
+    return null;
+  };
+
   const handleModeChange = (mode) => {
     setInputMode(mode);
     setError(null);
@@ -151,6 +169,7 @@ export default function HomePage() {
     if (mode !== 'uml') {
       setUmlCode('');
       setUmlFormat('mermaid');
+      setUmlFileName('');
     }
   };
 
@@ -199,6 +218,61 @@ export default function HomePage() {
       return;
     }
     setDocumentFile(file);
+  };
+
+  const handleUmlCodeFileChange = async (event) => {
+    const file = event.target.files?.[0] || null;
+    setError(null);
+    if (!file) {
+      return;
+    }
+    if (file.size > UML_CODE_MAX_UPLOAD_BYTES) {
+      setError('UML file is too large. Maximum size is 2 MB.');
+      setUmlFileName('');
+      return;
+    }
+
+    if (import.meta.env.DEV) {
+      console.debug('uml.file_load.start', {
+        fileName: file.name,
+        fileSize: file.size,
+      });
+    }
+
+    try {
+      const fileContent = await file.text();
+      if (!fileContent.trim()) {
+        setError('UML file is empty.');
+        setUmlFileName('');
+        return;
+      }
+      if (fileContent.length > UML_CODE_MAX_LENGTH) {
+        setError(`UML code is too large. Maximum ${UML_CODE_MAX_LENGTH.toLocaleString()} characters.`);
+        setUmlFileName('');
+        return;
+      }
+
+      const detectedFormat = detectUmlFormatFromFileName(file.name);
+      if (detectedFormat) {
+        setUmlFormat(detectedFormat);
+      }
+      setUmlCode(fileContent);
+      setUmlFileName(file.name);
+
+      if (import.meta.env.DEV) {
+        console.debug('uml.file_load.success', {
+          fileName: file.name,
+          detectedFormat: detectedFormat || umlFormat,
+          charCount: fileContent.length,
+        });
+      }
+    } catch (readError) {
+      console.error('Failed to read UML code file:', readError);
+      setError('Failed to read UML file. Please upload a UTF-8 Mermaid or PlantUML file.');
+      setUmlFileName('');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const handleCreateProject = async (projectName) => {
@@ -505,6 +579,26 @@ export default function HomePage() {
                   </select>
                 </div>
                 <div>
+                  <label htmlFor="uml-code-file" className="block text-sm font-medium text-text-secondary mb-2">
+                    Attach UML/Mermaid File (Optional)
+                  </label>
+                  <input
+                    id="uml-code-file"
+                    type="file"
+                    accept={UML_CODE_ACCEPT_TYPES}
+                    onChange={handleUmlCodeFileChange}
+                    className="input-dark cursor-pointer"
+                  />
+                  <p className="mt-2 text-xs text-text-muted">
+                    Supported: .mmd, .mermaid, .puml, .plantuml, .uml, .txt (max 2 MB).
+                  </p>
+                  {umlFileName && (
+                    <p className="mt-1 text-xs text-text-secondary">
+                      Loaded file: {umlFileName}
+                    </p>
+                  )}
+                </div>
+                <div>
                   <label htmlFor="uml-code" className="block text-sm font-medium text-text-secondary mb-2">
                     UML Code
                   </label>
@@ -519,8 +613,9 @@ export default function HomePage() {
                     maxLength={UML_CODE_MAX_LENGTH}
                     className="textarea-dark font-mono text-sm"
                   />
-                  <p className="mt-2 text-xs text-text-muted">
-                    Paste Mermaid or PlantUML code to run threat analysis and render a diagram in the Analysis page.
+                  <p className="mt-2 text-xs text-text-muted flex items-center justify-between gap-2">
+                    <span>Paste Mermaid or PlantUML code to run threat analysis and render a diagram in the Analysis page.</span>
+                    <span>{umlCode.length.toLocaleString()} / {UML_CODE_MAX_LENGTH.toLocaleString()}</span>
                   </p>
                 </div>
               </div>
