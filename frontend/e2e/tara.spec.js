@@ -385,7 +385,7 @@ test('runs diagram and document upload flows', async ({ page }) => {
 
   await page.goto('/');
   await page.getByLabel('Analysis Title').fill('Diagram Analysis');
-  await page.getByRole('button', { name: 'Upload Diagram' }).click();
+  await page.getByRole('button', { name: 'Upload File' }).click();
   await page.getByLabel('Upload Architecture Diagram').setInputFiles({
     name: 'diagram.mmd',
     mimeType: 'text/plain',
@@ -398,7 +398,8 @@ test('runs diagram and document upload flows', async ({ page }) => {
 
   await page.goto('/');
   await page.getByLabel('Analysis Title').fill('Document Analysis');
-  await page.getByRole('button', { name: 'Upload Document' }).click();
+  await page.getByRole('button', { name: 'Upload File' }).click();
+  await page.getByRole('button', { name: 'Document' }).click();
   await page.getByLabel('Upload Document').setInputFiles({
     name: 'architecture.txt',
     mimeType: 'text/plain',

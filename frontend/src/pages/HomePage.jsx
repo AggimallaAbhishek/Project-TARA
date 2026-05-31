@@ -39,6 +39,7 @@ export default function HomePage() {
   const [error, setError] = useState(null);
   const [title, setTitle] = useState('');
   const [inputMode, setInputMode] = useState('text');
+  const [uploadSource, setUploadSource] = useState('diagram');
   const [description, setDescription] = useState('');
   const [diagramFile, setDiagramFile] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
@@ -175,18 +176,28 @@ export default function HomePage() {
   const handleModeChange = (mode) => {
     setInputMode(mode);
     setError(null);
-    if (mode !== 'diagram') {
+    if (mode !== 'upload') {
       setDiagramFile(null);
-      resetExtractedState();
-    }
-    if (mode !== 'document') {
       setDocumentFile(null);
+      resetExtractedState();
+      setUploadSource('diagram');
     }
     if (mode !== 'uml') {
       setUmlCode('');
       setUmlFormat('mermaid');
       setUmlFileName('');
     }
+  };
+
+  const handleUploadSourceChange = (source) => {
+    setUploadSource(source);
+    setError(null);
+    if (source === 'diagram') {
+      setDocumentFile(null);
+      return;
+    }
+    setDiagramFile(null);
+    resetExtractedState();
   };
 
   const handleDiagramFileChange = (event) => {
@@ -318,11 +329,11 @@ export default function HomePage() {
       setError('Enter a system architecture description before analysis.');
       return;
     }
-    if (inputMode === 'diagram' && (!extractId || !extractedDescription.trim())) {
+    if (inputMode === 'upload' && uploadSource === 'diagram' && (!extractId || !extractedDescription.trim())) {
       setError('Extract architecture from the uploaded diagram before analysis.');
       return;
     }
-    if (inputMode === 'document' && !documentFile) {
+    if (inputMode === 'upload' && uploadSource === 'document' && !documentFile) {
       setError('Upload a document before analysis.');
       return;
     }
@@ -338,11 +349,11 @@ export default function HomePage() {
       const projectOptions = { projectId: Number(selectedProjectId) };
       const result = inputMode === 'text'
         ? await analyzeSystem(title, description, projectOptions)
-        : inputMode === 'diagram'
-          ? await analyzeFromDiagram(title, extractId, extractedDescription, projectOptions)
-          : inputMode === 'document'
-            ? await analyzeDocument(title, documentFile, projectOptions)
-            : await analyzeFromUmlCode(title, umlFormat, umlCode, projectOptions);
+        : inputMode === 'upload'
+          ? (uploadSource === 'diagram'
+            ? await analyzeFromDiagram(title, extractId, extractedDescription, projectOptions)
+            : await analyzeDocument(title, documentFile, projectOptions))
+          : await analyzeFromUmlCode(title, umlFormat, umlCode, projectOptions);
       const analysisId = result?.id ?? result?.analysis?.id;
       if (!analysisId) {
         throw new Error('Missing analysis ID in API response');
@@ -354,11 +365,9 @@ export default function HomePage() {
         fallbackMessage: 'Failed to analyze system. Please check if the backend is running.',
         operation: inputMode === 'text'
           ? 'analysis.create'
-          : inputMode === 'diagram'
-            ? 'diagram.analyze'
-            : inputMode === 'document'
-              ? 'document.analyze'
-              : 'diagram.analyze_code',
+          : inputMode === 'upload'
+            ? (uploadSource === 'diagram' ? 'diagram.analyze' : 'document.analyze')
+            : 'diagram.analyze_code',
       }));
     } finally {
       setIsLoading(false);
@@ -437,7 +446,7 @@ export default function HomePage() {
               <span className="block text-sm font-medium text-text-secondary mb-2">
                 Input Mode
               </span>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleModeChange('text')}
@@ -451,25 +460,14 @@ export default function HomePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleModeChange('diagram')}
+                  onClick={() => handleModeChange('upload')}
                   className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                    inputMode === 'diagram'
+                    inputMode === 'upload'
                       ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
                       : 'border-dark-border text-text-secondary bg-dark-tertiary'
                   }`}
                 >
-                  Upload Diagram
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModeChange('document')}
-                  className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
-                    inputMode === 'document'
-                      ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
-                      : 'border-dark-border text-text-secondary bg-dark-tertiary'
-                  }`}
-                >
-                  Upload Document
+                  Upload File
                 </button>
                 <button
                   type="button"
@@ -507,8 +505,39 @@ export default function HomePage() {
                   </span>
                 </p>
               </div>
-            ) : inputMode === 'diagram' ? (
+            ) : inputMode === 'upload' ? (
               <div className="mb-6 space-y-4">
+                <div>
+                  <span className="block text-sm font-medium text-text-secondary mb-2">
+                    Upload Source
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUploadSourceChange('diagram')}
+                      className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                        uploadSource === 'diagram'
+                          ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
+                          : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                      }`}
+                    >
+                      Diagram
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUploadSourceChange('document')}
+                      className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+                        uploadSource === 'document'
+                          ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
+                          : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                      }`}
+                    >
+                      Document
+                    </button>
+                  </div>
+                </div>
+                {uploadSource === 'diagram' ? (
+                  <>
                 <div>
                   <label htmlFor="diagram-file" className="block text-sm font-medium text-text-secondary mb-2">
                     Upload Architecture Diagram
@@ -568,26 +597,28 @@ export default function HomePage() {
                     </p>
                   </div>
                 )}
-              </div>
-            ) : inputMode === 'document' ? (
-              <div className="mb-6">
-                <label htmlFor="document-file" className="block text-sm font-medium text-text-secondary mb-2">
-                  Upload Document
-                </label>
-                <input
-                  id="document-file"
-                  type="file"
-                  accept={DOCUMENT_ACCEPT_TYPES}
-                  onChange={handleDocumentFileChange}
-                  className="input-dark cursor-pointer"
-                />
-                <p className="mt-2 text-xs text-text-muted">
-                  Supported: PDF, TXT. Max size: 10 MB.
-                </p>
-                {documentFile && (
-                  <p className="mt-1 text-xs text-text-secondary">
-                    Selected: {documentFile.name} ({Math.ceil(documentFile.size / 1024)} KB)
-                  </p>
+                  </>
+                ) : (
+                  <div>
+                    <label htmlFor="document-file" className="block text-sm font-medium text-text-secondary mb-2">
+                      Upload Document
+                    </label>
+                    <input
+                      id="document-file"
+                      type="file"
+                      accept={DOCUMENT_ACCEPT_TYPES}
+                      onChange={handleDocumentFileChange}
+                      className="input-dark cursor-pointer"
+                    />
+                    <p className="mt-2 text-xs text-text-muted">
+                      Supported: PDF, TXT. Max size: 10 MB.
+                    </p>
+                    {documentFile && (
+                      <p className="mt-1 text-xs text-text-secondary">
+                        Selected: {documentFile.name} ({Math.ceil(documentFile.size / 1024)} KB)
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -661,11 +692,11 @@ export default function HomePage() {
                 || (
                   inputMode === 'text'
                     ? !description.trim()
-                    : inputMode === 'diagram'
-                      ? (!extractId || !extractedDescription.trim())
-                      : inputMode === 'document'
-                        ? !documentFile
-                        : !umlCode.trim()
+                    : inputMode === 'upload'
+                      ? (uploadSource === 'diagram'
+                        ? (!extractId || !extractedDescription.trim())
+                        : !documentFile)
+                      : !umlCode.trim()
                 )
               }
               whileHover={{ scale: 1.02 }}
@@ -675,11 +706,9 @@ export default function HomePage() {
               <Sparkles className="w-5 h-5" />
               {inputMode === 'text'
                 ? 'Analyze System Threats'
-                : inputMode === 'diagram'
-                  ? 'Analyze Diagram Threats'
-                  : inputMode === 'document'
-                    ? 'Analyze Document Threats'
-                    : 'Analyze UML Threats'}
+                : inputMode === 'upload'
+                  ? (uploadSource === 'diagram' ? 'Analyze Diagram Threats' : 'Analyze Document Threats')
+                  : 'Analyze UML Threats'}
             </motion.button>
           </form>
 

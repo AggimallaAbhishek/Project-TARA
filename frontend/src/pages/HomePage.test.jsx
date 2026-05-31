@@ -100,7 +100,7 @@ describe('HomePage', () => {
 
     await screen.findByLabelText('Project')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Upload Diagram' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Upload File' }))
 
     fireEvent.change(screen.getByLabelText('Analysis Title'), {
       target: { value: 'Diagram Analysis' },
@@ -214,7 +214,8 @@ describe('HomePage', () => {
 
     await screen.findByLabelText('Project')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Upload File' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Document' }))
 
     fireEvent.change(screen.getByLabelText('Analysis Title'), {
       target: { value: 'Policy Document Analysis' },
