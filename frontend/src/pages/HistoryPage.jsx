@@ -109,7 +109,7 @@ export default function HistoryPage() {
       {analyses.length === 0 ? (
         <HistoryEmptyState hasFiltersApplied={hasFiltersApplied} />
       ) : (
-        <div className="space-y-4">
+        <div className="ui-data-list">
           <HistoryResultsList analyses={analyses} actionError={actionError} onRequestDelete={requestDelete} />
           <HistoryPaginationBar
             skip={skip}

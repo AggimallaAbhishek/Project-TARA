@@ -61,7 +61,7 @@ body {
 }
 
 @layer components {
-  .app-shell {
+  .ui-app-shell {
     @apply min-h-screen relative;
     background:
       radial-gradient(circle at 16% 10%, rgba(0, 200, 160, 0.12), transparent 34%),
@@ -73,7 +73,7 @@ body {
     @apply max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-6;
   }
 
-  .page-header {
+  .ui-page-header {
     @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6;
   }
 
@@ -94,18 +94,6 @@ body {
   .page-subtitle {
     @apply mt-1 text-sm md:text-base max-w-3xl;
     color: var(--text-secondary);
-  }
-
-  .surface-card {
-    @apply rounded-xl border;
-    border-color: rgba(0, 200, 160, 0.23);
-    background:
-      linear-gradient(180deg, rgba(8, 14, 20, 0.95), rgba(8, 14, 20, 0.9));
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
-  }
-
-  .section-card {
-    @apply surface-card p-6;
   }
 
   .stat-tile {
@@ -150,10 +138,6 @@ body {
     color: var(--text-primary);
   }
 
-  .card-dark {
-    @apply surface-card transition-all duration-200;
-  }
-
   .input-dark {
     @apply w-full px-4 py-2.5 rounded-lg border transition-all duration-200;
     background: rgba(13, 22, 32, 0.88);
@@ -188,29 +172,6 @@ body {
     box-shadow: 0 0 0 2px rgba(0, 200, 160, 0.15);
   }
 
-  .data-panel {
-    @apply card-dark overflow-hidden;
-  }
-
-  .data-panel table thead tr {
-    background: rgba(13, 22, 32, 0.92);
-  }
-
-  .data-panel table th {
-    @apply text-xs uppercase tracking-wide font-semibold;
-    color: var(--text-secondary);
-    font-family: 'Share Tech Mono', ui-monospace, monospace;
-  }
-
-  .data-panel table td {
-    @apply text-sm;
-    color: var(--text-primary);
-  }
-
-  .empty-state {
-    @apply section-card text-center;
-  }
-
   .text-gradient {
     background: linear-gradient(90deg, #00c8a0, #3898f0);
     -webkit-background-clip: text;
@@ -226,16 +187,12 @@ body {
   }
 
   /* Shared ORBITAL primitives */
-  .ui-app-shell {
-    @apply app-shell;
-  }
-
-  .ui-page-header {
-    @apply page-header;
-  }
-
   .ui-panel {
-    @apply section-card;
+    @apply rounded-xl border p-6;
+    border-color: rgba(0, 200, 160, 0.23);
+    background:
+      linear-gradient(180deg, rgba(8, 14, 20, 0.95), rgba(8, 14, 20, 0.9));
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
   }
 
   .ui-panel-header {
@@ -261,7 +218,7 @@ body {
   }
 
   .ui-empty-state {
-    @apply empty-state;
+    @apply ui-panel text-center;
   }
 
   .ui-form-section {
