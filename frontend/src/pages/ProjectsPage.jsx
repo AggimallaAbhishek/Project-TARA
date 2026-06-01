@@ -90,7 +90,7 @@ export default function ProjectsPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="page-header"
+        className="ui-page-header"
       >
         <div>
           <div className="page-kicker">

@@ -8,7 +8,7 @@ export default function HistoryHeader({ total }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="page-header"
+      className="ui-page-header"
     >
       <div>
         <p className="page-kicker">Records</p>

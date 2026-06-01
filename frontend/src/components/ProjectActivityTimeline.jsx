@@ -29,7 +29,7 @@ function buildDetail(event) {
 export default function ProjectActivityTimeline({ activity = [] }) {
   if (activity.length === 0) {
     return (
-      <div className="empty-state p-6">
+      <div className="ui-empty-state p-6">
         <FileText className="w-8 h-8 text-text-muted mx-auto mb-3" />
         <p className="text-text-secondary">No project activity yet.</p>
       </div>

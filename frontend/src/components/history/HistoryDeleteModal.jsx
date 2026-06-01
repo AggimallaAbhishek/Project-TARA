@@ -16,7 +16,7 @@ export default function HistoryDeleteModal({ deleteConfirm, onCancel, onConfirm 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="card-dark p-6 max-w-md w-full"
+            className="ui-panel p-6 max-w-md w-full"
             onClick={(event) => event.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-text-primary mb-2">Delete Analysis?</h3>

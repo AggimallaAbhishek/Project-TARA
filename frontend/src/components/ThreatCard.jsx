@@ -38,7 +38,7 @@ export default function ThreatCard({ threat, index = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="card-dark overflow-hidden"
+      className="ui-panel overflow-hidden p-0"
     >
       {/* Card Header - Always visible */}
       <button
