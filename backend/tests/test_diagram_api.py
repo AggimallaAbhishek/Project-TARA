@@ -416,6 +416,28 @@ class DiagramApiTest(unittest.TestCase):
         self.assertIn("attachment; filename=", png_response.headers.get("content-disposition", ""))
         self.assertTrue(png_response.content.startswith(b"\x89PNG\r\n\x1a\n"))
 
+    def test_diagram_png_endpoint_honors_refresh_flag(self):
+        analyze_response = self.client.post(
+            "/api/diagram/analyze-code",
+            json={
+                "title": "Refresh PNG Analysis",
+                "uml_format": "plantuml",
+                "uml_code": "@startuml\nA -> B\n@enduml",
+            },
+        )
+        self.assertEqual(analyze_response.status_code, 201)
+        analysis_id = analyze_response.json()["id"]
+
+        with patch(
+            "app.routes.analysis.diagram_render_service.render_png",
+            return_value=b"\x89PNG\r\n\x1a\nfakepng",
+        ) as render_mock:
+            png_response = self.client.get(f"/api/analyses/{analysis_id}/diagram.png?refresh=true")
+
+        self.assertEqual(png_response.status_code, 200)
+        self.assertEqual(render_mock.call_count, 1)
+        self.assertTrue(render_mock.call_args.kwargs.get("force_refresh"))
+
     def test_diagram_png_endpoint_returns_404_for_non_diagram_analysis(self):
         response = self.client.post(
             "/api/analyze",
