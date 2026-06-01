@@ -102,11 +102,7 @@ function formatUtcNow() {
 export default function LandingPage() {
   const shouldBootAtInit = useMemo(() => {
     const isE2E = import.meta.env.VITE_E2E === 'true';
-    const prefersReducedMotion = typeof window !== 'undefined'
-      && typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    return shouldRunLandingBoot({ isE2E, prefersReducedMotion });
+    return shouldRunLandingBoot({ isE2E, prefersReducedMotion: false });
   }, []);
 
   const [clock, setClock] = useState(formatUtcNow());
@@ -456,7 +452,7 @@ export default function LandingPage() {
             </Link>
             <Link to="/login">
               <button type="button" className="orbital-cta-secondary">
-                Sign In
+                Open Portal
               </button>
             </Link>
           </div>
