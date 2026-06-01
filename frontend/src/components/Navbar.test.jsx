@@ -56,6 +56,7 @@ describe('Navbar', () => {
 
     expect(screen.getByTestId('navbar-avatar-fallback')).toBeInTheDocument()
     expect(screen.getByText('U')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Audit/i })).toHaveAttribute('href', '/audit')
   })
 
   it('links public brand to root landing page', () => {

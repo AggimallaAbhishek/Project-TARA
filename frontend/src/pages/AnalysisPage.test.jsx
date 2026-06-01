@@ -8,6 +8,7 @@ import {
   downloadAnalysisPdf,
   getAnalysis,
   getAnalysisDiagramSvg,
+  getAnalysisSummary,
   getAnalysisVersionComparison,
 } from '../services/api'
 
@@ -16,6 +17,7 @@ vi.mock('../services/api', () => ({
   getAnalysisDiagramSvg: vi.fn(),
   downloadAnalysisDiagramPng: vi.fn(),
   downloadAnalysisPdf: vi.fn(),
+  getAnalysisSummary: vi.fn(),
   getAnalysisVersionComparison: vi.fn(),
 }))
 
@@ -56,6 +58,18 @@ describe('AnalysisPage PDF export', () => {
       system_description: 'System description',
       has_diagram: false,
       threats: [],
+    })
+    getAnalysisSummary.mockResolvedValue({
+      analysis_id: 42,
+      title: 'Payments Platform',
+      total_threats: 0,
+      critical_count: 0,
+      high_count: 0,
+      medium_count: 0,
+      low_count: 0,
+      average_risk_score: 0,
+      max_risk_score: 0,
+      stride_distribution: {},
     })
     getAnalysisDiagramSvg.mockResolvedValue('<svg xmlns="http://www.w3.org/2000/svg"></svg>')
     downloadAnalysisDiagramPng.mockResolvedValue({
@@ -117,6 +131,98 @@ describe('AnalysisPage PDF export', () => {
     await waitFor(() => {
       expect(downloadAnalysisPdf).toHaveBeenCalledWith('42')
     })
+    expect(getAnalysisSummary).toHaveBeenCalledWith('42')
+  })
+
+  it('uses summary API metrics as primary chart source', async () => {
+    getAnalysis.mockResolvedValueOnce({
+      id: 42,
+      title: 'Payments Platform',
+      created_at: '2026-01-01T10:00:00',
+      analysis_time: 0.3,
+      total_risk_score: 8.0,
+      system_description: 'System description',
+      has_diagram: false,
+      threats: [
+        {
+          id: 1,
+          analysis_id: 42,
+          name: 'Only Local Threat',
+          description: 'desc',
+          stride_category: 'Tampering',
+          risk_level: 'Low',
+          likelihood: 1,
+          impact: 2,
+          risk_score: 2,
+          mitigation: 'Do X',
+          created_at: '2026-01-01T10:00:00',
+        },
+      ],
+    })
+    getAnalysisSummary.mockResolvedValueOnce({
+      analysis_id: 42,
+      title: 'Payments Platform',
+      total_threats: 5,
+      critical_count: 1,
+      high_count: 2,
+      medium_count: 1,
+      low_count: 1,
+      average_risk_score: 9.4,
+      max_risk_score: 16,
+      stride_distribution: {
+        Spoofing: 2,
+        Tampering: 1,
+        Repudiation: 0,
+        'Information Disclosure': 1,
+        'Denial of Service': 0,
+        'Elevation of Privilege': 1,
+      },
+    })
+
+    renderAnalysisPage()
+
+    expect(await screen.findByText('Critical: 1')).toBeInTheDocument()
+    expect(screen.getByText('High: 2')).toBeInTheDocument()
+    expect(screen.getByText('Medium: 1')).toBeInTheDocument()
+    expect(screen.getByText('Low: 1')).toBeInTheDocument()
+    expect(screen.queryByText(/Could not load server summary metrics/i)).not.toBeInTheDocument()
+  })
+
+  it('falls back to local metrics when summary API fails', async () => {
+    getAnalysis.mockResolvedValueOnce({
+      id: 42,
+      title: 'Payments Platform',
+      created_at: '2026-01-01T10:00:00',
+      analysis_time: 0.3,
+      total_risk_score: 8.0,
+      system_description: 'System description',
+      has_diagram: false,
+      threats: [
+        {
+          id: 1,
+          analysis_id: 42,
+          name: 'Critical Threat',
+          description: 'desc',
+          stride_category: 'Spoofing',
+          risk_level: 'Critical',
+          likelihood: 4,
+          impact: 4,
+          risk_score: 16,
+          mitigation: 'Do X',
+          created_at: '2026-01-01T10:00:00',
+        },
+      ],
+    })
+    getAnalysisSummary.mockRejectedValueOnce({
+      response: { data: { detail: 'Summary endpoint unavailable' } },
+    })
+
+    renderAnalysisPage()
+
+    expect(await screen.findByText('Critical: 1')).toBeInTheDocument()
+    expect(
+      screen.getByText('Summary endpoint unavailable'),
+    ).toBeInTheDocument()
   })
 
   it('shows error message when PDF download fails', async () => {

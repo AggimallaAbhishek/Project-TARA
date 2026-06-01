@@ -49,14 +49,15 @@ describe('AuditPage', () => {
       });
     });
 
-    expect(await screen.findByText('Analysis created')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Audit Logs' })).toBeInTheDocument();
+    expect(screen.getAllByText('Analysis created').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Project #7' })).toHaveAttribute('href', '/projects/7');
     expect(screen.getByRole('link', { name: 'Analysis #42' })).toHaveAttribute('href', '/analysis/42');
   });
 
   it('applies selected filters and resets paging', async () => {
     renderAuditPage();
-    await screen.findByText('Analysis created');
+    await screen.findByRole('heading', { name: 'Audit Logs' });
 
     fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'project_updated' } });
     fireEvent.change(screen.getByLabelText('Analysis ID'), { target: { value: '42' } });
@@ -88,7 +89,7 @@ describe('AuditPage', () => {
     );
 
     renderAuditPage();
-    await screen.findByText('Analysis created');
+    await screen.findByRole('heading', { name: 'Audit Logs' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 

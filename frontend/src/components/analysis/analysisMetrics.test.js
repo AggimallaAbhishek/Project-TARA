@@ -1,6 +1,8 @@
 import {
   buildRiskDistribution,
+  buildRiskDistributionFromSummary,
   buildStrideDistribution,
+  buildStrideDistributionFromSummary,
   getHighRiskCount,
   sortThreatsByRisk,
 } from './analysisMetrics'
@@ -35,5 +37,40 @@ describe('analysisMetrics', () => {
     const sorted = sortThreatsByRisk(sampleThreats)
     expect(sorted.map((item) => item.id)).toEqual([1, 2, 3])
     expect(sampleThreats.map((item) => item.id)).toEqual([1, 2, 3])
+  })
+
+  it('builds risk distribution from summary payload', () => {
+    expect(
+      buildRiskDistributionFromSummary({
+        critical_count: 1,
+        high_count: 2,
+        medium_count: 0,
+        low_count: 3,
+      }),
+    ).toEqual([
+      { name: 'Critical', value: 1, color: '#FF4D4D' },
+      { name: 'High', value: 2, color: '#FF6B6B' },
+      { name: 'Low', value: 3, color: '#00FF94' },
+    ])
+  })
+
+  it('builds STRIDE distribution from summary payload', () => {
+    expect(
+      buildStrideDistributionFromSummary({
+        stride_distribution: {
+          Spoofing: 1,
+          Tampering: 2,
+          Repudiation: 0,
+          'Information Disclosure': 3,
+          'Denial of Service': 0,
+          'Elevation of Privilege': 4,
+        },
+      }),
+    ).toEqual([
+      { name: 'Spoofing', count: 1 },
+      { name: 'Tampering', count: 2 },
+      { name: 'Info Disclosure', count: 3 },
+      { name: 'Elevation', count: 4 },
+    ])
   })
 })

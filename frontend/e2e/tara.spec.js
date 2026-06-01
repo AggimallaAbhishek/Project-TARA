@@ -174,6 +174,27 @@ const comparisonPayload = {
   },
 };
 
+const auditLogs = [
+  {
+    id: 1,
+    user_id: 1,
+    analysis_id: 42,
+    project_id: 7,
+    action: 'analysis_created',
+    event_metadata: { title: 'Payment Service' },
+    created_at: '2026-01-01T10:00:00Z',
+  },
+  {
+    id: 2,
+    user_id: 1,
+    analysis_id: 42,
+    project_id: 7,
+    action: 'pdf_exported',
+    event_metadata: { title: 'Payment Service' },
+    created_at: '2026-01-02T10:00:00Z',
+  },
+];
+
 async function fulfillJson(route, body, status = 200) {
   await route.fulfill({
     status,
@@ -230,6 +251,13 @@ async function mockApi(
     }
     if (path === '/api/projects/7' && method === 'GET') {
       return fulfillJson(route, project);
+    }
+    if (path === '/api/projects/7' && method === 'PATCH') {
+      const requestBody = request.postDataJSON();
+      return fulfillJson(route, {
+        ...project,
+        ...requestBody,
+      });
     }
     if (path === '/api/projects/7/analyses' && method === 'GET') {
       return fulfillJson(route, {
@@ -297,6 +325,9 @@ async function mockApi(
     if (path === '/api/compare' && method === 'POST') {
       return fulfillJson(route, comparisonPayload);
     }
+    if (path === '/api/audit/logs' && method === 'GET') {
+      return fulfillJson(route, auditLogs);
+    }
     if (path.endsWith('/version-comparison')) {
       return fulfillJson(route, {
         current_analysis_id: 42,
@@ -311,6 +342,48 @@ async function mockApi(
         resolved_issues: [],
         unresolved_issues: [],
         new_issues: [],
+      });
+    }
+    if (path === '/api/analyses/42/summary') {
+      return fulfillJson(route, {
+        analysis_id: 42,
+        title: 'Payment Service',
+        total_threats: 3,
+        critical_count: 1,
+        high_count: 1,
+        medium_count: 1,
+        low_count: 0,
+        average_risk_score: 10,
+        max_risk_score: 16,
+        stride_distribution: {
+          Spoofing: 1,
+          Tampering: 1,
+          Repudiation: 0,
+          'Information Disclosure': 1,
+          'Denial of Service': 0,
+          'Elevation of Privilege': 0,
+        },
+      });
+    }
+    if (path === '/api/analyses/404/summary') {
+      return fulfillJson(route, {
+        analysis_id: 404,
+        title: 'UML Code Analysis',
+        total_threats: 1,
+        critical_count: 1,
+        high_count: 0,
+        medium_count: 0,
+        low_count: 0,
+        average_risk_score: 16,
+        max_risk_score: 16,
+        stride_distribution: {
+          Spoofing: 1,
+          Tampering: 0,
+          Repudiation: 0,
+          'Information Disclosure': 0,
+          'Denial of Service': 0,
+          'Elevation of Privilege': 0,
+        },
       });
     }
     if (path === '/api/analyses/42/export.pdf') {
@@ -489,6 +562,34 @@ test('opens projects section and project workspace', async ({ page }) => {
   await expect(page.getByText('Project Workspace')).toBeVisible();
   await expect(page.getByText('Analysis created')).toBeVisible();
   await expect(page.locator('main').getByRole('link', { name: 'Compare' })).toHaveAttribute('href', '/compare?project_id=7');
+});
+
+test('edits project details inline from project workspace', async ({ page }) => {
+  await mockApi(page);
+
+  await page.goto('/projects/7');
+  await expect(page.getByRole('heading', { level: 1, name: 'Payment Service' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Edit Project' }).click();
+  await page.getByLabel('Project Name').fill('Payment Service v2');
+  await page.getByLabel('Project Description').fill('Updated workspace description for audit and analysis.');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Payment Service v2' })).toBeVisible();
+  await expect(page.getByText('Updated workspace description for audit and analysis.')).toBeVisible();
+});
+
+test('opens global audit page from navbar and displays logs', async ({ page }) => {
+  await mockApi(page);
+
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Audit' }).click();
+
+  await expect(page).toHaveURL(/\/audit$/);
+  await expect(page.getByRole('heading', { name: 'Audit Logs' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Analysis #42' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Project #7' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apply Filters' })).toBeVisible();
 });
 
 test('downloads a PDF report from the analysis page', async ({ page }) => {
