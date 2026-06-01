@@ -29,7 +29,7 @@ function buildDetail(event) {
 export default function ProjectActivityTimeline({ activity = [] }) {
   if (activity.length === 0) {
     return (
-      <div className="card-dark p-6 text-center">
+      <div className="empty-state p-6">
         <FileText className="w-8 h-8 text-text-muted mx-auto mb-3" />
         <p className="text-text-secondary">No project activity yet.</p>
       </div>
@@ -37,15 +37,15 @@ export default function ProjectActivityTimeline({ activity = [] }) {
   }
 
   return (
-    <div className="card-dark p-5">
-      <h2 className="text-lg font-semibold text-text-primary mb-4">Activity</h2>
+    <div className="section-card">
+      <h2 className="section-title mb-4">Activity</h2>
       <div className="space-y-4">
         {activity.map((event) => {
           const Icon = ACTION_ICONS[event.action] || FileText;
           return (
-            <div key={event.id} className="flex gap-3">
-              <div className="w-9 h-9 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/20 flex items-center justify-center flex-shrink-0">
-                <Icon className="w-4 h-4 text-cyber-cyan" />
+            <div key={event.id} className="flex gap-3 rounded-lg border border-dark-border bg-dark-tertiary/65 p-3">
+              <div className="w-9 h-9 rounded-lg bg-dark-elevated border border-dark-border-strong flex items-center justify-center flex-shrink-0">
+                <Icon className="w-4 h-4 text-text-secondary" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-text-primary">

@@ -14,15 +14,15 @@ export default function ProjectCard({ project }) {
   return (
     <Link
       to={`/projects/${project.id}`}
-      className="card-dark p-5 block hover:border-cyber-cyan/40 transition-colors group"
+      className="section-card block group hover:border-dark-border-strong hover:-translate-y-0.5 transition-all duration-200"
     >
-      <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-cyber-cyan text-xs font-semibold uppercase tracking-wide mb-2">
+          <div className="inline-flex items-center gap-2 page-kicker mb-2">
             <FolderKanban className="w-4 h-4" />
             Project
           </div>
-          <h2 className="text-xl font-semibold text-text-primary group-hover:text-cyber-cyan transition-colors truncate">
+          <h2 className="text-xl font-semibold text-text-primary truncate">
             {project.name}
           </h2>
           {project.description && (
@@ -31,21 +31,21 @@ export default function ProjectCard({ project }) {
             </p>
           )}
         </div>
-        <div className="text-center px-3 py-2 rounded-lg bg-dark-tertiary">
+        <div className="stat-tile text-center px-3 py-2 min-w-[86px]">
           <div className="text-lg font-bold text-cyber-cyan">{latestScore}</div>
           <div className="text-xs text-text-muted">Score</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg bg-dark-tertiary/60 p-3">
+      <div className="grid grid-cols-2 gap-3 text-sm mt-4">
+        <div className="stat-tile p-3">
           <div className="flex items-center gap-2 text-text-muted mb-1">
             <FileText className="w-4 h-4" />
             Analyses
           </div>
           <div className="text-text-primary font-semibold">{project.analysis_count}</div>
         </div>
-        <div className="rounded-lg bg-dark-tertiary/60 p-3">
+        <div className="stat-tile p-3">
           <div className="flex items-center gap-2 text-text-muted mb-1">
             <ShieldAlert className="w-4 h-4" />
             High/Critical
@@ -54,12 +54,12 @@ export default function ProjectCard({ project }) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-xs text-text-muted">
+      <div className="mt-4 flex items-center justify-between gap-3 text-xs text-text-muted border-t border-dark-border pt-3">
         <span className="flex items-center gap-1">
           <Calendar className="w-4 h-4" />
           Latest: {formatDate(project.latest_analysis_at)}
         </span>
-        <span className="inline-flex items-center gap-1 text-cyber-cyan">
+        <span className="inline-flex items-center gap-1 text-cyber-cyan group-hover:text-text-primary transition-colors">
           <Plus className="w-4 h-4" />
           Open workspace
         </span>
