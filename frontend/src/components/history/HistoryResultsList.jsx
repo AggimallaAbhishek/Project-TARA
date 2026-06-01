@@ -35,7 +35,7 @@ export default function HistoryResultsList({ analyses, actionError, onRequestDel
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: -100 }}
             transition={{ delay: index * 0.05 }}
-            className="card-dark p-5 hover:border-cyber-cyan/30 transition-colors"
+            className="section-card py-5 hover:border-dark-border-strong transition-colors"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -48,7 +48,7 @@ export default function HistoryResultsList({ analyses, actionError, onRequestDel
                 {analysis.project && (
                   <Link
                     to={`/projects/${analysis.project.id}`}
-                    className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/20 text-cyber-cyan text-xs hover:bg-cyber-cyan/20 transition-colors"
+                    className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-dark-tertiary border border-dark-border text-text-secondary text-xs hover:bg-dark-elevated transition-colors"
                   >
                     <FolderKanban className="w-3 h-3" />
                     {analysis.project.name}
@@ -77,7 +77,7 @@ export default function HistoryResultsList({ analyses, actionError, onRequestDel
 
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="text-center px-3 py-1 bg-dark-tertiary rounded-lg">
+                  <div className="stat-tile text-center px-3 py-1">
                     <div className="text-lg font-bold text-cyber-cyan">{analysis.total_risk_score.toFixed(1)}</div>
                     <div className="text-xs text-text-muted">Score</div>
                   </div>
@@ -90,7 +90,7 @@ export default function HistoryResultsList({ analyses, actionError, onRequestDel
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       aria-label={`View analysis ${analysis.title}`}
-                      className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-cyber-cyan transition-colors"
+                      className="p-2 rounded-lg border border-dark-border bg-dark-tertiary text-text-secondary hover:text-cyber-cyan hover:bg-dark-elevated transition-colors"
                     >
                       <Eye className="w-5 h-5" />
                     </motion.button>
@@ -100,7 +100,7 @@ export default function HistoryResultsList({ analyses, actionError, onRequestDel
                     whileTap={{ scale: 0.9 }}
                     onClick={() => onRequestDelete(analysis)}
                     aria-label={`Delete analysis ${analysis.title}`}
-                    className="p-2 rounded-lg bg-dark-tertiary text-text-secondary hover:text-risk-critical transition-colors"
+                    className="p-2 rounded-lg border border-dark-border bg-dark-tertiary text-text-secondary hover:text-risk-critical hover:bg-dark-elevated transition-colors"
                   >
                     <Trash2 className="w-5 h-5" />
                   </motion.button>

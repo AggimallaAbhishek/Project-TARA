@@ -25,7 +25,7 @@ export default function HomeSidebar({
           {strideCategories.map((cat) => (
             <div
               key={cat.letter}
-              className="flex items-center gap-3 p-2 rounded-lg bg-dark-tertiary/50"
+              className="flex items-center gap-3 p-2 rounded-lg bg-dark-tertiary border border-dark-border/70"
             >
               <span className={`font-bold ${cat.color}`}>{cat.letter}</span>
               <cat.icon className={`w-4 h-4 ${cat.color}`} />
@@ -44,7 +44,7 @@ export default function HomeSidebar({
           <motion.button
             whileHover={{ x: 5 }}
             onClick={() => navigate('/projects')}
-            className="w-full flex items-center justify-between p-3 rounded-lg bg-dark-tertiary text-text-secondary hover:text-text-primary transition-colors"
+            className="w-full flex items-center justify-between p-3 rounded-lg bg-dark-tertiary border border-dark-border text-text-secondary hover:text-text-primary hover:bg-dark-elevated transition-colors"
           >
             <span className="flex items-center gap-2">
               <FolderKanban className="w-4 h-4" />
@@ -55,7 +55,7 @@ export default function HomeSidebar({
           <motion.button
             whileHover={{ x: 5 }}
             onClick={() => navigate('/history')}
-            className="w-full flex items-center justify-between p-3 rounded-lg bg-dark-tertiary text-text-secondary hover:text-text-primary transition-colors"
+            className="w-full flex items-center justify-between p-3 rounded-lg bg-dark-tertiary border border-dark-border text-text-secondary hover:text-text-primary hover:bg-dark-elevated transition-colors"
           >
             <span className="flex items-center gap-2">
               <History className="w-4 h-4" />

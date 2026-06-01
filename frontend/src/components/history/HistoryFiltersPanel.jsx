@@ -39,7 +39,7 @@ export default function HistoryFiltersPanel({
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card-dark p-4 mb-6 space-y-4"
+      className="section-card mb-6 space-y-4"
     >
       <form onSubmit={onApplySearch} className="flex flex-col md:flex-row gap-3">
         <label className="sr-only" htmlFor="analysis-search">

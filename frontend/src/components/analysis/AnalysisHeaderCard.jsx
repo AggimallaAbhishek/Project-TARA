@@ -33,7 +33,7 @@ export default function AnalysisHeaderCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card-dark p-6 mb-6"
+      className="section-card mb-6"
     >
       <div className="flex justify-end mb-4">
         <button
@@ -53,13 +53,14 @@ export default function AnalysisHeaderCard({
       )}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold font-display text-text-primary mb-2">
+          <p className="page-kicker mb-1">Analysis Report</p>
+          <h1 className="text-2xl md:text-3xl font-bold font-display text-text-primary mb-2">
             {analysis.title}
           </h1>
           {analysis.project && (
             <Link
               to={`/projects/${analysis.project.id}`}
-              className="inline-flex items-center px-2 py-1 mb-3 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/20 text-cyber-cyan text-xs hover:bg-cyber-cyan/20 transition-colors"
+              className="inline-flex items-center px-2 py-1 mb-3 rounded-full bg-dark-tertiary border border-dark-border text-text-secondary text-xs hover:text-text-primary hover:bg-dark-elevated transition-colors"
             >
               Project: {analysis.project.name}
             </Link>
@@ -79,20 +80,20 @@ export default function AnalysisHeaderCard({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="text-center px-4 py-2 bg-dark-tertiary rounded-lg">
+          <div className="stat-tile text-center">
             <div className="text-3xl font-bold text-cyber-cyan">
               {analysis.total_risk_score.toFixed(1)}
             </div>
             <div className="text-xs text-text-muted">Avg Risk Score</div>
           </div>
-          <div className="text-center px-4 py-2 bg-dark-tertiary rounded-lg">
+          <div className="stat-tile text-center">
             <div className="text-3xl font-bold text-text-primary">
               {totalThreatCount}
             </div>
             <div className="text-xs text-text-muted">Threats Found</div>
           </div>
           {highRiskCount > 0 && (
-            <div className="text-center px-4 py-2 bg-risk-critical/10 border border-risk-critical/30 rounded-lg">
+            <div className="stat-tile text-center bg-risk-critical/10 border-risk-critical/40">
               <div className="text-3xl font-bold text-risk-critical">
                 {highRiskCount}
               </div>
@@ -121,7 +122,7 @@ export default function AnalysisHeaderCard({
         />
       )}
 
-      <div className="mt-6 p-4 bg-dark-tertiary rounded-lg">
+      <div className="mt-6 p-4 rounded-lg bg-dark-tertiary border border-dark-border">
         <h3 className="text-sm font-medium text-text-secondary mb-2 flex items-center gap-2">
           <FileText className="w-4 h-4" />
           System Description

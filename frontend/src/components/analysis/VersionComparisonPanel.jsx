@@ -28,7 +28,7 @@ export default function VersionComparisonPanel({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
-      className="card-dark p-6 mb-6"
+      className="section-card mb-6"
     >
       <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
         <TrendingUp className="w-5 h-5 text-cyber-cyan" />
@@ -46,26 +46,26 @@ export default function VersionComparisonPanel({
           {versionComparison.has_previous_version ? (
             <>
               <div className="grid sm:grid-cols-4 gap-3">
-                <div className="bg-dark-tertiary rounded-lg p-3">
+                <div className="stat-tile">
                   <p className="text-xs text-text-muted">Previous Issues</p>
                   <p className="text-xl font-semibold text-text-primary">{versionComparison.previous_total_issues}</p>
                 </div>
-                <div className="bg-dark-tertiary rounded-lg p-3">
+                <div className="stat-tile">
                   <p className="text-xs text-text-muted">Resolved</p>
                   <p className="text-xl font-semibold text-green-400">{versionComparison.resolved_issues_count}</p>
                 </div>
-                <div className="bg-dark-tertiary rounded-lg p-3">
+                <div className="stat-tile">
                   <p className="text-xs text-text-muted">Unresolved</p>
                   <p className="text-xl font-semibold text-amber-400">{versionComparison.unresolved_issues_count}</p>
                 </div>
-                <div className="bg-dark-tertiary rounded-lg p-3">
+                <div className="stat-tile">
                   <p className="text-xs text-text-muted">New Issues</p>
                   <p className="text-xl font-semibold text-risk-critical">{versionComparison.new_issues_count}</p>
                 </div>
               </div>
 
               <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-dark-tertiary rounded-lg p-4">
+                <div className="stat-tile">
                   <h3 className="text-sm font-semibold text-green-400 mb-2">Resolved Issues</h3>
                   {versionComparison.resolved_issues.length === 0 ? (
                     <p className="text-sm text-text-muted">No resolved issues.</p>
@@ -75,7 +75,7 @@ export default function VersionComparisonPanel({
                     </ul>
                   )}
                 </div>
-                <div className="bg-dark-tertiary rounded-lg p-4">
+                <div className="stat-tile">
                   <h3 className="text-sm font-semibold text-amber-400 mb-2">Unresolved Issues</h3>
                   {versionComparison.unresolved_issues.length === 0 ? (
                     <p className="text-sm text-text-muted">No unresolved issues.</p>
@@ -85,7 +85,7 @@ export default function VersionComparisonPanel({
                     </ul>
                   )}
                 </div>
-                <div className="bg-dark-tertiary rounded-lg p-4">
+                <div className="stat-tile">
                   <h3 className="text-sm font-semibold text-risk-critical mb-2">Newly Introduced Issues</h3>
                   {versionComparison.new_issues.length === 0 ? (
                     <p className="text-sm text-text-muted">No newly introduced issues.</p>

@@ -13,7 +13,7 @@ export default function AnalysisCharts({ riskDistribution, strideDistribution })
       transition={{ delay: 0.1 }}
       className="grid md:grid-cols-2 gap-6 mb-6"
     >
-      <div className="card-dark p-6">
+      <div className="section-card">
         <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-cyber-cyan" />
           Risk Distribution
@@ -55,7 +55,7 @@ export default function AnalysisCharts({ riskDistribution, strideDistribution })
         </div>
       </div>
 
-      <div className="card-dark p-6">
+      <div className="section-card">
         <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
           <Shield className="w-5 h-5 text-cyber-cyan" />
           STRIDE Categories

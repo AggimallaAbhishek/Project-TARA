@@ -5,8 +5,8 @@ import { FileSearch, Plus } from 'lucide-react';
 
 export default function HistoryEmptyState({ hasFiltersApplied }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-dark p-12 text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="empty-state p-12">
+      <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary border border-dark-border">
         <FileSearch className="w-8 h-8 text-text-muted" />
       </div>
       <h3 className="text-lg font-medium text-text-primary mb-2">

@@ -141,18 +141,19 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-10"
+        className="page-header"
       >
-        <h1 className="text-4xl font-bold font-display text-text-primary mb-3">
-          Threat Analysis & Risk Assessment
-        </h1>
-        <p className="text-text-secondary text-lg">
-          Describe your system architecture and let AI identify potential security threats
-        </p>
+        <div>
+          <p className="page-kicker">Analysis Workspace</p>
+          <h1 className="page-title">Threat Analysis & Risk Assessment</h1>
+          <p className="page-subtitle">
+            Submit architecture context, run STRIDE analysis, and review risk-prioritized findings.
+          </p>
+        </div>
       </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -162,7 +163,7 @@ export default function HomePage() {
           transition={{ delay: 0.1 }}
           className="lg:col-span-2"
         >
-          <form onSubmit={handleSubmit} className="card-dark p-6">
+          <form onSubmit={handleSubmit} className="section-card">
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -186,7 +187,7 @@ export default function HomePage() {
             />
 
             <div className="mb-5">
-              <label htmlFor="analysis-title" className="block text-sm font-medium text-text-secondary mb-2">
+              <label htmlFor="analysis-title" className="block text-sm font-semibold text-text-secondary mb-2">
                 Analysis Title
               </label>
               <input
@@ -280,11 +281,7 @@ export default function HomePage() {
           )}
         </motion.div>
 
-        <HomeSidebar
-          navigate={navigate}
-          strideCategories={strideCategories}
-          quickActionIcons={quickActionIcons}
-        />
+        <HomeSidebar navigate={navigate} strideCategories={strideCategories} quickActionIcons={quickActionIcons} />
       </div>
     </div>
   );

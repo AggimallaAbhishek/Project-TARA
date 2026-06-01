@@ -90,15 +90,15 @@ export default function ProjectsPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-8"
+        className="page-header"
       >
         <div>
-          <div className="inline-flex items-center gap-2 text-cyber-cyan text-sm font-semibold mb-2">
+          <div className="page-kicker">
             <FolderKanban className="w-5 h-5" />
             Project Section
           </div>
-          <h1 className="text-3xl font-bold font-display text-text-primary">Projects</h1>
-          <p className="text-text-secondary mt-1">
+          <h1 className="page-title">Projects</h1>
+          <p className="page-subtitle">
             {total} {total === 1 ? 'project' : 'projects'} grouping related analyses and changes
           </p>
         </div>
@@ -113,7 +113,7 @@ export default function ProjectsPage() {
 
       <form
         onSubmit={handleSearch}
-        className="card-dark p-4 mb-8"
+        className="section-card mb-8"
       >
         <label className="sr-only" htmlFor="project-search">
           Search projects
@@ -146,7 +146,7 @@ export default function ProjectsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card-dark p-12 text-center"
+          className="empty-state p-12"
         >
           <FolderKanban className="w-14 h-14 text-text-muted mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-text-primary mb-2">
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
 
       <form
         onSubmit={handleCreateProject}
-        className="card-dark p-4 mt-8"
+        className="section-card mt-8"
       >
         <h2 className="text-lg font-semibold text-text-primary mb-3">Create Project</h2>
         <div className="grid lg:grid-cols-[1fr_1fr_auto] gap-3 items-start">

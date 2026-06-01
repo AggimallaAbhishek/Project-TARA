@@ -8,11 +8,12 @@ export default function HistoryHeader({ total }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex justify-between items-center mb-8"
+      className="page-header"
     >
       <div>
-        <h1 className="text-3xl font-bold font-display text-text-primary">Analysis History</h1>
-        <p className="text-text-secondary mt-1">
+        <p className="page-kicker">Records</p>
+        <h1 className="page-title">Analysis History</h1>
+        <p className="page-subtitle">
           {total} {total === 1 ? 'analysis' : 'analyses'} found
         </p>
       </div>
