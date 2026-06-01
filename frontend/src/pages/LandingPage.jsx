@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lock, Radar, Shield, Target, Zap } from 'lucide-react';
 import './orbitalLanding.css';
+import {
+  deriveBootModuleStatus,
+  generateHexTelemetry,
+  shouldRunLandingBoot,
+} from './landingBootUtils';
 
 const HERO_SUBTITLES = [
   'THREAT LEVEL AMBER - MONITORING ACTIVE SYSTEMS',
@@ -31,6 +36,24 @@ const OPS_CARDS = [
   { code: 'OP-RISK', status: 'ACTIVE', title: 'Risk Scoring Engine', detail: 'Likelihood x impact prioritization', progress: 86 },
   { code: 'OP-AUDIT', status: 'LIVE', title: 'Security Activity Log', detail: 'Global immutable event timeline', progress: 79 },
   { code: 'OP-COMP', status: 'ACTIVE', title: 'Version Comparison', detail: 'Cross-analysis delta and trend tracking', progress: 74 },
+];
+
+const BOOT_MODULES = [
+  { name: 'AUTH GATEWAY', addr: 'AUTH·01' },
+  { name: 'THREAT ENGINE', addr: 'RISK·02' },
+  { name: 'AUDIT STREAM', addr: 'LOGS·03' },
+  { name: 'COMPARE CORE', addr: 'COMP·04' },
+  { name: 'PROJECT GRAPH', addr: 'DATA·05' },
+  { name: 'EXPORT NODE', addr: 'PDF·06' },
+];
+
+const BOOT_LOGS = [
+  'Bootstrapping orbital shell...',
+  'Loading threat analysis modules...',
+  'Establishing audit telemetry stream...',
+  'Synchronizing project workspace graph...',
+  'Validating STRIDE risk pipelines...',
+  'TARA command layer online.',
 ];
 
 const CAPABILITIES = [
@@ -77,10 +100,62 @@ function formatUtcNow() {
 }
 
 export default function LandingPage() {
+  const shouldBootAtInit = useMemo(() => {
+    const isE2E = import.meta.env.VITE_E2E === 'true';
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    return shouldRunLandingBoot({ isE2E, prefersReducedMotion });
+  }, []);
+
   const [clock, setClock] = useState(formatUtcNow());
   const [subtitleIndex, setSubtitleIndex] = useState(0);
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
+  const [isBootRunning, setIsBootRunning] = useState(shouldBootAtInit);
+  const [isBootExiting, setIsBootExiting] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(!shouldBootAtInit);
+  const [bootProgress, setBootProgress] = useState(0);
+  const [bootLogCount, setBootLogCount] = useState(0);
+  const [bootHexStream, setBootHexStream] = useState(generateHexTelemetry(36));
+  const bootInitLoggedRef = useRef(false);
+
+  const bootRainColumns = useMemo(
+    () =>
+      Array.from({ length: 18 }, (_, idx) => ({
+        id: `col-${idx}`,
+        left: 3 + idx * 5.2,
+        duration: 6.2 + (idx % 6),
+        delay: idx * 0.35,
+        stream: generateHexTelemetry(96),
+      })),
+    [],
+  );
+
+  const bootModules = useMemo(
+    () =>
+      BOOT_MODULES.map((module, index) => ({
+        ...module,
+        status: deriveBootModuleStatus(bootProgress, index, BOOT_MODULES.length),
+      })),
+    [bootProgress],
+  );
+
+  const visibleBootLogs = useMemo(
+    () => BOOT_LOGS.slice(0, bootLogCount),
+    [bootLogCount],
+  );
+
   const currentSubtitle = useMemo(() => HERO_SUBTITLES[subtitleIndex], [subtitleIndex]);
+
+  useEffect(() => {
+    if (bootInitLoggedRef.current) return;
+    bootInitLoggedRef.current = true;
+
+    if (import.meta.env.DEV) {
+      console.debug(isBootRunning ? 'landing.boot.start' : 'landing.boot.skip');
+    }
+  }, [isBootRunning]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -126,8 +201,119 @@ export default function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isBootRunning) return undefined;
+
+    const progressTimer = window.setInterval(() => {
+      setBootProgress((prev) => {
+        if (prev >= 100) return 100;
+        const increment = prev < 58 ? 3 : prev < 86 ? 2 : 1;
+        return Math.min(100, prev + increment);
+      });
+    }, 55);
+
+    const logTimer = window.setInterval(() => {
+      setBootLogCount((prev) => Math.min(BOOT_LOGS.length, prev + 1));
+    }, 340);
+
+    const hexTimer = window.setInterval(() => {
+      setBootHexStream(generateHexTelemetry(36));
+    }, 120);
+
+    return () => {
+      window.clearInterval(progressTimer);
+      window.clearInterval(logTimer);
+      window.clearInterval(hexTimer);
+    };
+  }, [isBootRunning]);
+
+  useEffect(() => {
+    if (!isBootRunning) return undefined;
+    if (bootProgress < 100 || bootLogCount < BOOT_LOGS.length) return undefined;
+
+    if (import.meta.env.DEV) {
+      console.debug('landing.boot.complete');
+    }
+
+    const exitTimer = window.setTimeout(() => {
+      setIsBootExiting(true);
+    }, 0);
+
+    const finishTimer = window.setTimeout(() => {
+      setIsBootRunning(false);
+      setIsPageVisible(true);
+      setIsBootExiting(false);
+    }, 550);
+
+    return () => {
+      window.clearTimeout(exitTimer);
+      window.clearTimeout(finishTimer);
+    };
+  }, [bootLogCount, bootProgress, isBootRunning]);
+
   return (
     <div className="orbital-landing">
+      {(isBootRunning || isBootExiting) && (
+        <div className={`orbital-boot ${isBootExiting ? 'done' : ''}`} data-testid="orbital-landing-boot">
+          <div className="orbital-boot-rain" aria-hidden="true">
+            {bootRainColumns.map((column) => (
+              <span
+                key={column.id}
+                className="orbital-boot-rain-col"
+                style={{
+                  left: `${column.left}%`,
+                  animationDuration: `${column.duration}s`,
+                  animationDelay: `-${column.delay}s`,
+                }}
+              >
+                {column.stream}
+              </span>
+            ))}
+          </div>
+
+          <div className="orbital-boot-content">
+            <div className="orbital-boot-title-row">
+              <h2 className="orbital-boot-title">ORBITAL</h2>
+              <span className="orbital-boot-version">TARA v4.8.1-SEC</span>
+            </div>
+            <p className="orbital-boot-subtitle">THREAT ANALYSIS RESPONSE & ASSESSMENT</p>
+
+            <div className="orbital-boot-modules">
+              {bootModules.map((module) => (
+                <div key={module.addr} className="orbital-boot-module">
+                  <div className={`orbital-boot-spinner ${module.status}`} />
+                  <div className="orbital-boot-module-info">
+                    <p className="orbital-boot-module-name">{module.name}</p>
+                    <p className="orbital-boot-module-addr">{module.addr}</p>
+                  </div>
+                  <p className={`orbital-boot-module-status ${module.status}`}>
+                    {module.status === 'ok' ? 'ONLINE' : module.status === 'loading' ? 'SYNC' : 'WAIT'}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="orbital-boot-log">
+              {visibleBootLogs.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+
+            <div className="orbital-boot-progress">
+              <div className="orbital-boot-progress-head">
+                <span>INITIALIZING COMMAND LAYER</span>
+                <span>{bootProgress}%</span>
+              </div>
+              <div className="orbital-boot-progress-track">
+                <div className="orbital-boot-progress-fill" style={{ width: `${bootProgress}%` }} />
+              </div>
+              <div className="orbital-boot-hex">{bootHexStream}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`orbital-landing-page ${isPageVisible ? 'visible' : 'hidden'}`}>
       <section className="orbital-hero-section">
         <div className="orbital-grid-overlay" />
         <div className="orbital-scanline" />
@@ -270,12 +456,13 @@ export default function LandingPage() {
             </Link>
             <Link to="/login">
               <button type="button" className="orbital-cta-secondary">
-                Open Login
+                Sign In
               </button>
             </Link>
           </div>
         </div>
       </section>
+      </div>
     </div>
   );
 }
