@@ -7,8 +7,10 @@ import './orbitalLanding.css';
 import {
   deriveBootModuleStatus,
   generateHexTelemetry,
+  resolveBootDurationMs,
   shouldRunLandingBoot,
 } from './landingBootUtils';
+import { buildClockSnapshot } from '../utils/timeClock';
 
 const HERO_SUBTITLES = [
   'THREAT LEVEL AMBER - MONITORING ACTIVE SYSTEMS',
@@ -91,21 +93,13 @@ const TARGET_METRICS = {
   interfaces: 6,
 };
 
-function formatUtcNow() {
-  const now = new Date();
-  const hh = String(now.getUTCHours()).padStart(2, '0');
-  const mm = String(now.getUTCMinutes()).padStart(2, '0');
-  const ss = String(now.getUTCSeconds()).padStart(2, '0');
-  return `${hh}:${mm}:${ss}Z`;
-}
-
 export default function LandingPage() {
   const shouldBootAtInit = useMemo(() => {
     const isE2E = import.meta.env.VITE_E2E === 'true';
     return shouldRunLandingBoot({ isE2E, prefersReducedMotion: false });
   }, []);
 
-  const [clock, setClock] = useState(formatUtcNow());
+  const [clock, setClock] = useState(() => buildClockSnapshot());
   const [subtitleIndex, setSubtitleIndex] = useState(0);
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
   const [isBootRunning, setIsBootRunning] = useState(shouldBootAtInit);
@@ -115,6 +109,10 @@ export default function LandingPage() {
   const [bootLogCount, setBootLogCount] = useState(0);
   const [bootHexStream, setBootHexStream] = useState(generateHexTelemetry(36));
   const bootInitLoggedRef = useRef(false);
+  const bootDurationMs = useMemo(
+    () => (shouldBootAtInit ? resolveBootDurationMs() : 0),
+    [shouldBootAtInit],
+  );
 
   const bootRainColumns = useMemo(
     () =>
@@ -149,13 +147,17 @@ export default function LandingPage() {
     bootInitLoggedRef.current = true;
 
     if (import.meta.env.DEV) {
-      console.debug(isBootRunning ? 'landing.boot.start' : 'landing.boot.skip');
+      console.debug(
+        isBootRunning
+          ? `landing.boot.start duration_ms=${bootDurationMs}`
+          : 'landing.boot.skip',
+      );
     }
-  }, [isBootRunning]);
+  }, [bootDurationMs, isBootRunning]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setClock(formatUtcNow());
+      setClock(buildClockSnapshot());
     }, 1000);
     return () => {
       window.clearInterval(timer);
@@ -200,28 +202,31 @@ export default function LandingPage() {
   useEffect(() => {
     if (!isBootRunning) return undefined;
 
-    const progressTimer = window.setInterval(() => {
-      setBootProgress((prev) => {
-        if (prev >= 100) return 100;
-        const increment = prev < 58 ? 3 : prev < 86 ? 2 : 1;
-        return Math.min(100, prev + increment);
-      });
-    }, 55);
+    let frameId;
+    const startAt = performance.now();
 
-    const logTimer = window.setInterval(() => {
-      setBootLogCount((prev) => Math.min(BOOT_LOGS.length, prev + 1));
-    }, 340);
+    const updateBootFrame = (timestamp) => {
+      const elapsed = Math.max(0, timestamp - startAt);
+      const ratio = Math.min(1, elapsed / bootDurationMs);
+      setBootProgress(Math.round(ratio * 100));
+      setBootLogCount(Math.min(BOOT_LOGS.length, Math.max(1, Math.ceil(ratio * BOOT_LOGS.length))));
+
+      if (ratio < 1) {
+        frameId = window.requestAnimationFrame(updateBootFrame);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(updateBootFrame);
 
     const hexTimer = window.setInterval(() => {
       setBootHexStream(generateHexTelemetry(36));
     }, 120);
 
     return () => {
-      window.clearInterval(progressTimer);
-      window.clearInterval(logTimer);
+      window.cancelAnimationFrame(frameId);
       window.clearInterval(hexTimer);
     };
-  }, [isBootRunning]);
+  }, [bootDurationMs, isBootRunning]);
 
   useEffect(() => {
     if (!isBootRunning) return undefined;
@@ -316,7 +321,8 @@ export default function LandingPage() {
 
         <div className="orbital-hud orbital-hud-top-left">
           <span>PROJECT TARA // ACTIVE</span>
-          <span className="orbital-hud-time">UTC {clock}</span>
+          <span className="orbital-hud-time">UTC {clock.utc}</span>
+          <span className="orbital-hud-local">{clock.localZoneLabel} {clock.local}</span>
         </div>
         <div className="orbital-hud orbital-hud-top-right">
           <span>THREAT MODEL GRID</span>

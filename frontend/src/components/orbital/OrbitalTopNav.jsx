@@ -1,38 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { isReducedMotionPreferred } from './orbitalMotion';
-
-const CLOCK_TICK_INTERVAL_MS = 15000;
-
-function formatUtcNow() {
-  const date = new Date();
-  const hh = String(date.getUTCHours()).padStart(2, '0');
-  const mm = String(date.getUTCMinutes()).padStart(2, '0');
-  const ss = String(date.getUTCSeconds()).padStart(2, '0');
-  return `${hh}:${mm}:${ss}Z`;
-}
+import { useEffect, useState } from 'react';
+import { buildClockSnapshot } from '../../utils/timeClock';
 
 export default function OrbitalTopNav({ heroTelemetry }) {
-  const [clock, setClock] = useState(formatUtcNow());
-  const shouldTickClock = useMemo(() => {
-    if (import.meta.env.VITE_E2E === 'true') return false;
-    return !isReducedMotionPreferred();
-  }, []);
+  const [clock, setClock] = useState(() => buildClockSnapshot());
   const threatLevel = heroTelemetry.threatLevel || 'TEAL';
   const threatClass = threatLevel === 'CRITICAL' ? 'red' : threatLevel === 'AMBER' ? 'amber' : 'teal';
 
   useEffect(() => {
-    if (!shouldTickClock) {
-      return undefined;
-    }
-
     const timer = window.setInterval(() => {
-      setClock(formatUtcNow());
-    }, CLOCK_TICK_INTERVAL_MS);
+      setClock(buildClockSnapshot());
+    }, 1000);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [shouldTickClock]);
+  }, []);
 
   return (
     <header
@@ -53,7 +35,8 @@ export default function OrbitalTopNav({ heroTelemetry }) {
         <span className="orbital-topbar-stat">ALERTS <b className="red">{heroTelemetry.criticalCount}</b></span>
         <span className="orbital-topbar-stat">THREAT <b className={threatClass}>{threatLevel}</b></span>
         <span className="orbital-topbar-stat">FEED <b>{heroTelemetry.feedCount}</b></span>
-        <span className="orbital-topbar-stat">{clock}</span>
+        <span className="orbital-topbar-stat">UTC <b>{clock.utc}</b></span>
+        <span className="orbital-topbar-stat">{clock.localZoneLabel} <b>{clock.local}</b></span>
       </div>
     </header>
   );

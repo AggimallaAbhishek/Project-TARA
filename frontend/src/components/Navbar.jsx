@@ -4,14 +4,7 @@ import { motion } from 'framer-motion';
 import { LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X, FolderKanban, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
-
-function formatUtcNow() {
-  const now = new Date();
-  const hh = String(now.getUTCHours()).padStart(2, '0');
-  const mm = String(now.getUTCMinutes()).padStart(2, '0');
-  const ss = String(now.getUTCSeconds()).padStart(2, '0');
-  return `${hh}:${mm}:${ss}Z`;
-}
+import { buildClockSnapshot } from '../utils/timeClock';
 
 export default function Navbar() {
   const location = useLocation();
@@ -24,7 +17,7 @@ export default function Navbar() {
   const avatarUrl = (user?.picture || '').trim();
   const shouldShowAvatarImage = Boolean(avatarUrl && failedAvatarUrl !== avatarUrl);
   const brandLogoSrc = '/tara-logo.png';
-  const [publicClock, setPublicClock] = useState(formatUtcNow());
+  const [publicClock, setPublicClock] = useState(() => buildClockSnapshot());
   
   const isActive = (path) => (path === '/projects' ? location.pathname.startsWith('/projects') : location.pathname === path);
   
@@ -41,7 +34,7 @@ export default function Navbar() {
       return undefined;
     }
     const timer = window.setInterval(() => {
-      setPublicClock(formatUtcNow());
+      setPublicClock(buildClockSnapshot());
     }, 1000);
     return () => {
       window.clearInterval(timer);
@@ -80,7 +73,7 @@ export default function Navbar() {
 
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline font-mono text-[11px] text-text-muted tracking-wide">
-                UTC {publicClock}
+                UTC {publicClock.utc} · {publicClock.localZoneLabel} {publicClock.local}
               </span>
               <Link
                 to="/login"

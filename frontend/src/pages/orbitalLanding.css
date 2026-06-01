@@ -273,6 +273,10 @@
   color: var(--orb-teal);
 }
 
+.orbital-hud-local {
+  color: var(--orb-text-mid);
+}
+
 .orbital-hud-alert {
   color: var(--orb-amber);
 }
