@@ -103,11 +103,9 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        <Link to="/">
-          <button type="button" className="btn-cyber inline-flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            New Analysis
-          </button>
+        <Link to="/" className="btn-cyber inline-flex items-center gap-2">
+          <Plus className="w-5 h-5" />
+          New Analysis
         </Link>
       </motion.div>
 

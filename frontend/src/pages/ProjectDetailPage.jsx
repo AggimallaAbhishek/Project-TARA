@@ -207,17 +207,13 @@ export default function ProjectDetailPage() {
             <Pencil className="w-5 h-5" />
             {isEditingProject ? 'Close Edit' : 'Edit Project'}
           </button>
-          <Link to={`/?project_id=${project.id}`}>
-            <button type="button" className="btn-cyber inline-flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              New Analysis
-            </button>
+          <Link to={`/?project_id=${project.id}`} className="btn-cyber inline-flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            New Analysis
           </Link>
-          <Link to={`/compare?project_id=${project.id}`}>
-            <button type="button" className="btn-secondary inline-flex items-center gap-2">
-              <GitCompareArrows className="w-5 h-5" />
-              Compare
-            </button>
+          <Link to={`/compare?project_id=${project.id}`} className="btn-secondary inline-flex items-center gap-2">
+            <GitCompareArrows className="w-5 h-5" />
+            Compare
           </Link>
         </div>
       </motion.div>
@@ -346,11 +342,9 @@ export default function ProjectDetailPage() {
             <div className="ui-empty-state p-8">
               <FileText className="w-10 h-10 text-text-muted mx-auto mb-3" />
               <p className="text-text-secondary mb-4">No analyses in this project yet.</p>
-              <Link to={`/?project_id=${project.id}`}>
-                <button type="button" className="btn-cyber inline-flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  Run First Analysis
-                </button>
+              <Link to={`/?project_id=${project.id}`} className="btn-cyber inline-flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Run First Analysis
               </Link>
             </div>
           ) : (

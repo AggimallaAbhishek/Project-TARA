@@ -36,7 +36,7 @@ export default function OrbitalTopNav({ heroTelemetry }) {
         <span className="orbital-topbar-stat">THREAT <b className={threatClass}>{threatLevel}</b></span>
         <span className="orbital-topbar-stat">FEED <b>{heroTelemetry.feedCount}</b></span>
         <span className="orbital-topbar-stat">UTC <b>{clock.utc}</b></span>
-        <span className="orbital-topbar-stat">{clock.localZoneLabel} <b>{clock.local}</b></span>
+        <span className="orbital-topbar-stat">{clock.localZoneLabel} <b>{clock.local}</b> ({clock.localUtcOffset})</span>
       </div>
     </header>
   );

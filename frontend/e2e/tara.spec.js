@@ -398,6 +398,28 @@ async function mockApi(
         },
       });
     }
+    if (/^\/api\/analyses\/\d+\/summary$/.test(path)) {
+      const analysisId = Number(path.split('/')[3]);
+      return fulfillJson(route, {
+        analysis_id: analysisId,
+        title: `Analysis #${analysisId}`,
+        total_threats: 1,
+        critical_count: 0,
+        high_count: 1,
+        medium_count: 0,
+        low_count: 0,
+        average_risk_score: 8,
+        max_risk_score: 8,
+        stride_distribution: {
+          Spoofing: 0,
+          Tampering: 1,
+          Repudiation: 0,
+          'Information Disclosure': 0,
+          'Denial of Service': 0,
+          'Elevation of Privilege': 0,
+        },
+      });
+    }
     if (path === '/api/analyses/42/export.pdf') {
       return route.fulfill({
         status: 200,

@@ -10,6 +10,16 @@ function formatLocalTime(date) {
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
+function formatUtcOffset(date) {
+  // JS offset is minutes behind UTC; invert it for display (+east / -west).
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = pad2(Math.floor(absoluteMinutes / 60));
+  const minutes = pad2(absoluteMinutes % 60);
+  return `UTC${sign}${hours}:${minutes}`;
+}
+
 function resolveLocalZoneLabel() {
   try {
     const rawZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -22,10 +32,12 @@ function resolveLocalZoneLabel() {
 }
 
 export function buildClockSnapshot(now = new Date()) {
-  const date = now instanceof Date ? now : new Date(now);
+  const candidate = now instanceof Date ? now : new Date(now);
+  const date = Number.isNaN(candidate.getTime()) ? new Date() : candidate;
   return {
     utc: formatUtcTime(date),
     local: formatLocalTime(date),
     localZoneLabel: resolveLocalZoneLabel(),
+    localUtcOffset: formatUtcOffset(date),
   };
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Lock, Radar, Shield, Target, Zap } from 'lucide-react';
 import './orbitalLanding.css';
 import {
@@ -11,6 +11,7 @@ import {
   shouldRunLandingBoot,
 } from './landingBootUtils';
 import { buildClockSnapshot } from '../utils/timeClock';
+import { isReducedMotionPreferred } from '../components/orbital/orbitalMotion';
 
 const HERO_SUBTITLES = [
   'THREAT LEVEL AMBER - MONITORING ACTIVE SYSTEMS',
@@ -94,10 +95,12 @@ const TARGET_METRICS = {
 };
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+  const prefersReducedMotion = useMemo(() => isReducedMotionPreferred(), []);
   const shouldBootAtInit = useMemo(() => {
     const isE2E = import.meta.env.VITE_E2E === 'true';
-    return shouldRunLandingBoot({ isE2E, prefersReducedMotion: false });
-  }, []);
+    return shouldRunLandingBoot({ isE2E, prefersReducedMotion });
+  }, [prefersReducedMotion]);
 
   const [clock, setClock] = useState(() => buildClockSnapshot());
   const [subtitleIndex, setSubtitleIndex] = useState(0);
@@ -322,7 +325,7 @@ export default function LandingPage() {
         <div className="orbital-hud orbital-hud-top-left">
           <span>PROJECT TARA // ACTIVE</span>
           <span className="orbital-hud-time">UTC {clock.utc}</span>
-          <span className="orbital-hud-local">{clock.localZoneLabel} {clock.local}</span>
+          <span className="orbital-hud-local">{clock.localZoneLabel} {clock.local} ({clock.localUtcOffset})</span>
         </div>
         <div className="orbital-hud orbital-hud-top-right">
           <span>THREAT MODEL GRID</span>
@@ -347,17 +350,13 @@ export default function LandingPage() {
           </div>
 
           <div className="orbital-hero-actions">
-            <Link to="/login">
-              <button type="button" className="orbital-cta-primary">
-                START ANALYSIS
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-            <Link to="/login">
-              <button type="button" className="orbital-cta-secondary">
-                Sign In
-              </button>
-            </Link>
+            <button type="button" className="orbital-cta-primary" onClick={() => navigate('/login')}>
+              START ANALYSIS
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button type="button" className="orbital-cta-secondary" onClick={() => navigate('/login')}>
+              Sign In
+            </button>
           </div>
         </motion.div>
       </section>
@@ -450,17 +449,13 @@ export default function LandingPage() {
             Authenticate to run architecture threat analyses, review historical assessments, compare versions, and track global audit activity.
           </p>
           <div className="orbital-hero-actions">
-            <Link to="/login">
-              <button type="button" className="orbital-cta-primary">
-                TRANSMIT ACCESS REQUEST
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-            <Link to="/login">
-              <button type="button" className="orbital-cta-secondary">
-                Open Portal
-              </button>
-            </Link>
+            <button type="button" className="orbital-cta-primary" onClick={() => navigate('/login')}>
+              TRANSMIT ACCESS REQUEST
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button type="button" className="orbital-cta-secondary" onClick={() => navigate('/login')}>
+              Open Portal
+            </button>
           </div>
         </div>
       </section>
