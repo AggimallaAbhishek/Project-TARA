@@ -186,7 +186,7 @@ export default function ProjectDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="page-header mb-6"
+        className="ui-page-header mb-6"
       >
         <div>
           <p className="page-kicker">Project Workspace</p>
