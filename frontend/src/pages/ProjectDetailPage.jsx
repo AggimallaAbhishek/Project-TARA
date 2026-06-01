@@ -186,129 +186,76 @@ export default function ProjectDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="card-dark p-6 mb-6"
+        className="page-header mb-6"
       >
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
-          <div className="min-w-0">
-            <p className="text-cyber-cyan text-sm font-semibold uppercase tracking-wide mb-2">
-              Project Workspace
-            </p>
-            <h1 className="text-3xl font-bold font-display text-text-primary truncate">
-              {project.name}
-            </h1>
-            {project.description && (
-              <p className="text-text-secondary mt-3 max-w-3xl">{project.description}</p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setProjectNameDraft(project.name || '');
-                setProjectDescriptionDraft(project.description || '');
-                setProjectUpdateError('');
-                setIsEditingProject((value) => !value);
-              }}
-              className="btn-secondary inline-flex items-center gap-2"
-            >
-              <Pencil className="w-5 h-5" />
-              {isEditingProject ? 'Close Edit' : 'Edit Project'}
-            </button>
-            <Link to={`/?project_id=${project.id}`}>
-              <button type="button" className="btn-cyber inline-flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                New Analysis
-              </button>
-            </Link>
-            <Link to={`/compare?project_id=${project.id}`}>
-              <button type="button" className="btn-secondary inline-flex items-center gap-2">
-                <GitCompareArrows className="w-5 h-5" />
-                Compare
-              </button>
-            </Link>
-          </div>
+        <div>
+          <p className="page-kicker">Project Workspace</p>
+          <h1 className="page-title">{project.name}</h1>
+          <p className="page-subtitle">Track analyses, risk changes, and project activity in one place.</p>
         </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setProjectNameDraft(project.name || '');
+              setProjectDescriptionDraft(project.description || '');
+              setProjectUpdateError('');
+              setIsEditingProject((value) => !value);
+            }}
+            className="btn-secondary inline-flex items-center gap-2"
+          >
+            <Pencil className="w-5 h-5" />
+            {isEditingProject ? 'Close Edit' : 'Edit Project'}
+          </button>
+          <Link to={`/?project_id=${project.id}`}>
+            <button type="button" className="btn-cyber inline-flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              New Analysis
+            </button>
+          </Link>
+          <Link to={`/compare?project_id=${project.id}`}>
+            <button type="button" className="btn-secondary inline-flex items-center gap-2">
+              <GitCompareArrows className="w-5 h-5" />
+              Compare
+            </button>
+          </Link>
+        </div>
+      </motion.div>
 
-        {isEditingProject && (
-          <form onSubmit={handleProjectUpdate} className="mt-6 p-4 rounded-lg bg-dark-tertiary border border-dark-border space-y-4">
-            <h2 className="text-lg font-semibold text-text-primary">Edit Project</h2>
-            <div>
-              <label htmlFor="project-edit-name" className="block text-xs text-text-secondary mb-1">
-                Project Name
-              </label>
-              <input
-                id="project-edit-name"
-                type="text"
-                value={projectNameDraft}
-                onChange={(event) => setProjectNameDraft(event.target.value)}
-                maxLength={255}
-                className="input-dark"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="project-edit-description" className="block text-xs text-text-secondary mb-1">
-                Project Description
-              </label>
-              <textarea
-                id="project-edit-description"
-                value={projectDescriptionDraft}
-                onChange={(event) => setProjectDescriptionDraft(event.target.value)}
-                maxLength={2000}
-                rows={3}
-                className="textarea-dark"
-              />
-            </div>
-            {projectUpdateError && (
-              <div className="p-3 rounded-lg bg-risk-critical/10 border border-risk-critical/30 text-risk-critical text-sm">
-                {projectUpdateError}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={projectUpdateLoading}
-                className="btn-cyber inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-4 h-4" />
-                {projectUpdateLoading ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelProjectEdit}
-                disabled={projectUpdateLoading}
-                className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </button>
-            </div>
-          </form>
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="section-card mb-6"
+      >
+        {project.description ? (
+          <p className="text-text-secondary">{project.description}</p>
+        ) : (
+          <p className="text-text-muted text-sm">No project description provided.</p>
         )}
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-          <div className="rounded-lg bg-dark-tertiary p-4">
+          <div className="stat-tile">
             <p className="text-xs text-text-muted flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Analyses
             </p>
             <p className="text-2xl font-semibold text-text-primary mt-1">{project.analysis_count}</p>
           </div>
-          <div className="rounded-lg bg-dark-tertiary p-4">
+          <div className="stat-tile">
             <p className="text-xs text-text-muted flex items-center gap-2">
               <ShieldAlert className="w-4 h-4" />
               High/Critical
             </p>
             <p className="text-2xl font-semibold text-risk-critical mt-1">{project.high_risk_count}</p>
           </div>
-          <div className="rounded-lg bg-dark-tertiary p-4">
+          <div className="stat-tile">
             <p className="text-xs text-text-muted flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
               Threats
             </p>
             <p className="text-2xl font-semibold text-text-primary mt-1">{project.total_threat_count}</p>
           </div>
-          <div className="rounded-lg bg-dark-tertiary p-4">
+          <div className="stat-tile">
             <p className="text-xs text-text-muted flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Latest
@@ -318,7 +265,69 @@ export default function ProjectDetailPage() {
             </p>
           </div>
         </div>
-      </motion.div>
+      </motion.section>
+
+      {isEditingProject && (
+        <motion.form
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleProjectUpdate}
+          className="section-card mb-6 space-y-4"
+        >
+          <h2 className="section-title">Edit Project</h2>
+          <div>
+            <label htmlFor="project-edit-name" className="block text-xs text-text-secondary mb-1">
+              Project Name
+            </label>
+            <input
+              id="project-edit-name"
+              type="text"
+              value={projectNameDraft}
+              onChange={(event) => setProjectNameDraft(event.target.value)}
+              maxLength={255}
+              className="input-dark"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="project-edit-description" className="block text-xs text-text-secondary mb-1">
+              Project Description
+            </label>
+            <textarea
+              id="project-edit-description"
+              value={projectDescriptionDraft}
+              onChange={(event) => setProjectDescriptionDraft(event.target.value)}
+              maxLength={2000}
+              rows={3}
+              className="textarea-dark"
+            />
+          </div>
+          {projectUpdateError && (
+            <div className="p-3 rounded-lg bg-risk-critical/10 border border-risk-critical/30 text-risk-critical text-sm">
+              {projectUpdateError}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={projectUpdateLoading}
+              className="btn-cyber inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="w-4 h-4" />
+              {projectUpdateLoading ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelProjectEdit}
+              disabled={projectUpdateLoading}
+              className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X className="w-4 h-4" />
+              Cancel
+            </button>
+          </div>
+        </motion.form>
+      )}
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-6">
         <motion.div
@@ -327,14 +336,14 @@ export default function ProjectDetailPage() {
           className="space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-primary">Project Analyses</h2>
-            <Link to="/history" className="text-sm text-cyber-cyan hover:underline">
+            <h2 className="section-title">Project Analyses</h2>
+            <Link to="/history" className="text-sm text-cyber-cyan hover:text-text-primary transition-colors">
               Open global history
             </Link>
           </div>
 
           {analyses.length === 0 ? (
-            <div className="card-dark p-8 text-center">
+            <div className="empty-state p-8">
               <FileText className="w-10 h-10 text-text-muted mx-auto mb-3" />
               <p className="text-text-secondary mb-4">No analyses in this project yet.</p>
               <Link to={`/?project_id=${project.id}`}>
@@ -349,11 +358,11 @@ export default function ProjectDetailPage() {
               <Link
                 key={analysis.id}
                 to={`/analysis/${analysis.id}`}
-                className="card-dark p-5 block hover:border-cyber-cyan/30 transition-colors"
+                className="section-card p-5 block hover:border-dark-border-strong transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold text-text-primary truncate">{analysis.title}</h3>
+                    <h3 className="text-lg font-semibold text-text-primary truncate hover:text-cyber-cyan transition-colors">{analysis.title}</h3>
                     <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-text-secondary">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -367,7 +376,7 @@ export default function ProjectDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="text-center px-3 py-1 bg-dark-tertiary rounded-lg">
+                    <div className="stat-tile text-center px-3 py-1 min-w-[92px]">
                       <div className="text-lg font-bold text-cyber-cyan">
                         {Number(analysis.total_risk_score || 0).toFixed(1)}
                       </div>

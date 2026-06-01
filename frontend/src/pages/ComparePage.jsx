@@ -199,41 +199,40 @@ export default function ComparePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-between items-center mb-8"
+        className="page-header"
       >
         <div>
-          <h1 className="text-3xl font-bold font-display text-text-primary flex items-center gap-3">
+          <p className="page-kicker">Decision Support</p>
+          <h1 className="page-title flex items-center gap-3">
             <GitCompareArrows className="w-8 h-8 text-cyber-cyan" />
             {projectContext ? `Compare ${projectContext.name}` : 'Compare Analyses'}
           </h1>
-          <p className="text-text-secondary mt-1">
+          <p className="page-subtitle">
             {projectContext
               ? 'Select 2–5 analyses from this project to compare side-by-side'
               : 'Select 2–5 analyses to compare side-by-side'}
           </p>
         </div>
         <Link to={projectContext ? `/projects/${projectContext.id}` : '/history'}>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-secondary flex items-center gap-2">
+          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} className="btn-secondary flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             {projectContext ? 'Back to Project' : 'Back to History'}
           </motion.button>
         </Link>
       </motion.div>
 
-      {/* Analysis Selector */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="card-dark p-5 mb-6"
+        className="section-card mb-6"
       >
         <div className="flex flex-col md:flex-row md:items-end gap-4">
           <div className="flex-1 relative">
-            <label className="block text-sm text-text-secondary mb-2 font-medium">
+            <label className="block text-sm text-text-secondary mb-2 font-medium" htmlFor="compare-analysis-picker">
               Select Analyses ({selectedIds.length}/5)
             </label>
             <button
@@ -249,7 +248,6 @@ export default function ComparePage() {
               <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Dropdown */}
             <AnimatePresence>
               {dropdownOpen && (
                 <motion.div
@@ -310,8 +308,8 @@ export default function ComparePage() {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.98 }}
             disabled={selectedIds.length < 2 || comparing}
             onClick={handleCompare}
             className="btn-cyber flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -325,9 +323,8 @@ export default function ComparePage() {
           </motion.button>
         </div>
 
-        {/* Selected tags */}
         {selectedIds.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-dark-border">
             {selectedIds.map((id) => {
               const a = analyses.find((x) => x.id === id);
               return (
@@ -336,10 +333,10 @@ export default function ComparePage() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-dark-tertiary border border-dark-border text-text-secondary text-xs font-medium"
                 >
                   {a?.title || `#${id}`}
-                  <button onClick={() => toggleSelection(id)} className="hover:text-white">
+                  <button onClick={() => toggleSelection(id)} className="hover:text-text-primary" aria-label={`Remove ${a?.title || id}`}>
                     <X className="w-3 h-3" />
                   </button>
                 </motion.span>
@@ -349,7 +346,6 @@ export default function ComparePage() {
         )}
       </motion.div>
 
-      {/* Error */}
       {error && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -360,21 +356,19 @@ export default function ComparePage() {
         </motion.div>
       )}
 
-      {/* Comparison Results */}
       {comparison && (
         <Suspense fallback={<LoadingSpinner text="Loading comparison visualizations..." />}>
           <ComparisonResults comparison={comparison} />
         </Suspense>
       )}
 
-      {/* Empty state */}
       {!comparison && !comparing && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="card-dark p-12 text-center"
+          className="empty-state p-12"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary">
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary border border-dark-border">
             <GitCompareArrows className="w-8 h-8 text-text-muted" />
           </div>
           <h3 className="text-lg font-medium text-text-primary mb-2">
