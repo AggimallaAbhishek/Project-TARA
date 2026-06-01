@@ -9,38 +9,38 @@ export default {
       colors: {
         // Primary dark theme
         dark: {
-          primary: '#0b1320',
-          secondary: '#111d2d',
-          tertiary: '#17283d',
-          elevated: '#20334a',
-          border: '#2d425b',
-          'border-strong': '#3d5673',
+          primary: '#040709',
+          secondary: '#080e14',
+          tertiary: '#0d1620',
+          elevated: '#131e28',
+          border: '#1a4f48',
+          'border-strong': '#24766b',
         },
         // Accent colors
         cyber: {
-          cyan: '#5ecad3',
-          'cyan-dim': '#3ba5af',
-          blue: '#6d99c7',
+          cyan: '#00c8a0',
+          'cyan-dim': '#00ae8d',
+          blue: '#3898f0',
           success: '#4cc38a',
         },
         // Risk levels
         risk: {
-          critical: '#ff6f72',
-          high: '#ff9a62',
-          medium: '#f4c15d',
+          critical: '#e84040',
+          high: '#f08c35',
+          medium: '#e8a030',
           low: '#66cfa4',
         },
         // Text colors
         text: {
-          primary: '#eef4fb',
-          secondary: '#bed0e3',
-          muted: '#8fa4bc',
+          primary: '#d2e0d9',
+          secondary: '#9bb6ab',
+          muted: '#6f9184',
         },
       },
       fontFamily: {
-        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
-        display: ['Manrope', 'IBM Plex Sans', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        sans: ['Rajdhani', 'system-ui', 'sans-serif'],
+        display: ['Orbitron', 'Rajdhani', 'sans-serif'],
+        mono: ['Share Tech Mono', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
         'glow-cyan': '0 0 24px rgba(94, 202, 211, 0.28)',

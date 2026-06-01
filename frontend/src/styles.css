@@ -1,44 +1,41 @@
-/* Import Google Fonts - must be first */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* ORBITAL-inspired font stack */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* CSS Variables for theming */
 :root {
-  --bg-primary: #0b1320;
-  --bg-secondary: #111d2d;
-  --bg-tertiary: #17283d;
-  --bg-elevated: #20334a;
-  --bg-border: #2d425b;
-  --bg-border-strong: #3d5673;
+  --bg-primary: #040709;
+  --bg-secondary: #080e14;
+  --bg-tertiary: #0d1620;
+  --bg-elevated: #131e28;
+  --bg-border: #1a4f48;
+  --bg-border-strong: #24766b;
 
-  --accent-cyan: #5ecad3;
-  --accent-cyan-dim: #3ba5af;
-  --accent-blue: #6d99c7;
+  --accent-cyan: #00c8a0;
+  --accent-cyan-dim: #00ae8d;
+  --accent-blue: #3898f0;
   --accent-success: #4cc38a;
 
-  --risk-critical: #ff6f72;
-  --risk-high: #ff9a62;
-  --risk-medium: #f4c15d;
+  --risk-critical: #e84040;
+  --risk-high: #f08c35;
+  --risk-medium: #e8a030;
   --risk-low: #66cfa4;
 
-  --text-primary: #eef4fb;
-  --text-secondary: #bed0e3;
-  --text-muted: #8fa4bc;
+  --text-primary: #d2e0d9;
+  --text-secondary: #9bb6ab;
+  --text-muted: #6f9184;
 }
 
-/* Base styles */
 body {
   @apply bg-dark-primary text-text-primary min-h-screen antialiased;
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: 'Rajdhani', system-ui, sans-serif;
 }
 
-/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -46,55 +43,65 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-dark-border rounded-full border-2 border-dark-secondary;
+  @apply rounded-full;
+  background: rgba(0, 200, 160, 0.25);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-dark-elevated;
+  background: rgba(0, 200, 160, 0.38);
 }
 
-/* Selection color */
 ::selection {
-  @apply bg-cyber-cyan/25 text-text-primary;
+  background: rgba(0, 200, 160, 0.24);
+  color: #e8f8f2;
 }
 
-/* Focus ring for accessibility */
 *:focus-visible {
   @apply outline-none ring-2 ring-cyber-cyan ring-offset-2 ring-offset-dark-primary;
 }
 
-/* Custom utility classes */
 @layer components {
   .app-shell {
-    @apply min-h-screen bg-dark-primary relative;
-    background-image:
-      radial-gradient(circle at 20% 0%, rgba(94, 202, 211, 0.08), transparent 40%),
-      radial-gradient(circle at 90% 100%, rgba(109, 153, 199, 0.08), transparent 35%),
-      linear-gradient(0deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.015));
+    @apply min-h-screen relative;
+    background:
+      radial-gradient(circle at 16% 10%, rgba(0, 200, 160, 0.12), transparent 34%),
+      radial-gradient(circle at 86% 88%, rgba(56, 152, 240, 0.08), transparent 26%),
+      var(--bg-primary);
   }
 
   .page-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    @apply max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-6;
   }
 
   .page-header {
-    @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8;
+    @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6;
   }
 
   .page-kicker {
-    @apply inline-flex items-center gap-2 text-xs uppercase tracking-[0.08em] text-cyber-cyan font-semibold mb-2;
+    @apply inline-flex items-center gap-2 text-xs uppercase font-semibold mb-2;
+    font-family: 'Share Tech Mono', ui-monospace, monospace;
+    letter-spacing: 0.15em;
+    color: var(--accent-cyan);
   }
 
   .page-title {
-    @apply text-3xl md:text-4xl font-display font-bold text-text-primary leading-tight;
+    @apply text-3xl md:text-4xl font-bold leading-tight;
+    font-family: 'Orbitron', 'Rajdhani', sans-serif;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
   }
 
   .page-subtitle {
-    @apply text-text-secondary mt-1 text-sm md:text-base max-w-3xl;
+    @apply mt-1 text-sm md:text-base max-w-3xl;
+    color: var(--text-secondary);
   }
 
   .surface-card {
-    @apply bg-dark-secondary rounded-xl border border-dark-border shadow-surface;
+    @apply rounded-xl border;
+    border-color: rgba(0, 200, 160, 0.23);
+    background:
+      linear-gradient(180deg, rgba(8, 14, 20, 0.95), rgba(8, 14, 20, 0.9));
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
   }
 
   .section-card {
@@ -102,54 +109,83 @@ body {
   }
 
   .stat-tile {
-    @apply rounded-lg bg-dark-tertiary border border-dark-border p-4;
+    @apply rounded-lg border p-4;
+    border-color: rgba(0, 200, 160, 0.2);
+    background: rgba(13, 22, 32, 0.82);
   }
 
   .section-title {
-    @apply text-lg font-semibold text-text-primary;
+    @apply text-lg font-semibold;
+    color: var(--text-primary);
+    font-family: 'Rajdhani', system-ui, sans-serif;
   }
 
-  /* Primary button */
   .btn-cyber {
-    @apply px-5 py-2.5 bg-cyber-cyan text-dark-primary font-semibold rounded-lg
-           border border-cyber-cyan/30
-           transition-all duration-200
-           hover:bg-cyber-cyan-dim hover:text-dark-primary
-           hover:border-cyber-cyan-dim hover:shadow-glow-cyan-sm
-           active:scale-[0.99];
+    @apply px-5 py-2.5 rounded-lg font-semibold border transition-all duration-200;
+    background: rgba(0, 200, 160, 0.92);
+    border-color: rgba(0, 200, 160, 0.45);
+    color: #04231d;
   }
 
-  /* Secondary button */
+  .btn-cyber:hover {
+    background: rgba(0, 200, 160, 1);
+    border-color: rgba(0, 200, 160, 0.7);
+    box-shadow: 0 0 12px rgba(0, 200, 160, 0.22);
+  }
+
+  .btn-cyber:active {
+    transform: scale(0.99);
+  }
+
   .btn-secondary {
-    @apply px-5 py-2.5 bg-dark-tertiary text-text-secondary font-medium rounded-lg
-           border border-dark-border
-           transition-all duration-200
-           hover:text-text-primary hover:border-dark-border-strong hover:bg-dark-elevated;
+    @apply px-5 py-2.5 rounded-lg border font-medium transition-all duration-200;
+    background: rgba(13, 22, 32, 0.85);
+    border-color: rgba(0, 200, 160, 0.26);
+    color: var(--text-secondary);
   }
 
-  /* Card component */
+  .btn-secondary:hover {
+    background: rgba(19, 30, 40, 0.95);
+    border-color: rgba(0, 200, 160, 0.42);
+    color: var(--text-primary);
+  }
+
   .card-dark {
-    @apply surface-card transition-all duration-200 hover:border-dark-border-strong;
+    @apply surface-card transition-all duration-200;
   }
 
-  /* Input field */
   .input-dark {
-    @apply w-full px-4 py-2.5 bg-dark-tertiary text-text-primary
-           border border-dark-border rounded-lg shadow-inner-soft
-           placeholder-text-muted
-           transition-all duration-200
-           focus:border-cyber-cyan focus:ring-2 focus:ring-cyber-cyan/25
-           focus:outline-none;
+    @apply w-full px-4 py-2.5 rounded-lg border transition-all duration-200;
+    background: rgba(13, 22, 32, 0.88);
+    border-color: rgba(0, 200, 160, 0.25);
+    color: var(--text-primary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
-  /* Textarea */
+  .input-dark::placeholder {
+    color: #7f9f93;
+  }
+
+  .input-dark:focus {
+    border-color: rgba(0, 200, 160, 0.46);
+    box-shadow: 0 0 0 2px rgba(0, 200, 160, 0.15);
+  }
+
   .textarea-dark {
-    @apply w-full px-4 py-2.5 bg-dark-tertiary text-text-primary
-           border border-dark-border rounded-lg shadow-inner-soft
-           placeholder-text-muted resize-none
-           transition-all duration-200
-           focus:border-cyber-cyan focus:ring-2 focus:ring-cyber-cyan/25
-           focus:outline-none;
+    @apply w-full px-4 py-2.5 rounded-lg border resize-none transition-all duration-200;
+    background: rgba(13, 22, 32, 0.88);
+    border-color: rgba(0, 200, 160, 0.25);
+    color: var(--text-primary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .textarea-dark::placeholder {
+    color: #7f9f93;
+  }
+
+  .textarea-dark:focus {
+    border-color: rgba(0, 200, 160, 0.46);
+    box-shadow: 0 0 0 2px rgba(0, 200, 160, 0.15);
   }
 
   .data-panel {
@@ -157,15 +193,18 @@ body {
   }
 
   .data-panel table thead tr {
-    @apply bg-dark-tertiary/80;
+    background: rgba(13, 22, 32, 0.92);
   }
 
   .data-panel table th {
-    @apply text-xs uppercase tracking-wide font-semibold text-text-secondary;
+    @apply text-xs uppercase tracking-wide font-semibold;
+    color: var(--text-secondary);
+    font-family: 'Share Tech Mono', ui-monospace, monospace;
   }
 
   .data-panel table td {
-    @apply text-sm text-text-primary;
+    @apply text-sm;
+    color: var(--text-primary);
   }
 
   .empty-state {
@@ -173,32 +212,110 @@ body {
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-cyber-cyan to-cyber-blue bg-clip-text text-transparent;
+    background: linear-gradient(90deg, #00c8a0, #3898f0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
   .bg-cyber-pattern {
     background-image:
-      linear-gradient(rgba(94, 202, 211, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(94, 202, 211, 0.04) 1px, transparent 1px);
-    background-size: 48px 48px;
+      linear-gradient(rgba(0, 200, 160, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 200, 160, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Shared ORBITAL primitives */
+  .ui-app-shell {
+    @apply app-shell;
+  }
+
+  .ui-page-header {
+    @apply page-header;
+  }
+
+  .ui-panel {
+    @apply section-card;
+  }
+
+  .ui-panel-header {
+    @apply flex items-center justify-between gap-3 mb-4 pb-2 border-b;
+    border-color: rgba(0, 200, 160, 0.2);
+  }
+
+  .ui-status-badge {
+    @apply inline-flex items-center rounded border px-2 py-0.5 text-xs uppercase;
+    font-family: 'Share Tech Mono', ui-monospace, monospace;
+    letter-spacing: 0.1em;
+    color: var(--accent-cyan);
+    border-color: rgba(0, 200, 160, 0.38);
+    background: rgba(0, 200, 160, 0.08);
+  }
+
+  .ui-filter-bar {
+    @apply ui-panel space-y-4;
+  }
+
+  .ui-data-list {
+    @apply space-y-3;
+  }
+
+  .ui-empty-state {
+    @apply empty-state;
+  }
+
+  .ui-form-section {
+    @apply space-y-4;
+  }
+
+  .ui-alert {
+    @apply rounded-lg border px-3 py-2 text-sm;
+    border-color: rgba(232, 160, 48, 0.38);
+    background: rgba(232, 160, 48, 0.12);
+    color: #f0cb8f;
+  }
+
+  .ui-alert.error {
+    border-color: rgba(232, 64, 64, 0.45);
+    background: rgba(232, 64, 64, 0.12);
+    color: #ff8b8b;
   }
 }
 
-/* Animation classes */
 @layer utilities {
   .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
+    animation: fadeIn 0.45s ease-out forwards;
   }
-  
+
   .animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
+    animation: slideUp 0.45s ease-out forwards;
   }
-  
+
   .animate-scale-in {
-    animation: scaleIn 0.3s ease-out forwards;
+    animation: scaleIn 0.28s ease-out forwards;
   }
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

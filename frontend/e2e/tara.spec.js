@@ -214,6 +214,18 @@ function captureConsoleIssues(page) {
   return messages;
 }
 
+async function tabUntilFocused(page, locator, maxTabs = 40) {
+  for (let index = 0; index < maxTabs; index += 1) {
+    const focused = await locator.evaluate((element) => element === document.activeElement);
+    if (focused) {
+      return;
+    }
+    await page.keyboard.press('Tab');
+  }
+
+  throw new Error('Failed to focus the target element using keyboard tab navigation.');
+}
+
 async function mockApi(
   page,
   {
@@ -464,6 +476,9 @@ test('runs text analysis from the protected home page', async ({ page }) => {
   await mockApi(page);
 
   await page.goto('/');
+  await expect(page.getByTestId('orbital-telemetry-header')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ORBITAL' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'MISSION INPUT' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
   await expect(page.getByLabel('New project name')).toHaveCount(0);
 
@@ -475,6 +490,46 @@ test('runs text analysis from the protected home page', async ({ page }) => {
   await page.getByRole('button', { name: 'Analyze System Threats' }).click();
 
   await expect(page).toHaveURL(/\/analysis\/101$/);
+});
+
+test('keeps home layout responsive without horizontal overflow across breakpoints', async ({ page }) => {
+  await mockApi(page);
+
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+
+    await expect(page.getByTestId('orbital-dashboard')).toBeVisible();
+    await expect(page.getByTestId('orbital-telemetry-header')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'ORBITAL' })).toBeVisible();
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 2,
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+  }
+});
+
+test('supports keyboard navigation to mission inputs on home', async ({ page }) => {
+  await mockApi(page);
+
+  await page.goto('/');
+  await expect(page.getByLabel('Analysis Title')).toBeVisible();
+  await expect(page.getByLabel('System Architecture Description')).toBeVisible();
+
+  await tabUntilFocused(page, page.getByLabel('Analysis Title'));
+  await page.keyboard.type('Keyboard Path Analysis');
+
+  await tabUntilFocused(page, page.getByLabel('System Architecture Description'));
+  await page.keyboard.type('Keyboard-only navigation reaches mission description input.');
+
+  await expect(page.getByLabel('Analysis Title')).toHaveValue('Keyboard Path Analysis');
 });
 
 test('runs diagram and document upload flows', async ({ page }) => {

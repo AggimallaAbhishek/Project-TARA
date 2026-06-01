@@ -33,6 +33,30 @@ vi.mock('../services/api', () => ({
   createProject: vi.fn(),
 }))
 
+vi.mock('../hooks/useOrbitalDashboardData', () => ({
+  default: vi.fn(() => ({
+    dashboard: {
+      operations: [],
+      feed: [],
+      entities: [],
+      hero: {
+        operationCount: 0,
+        feedCount: 0,
+        entityCount: 0,
+        criticalCount: 0,
+        threatLevel: 'TEAL',
+        averageProgress: 0,
+      },
+    },
+    loading: false,
+    errors: {
+      analyses: '',
+      audit: '',
+      projects: '',
+    },
+  })),
+}))
+
 function renderHomePage() {
   return render(
     <MemoryRouter>
@@ -74,6 +98,10 @@ describe('HomePage', () => {
 
   it('submits text mode analysis', async () => {
     renderHomePage()
+
+    expect(await screen.findByTestId('orbital-dashboard')).toBeInTheDocument()
+    expect(screen.getByTestId('orbital-telemetry-header')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'ORBITAL' })).toBeInTheDocument()
 
     await screen.findByLabelText('Project')
 

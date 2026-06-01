@@ -30,17 +30,17 @@ export default function Navbar() {
   // Public navbar (not logged in)
   if (!isAuthenticated) {
     return (
-      <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/90 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+      <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/92 backdrop-blur-xl">
+        <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
             <Link to="/" className="flex items-center gap-2">
               <motion.img
                 whileHover={{ scale: 1.06 }}
                 src={brandLogoSrc}
                 alt="TARA logo"
-                className="w-10 h-10 rounded-lg object-cover border border-dark-border-strong bg-dark-tertiary"
+                className="w-10 h-10 rounded-md object-cover border border-dark-border-strong bg-dark-tertiary"
               />
-              <span className="text-xl font-bold font-display text-text-primary">
+              <span className="text-2xl font-bold font-display text-text-primary tracking-wide">
                 TARA
               </span>
             </Link>
@@ -52,8 +52,8 @@ export default function Navbar() {
 
   // Authenticated navbar
   return (
-    <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/90 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/92 backdrop-blur-xl">
+      <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo & Nav Links */}
           <div className="flex items-center">
@@ -62,20 +62,20 @@ export default function Navbar() {
                 whileHover={{ scale: 1.06 }}
                 src={brandLogoSrc}
                 alt="TARA logo"
-                className="w-10 h-10 rounded-lg object-cover border border-dark-border-strong bg-dark-tertiary"
+                className="w-10 h-10 rounded-md object-cover border border-dark-border-strong bg-dark-tertiary"
               />
-              <span className="text-xl font-bold font-display text-text-primary">
+              <span className="text-2xl font-bold font-display text-text-primary tracking-wide">
                 TARA
               </span>
             </Link>
             
             {/* Desktop Nav Links */}
-            <div className="hidden md:flex items-center space-x-1 rounded-lg p-1 bg-dark-tertiary/70 border border-dark-border">
+            <div className="hidden md:flex items-center gap-1 rounded-xl p-1 bg-dark-tertiary/70 border border-dark-border">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                     isActive(link.path)
                       ? 'bg-dark-secondary text-text-primary border border-dark-border-strong shadow-inner-soft'
                       : 'text-text-secondary hover:text-text-primary hover:bg-dark-elevated'
@@ -103,7 +103,7 @@ export default function Navbar() {
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded-full bg-dark-tertiary border border-dark-border flex items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-dark-tertiary border border-dark-border-strong flex items-center justify-center"
                   data-testid="navbar-avatar-fallback"
                 >
                   <span className="text-sm font-medium text-text-secondary">
@@ -111,7 +111,7 @@ export default function Navbar() {
                   </span>
                 </div>
               )}
-              <span className="text-sm text-text-secondary max-w-[180px] truncate">{userDisplayName}</span>
+              <span className="text-[1rem] text-text-secondary max-w-[220px] truncate">{userDisplayName}</span>
             </div>
 
             {/* Logout Button */}
@@ -119,7 +119,7 @@ export default function Navbar() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-risk-critical rounded-lg border border-dark-border hover:border-risk-critical/60 hover:bg-dark-tertiary transition-all duration-200"
+              className="flex items-center gap-2 px-3 py-2 text-base text-text-secondary hover:text-risk-critical rounded-lg border border-dark-border hover:border-risk-critical/60 hover:bg-dark-tertiary transition-all duration-200"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
