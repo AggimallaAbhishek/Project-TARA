@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export default function QuickExamplesSection({ examples, onSelectExample }) {
   return (
-    <div className="mt-6">
+    <div className="mt-6 section-card">
       <h3 className="text-sm font-medium text-text-secondary mb-3">Quick Examples</h3>
       <div className="flex flex-wrap gap-2">
         {examples.map((example) => (
@@ -12,7 +12,7 @@ export default function QuickExamplesSection({ examples, onSelectExample }) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onSelectExample(example)}
-            className="px-3 py-1.5 text-sm bg-dark-tertiary text-text-secondary rounded-lg border border-dark-border hover:border-cyber-cyan/50 hover:text-cyber-cyan transition-all"
+            className="px-3 py-1.5 text-sm bg-dark-tertiary text-text-secondary rounded-lg border border-dark-border hover:border-dark-border-strong hover:text-text-primary transition-all"
           >
             {example.title}
           </motion.button>

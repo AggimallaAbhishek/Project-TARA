@@ -7,16 +7,16 @@ export const STRIDE_CATEGORIES = [
   'Elevation of Privilege',
 ];
 
-export const CHART_COLORS = ['#06d6a0', '#118ab2', '#ef476f', '#ffd166', '#073b4c'];
+export const CHART_COLORS = ['#5ecad3', '#6d99c7', '#66cfa4', '#f4c15d', '#ff9a62'];
 export const ANALYSES_PAGE_SIZE = 100;
 export const SEARCH_DEBOUNCE_MS = 300;
 
 export function getRiskColor(level) {
   switch (level) {
-    case 'Critical': return 'text-red-400';
-    case 'High': return 'text-orange-400';
-    case 'Medium': return 'text-yellow-400';
-    case 'Low': return 'text-green-400';
+    case 'Critical': return 'text-risk-critical';
+    case 'High': return 'text-risk-high';
+    case 'Medium': return 'text-risk-medium';
+    case 'Low': return 'text-risk-low';
     default: return 'text-text-secondary';
   }
 }

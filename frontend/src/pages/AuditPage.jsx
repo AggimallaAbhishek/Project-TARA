@@ -145,21 +145,22 @@ export default function AuditPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6"
+        className="page-header"
       >
         <div>
-          <h1 className="text-3xl font-bold font-display text-text-primary">Audit Logs</h1>
-          <p className="text-text-secondary mt-1">
+          <p className="page-kicker">Governance</p>
+          <h1 className="page-title">Audit Logs</h1>
+          <p className="page-subtitle">
             Review immutable security and activity events across your workspace.
           </p>
         </div>
       </motion.div>
 
-      <form onSubmit={handleApplyFilters} className="card-dark p-4 mb-6 space-y-4">
+      <form onSubmit={handleApplyFilters} className="section-card mb-6 space-y-4">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label htmlFor="audit-action-filter" className="block text-xs text-text-secondary mb-1">
@@ -242,6 +243,10 @@ export default function AuditPage() {
             Reset
           </button>
         </div>
+
+        <div className="text-xs text-text-muted">
+          Showing {pageStart}-{pageEnd} · Page {currentPage}
+        </div>
       </form>
 
       {error && (
@@ -251,7 +256,7 @@ export default function AuditPage() {
       )}
 
       {logs.length === 0 ? (
-        <div className="card-dark p-10 text-center">
+        <div className="empty-state p-10">
           <FileSearch className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <h2 className="text-xl font-semibold text-text-primary mb-2">No audit events found</h2>
           <p className="text-text-secondary">
@@ -263,7 +268,7 @@ export default function AuditPage() {
           {logs.map((event) => {
             const metadataText = formatMetadata(event.event_metadata);
             return (
-              <div key={event.id} className="card-dark p-4">
+              <div key={event.id} className="section-card p-4">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-text-primary">
@@ -292,15 +297,15 @@ export default function AuditPage() {
                   </div>
                 </div>
                 {metadataText && (
-                  <p className="mt-3 text-xs text-text-muted break-all">
+                  <pre className="mt-3 text-xs text-text-muted whitespace-pre-wrap break-all rounded-lg border border-dark-border bg-dark-tertiary/60 p-2">
                     {metadataText}
-                  </p>
+                  </pre>
                 )}
               </div>
             );
           })}
 
-          <div className="card-dark p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="section-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="text-xs text-text-muted">
               Showing {pageStart}-{pageEnd} · Page {currentPage}
             </div>

@@ -16,8 +16,8 @@ export default function HomeSidebar({
       transition={{ delay: 0.2 }}
       className="space-y-6"
     >
-      <div className="card-dark p-5">
-        <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+      <div className="section-card">
+        <h3 className="section-title mb-4 flex items-center gap-2">
           <Shield className="w-5 h-5 text-cyber-cyan" />
           STRIDE Model
         </h3>
@@ -35,8 +35,8 @@ export default function HomeSidebar({
         </div>
       </div>
 
-      <div className="card-dark p-5">
-        <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+      <div className="section-card">
+        <h3 className="section-title mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-cyber-cyan" />
           Quick Actions
         </h3>

@@ -25,14 +25,14 @@ export default function UploadSection({
         <span className="block text-sm font-medium text-text-secondary mb-2">
           Upload Source
         </span>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-lg border border-dark-border bg-dark-tertiary/60">
           <button
             type="button"
             onClick={() => onUploadSourceChange('diagram')}
-            className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+            className={`px-3 py-2 rounded-md border text-sm transition-colors ${
               uploadSource === 'diagram'
-                ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
-                : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                ? 'border-dark-border-strong text-text-primary bg-dark-secondary'
+                : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-dark-elevated/70'
             }`}
           >
             Diagram
@@ -40,10 +40,10 @@ export default function UploadSection({
           <button
             type="button"
             onClick={() => onUploadSourceChange('document')}
-            className={`px-3 py-2 rounded-lg border text-sm transition-colors ${
+            className={`px-3 py-2 rounded-md border text-sm transition-colors ${
               uploadSource === 'document'
-                ? 'border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/10'
-                : 'border-dark-border text-text-secondary bg-dark-tertiary'
+                ? 'border-dark-border-strong text-text-primary bg-dark-secondary'
+                : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-dark-elevated/70'
             }`}
           >
             Document

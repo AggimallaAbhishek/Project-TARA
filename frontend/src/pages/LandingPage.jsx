@@ -34,7 +34,7 @@ export default function LandingPage() {
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="relative z-10">
           <p className="page-kicker">Security Intelligence Platform</p>
           <h1 className="page-title max-w-3xl">
-            Threat Analysis and Risk Assessment for Modern Architectures
+            Project TARA: Threat Analysis and Risk Assessment for Modern Architectures
           </h1>
           <p className="page-subtitle mt-4 max-w-2xl">
             TARA helps engineering teams evaluate system risk with STRIDE-driven analysis,

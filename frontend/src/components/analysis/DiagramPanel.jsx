@@ -19,7 +19,7 @@ export default function DiagramPanel({
   const isActionInProgress = Boolean(activeDiagramAction);
 
   return (
-    <div className="mt-6 p-4 bg-dark-tertiary rounded-lg">
+    <div className="mt-6 p-4 rounded-lg border border-dark-border bg-dark-tertiary/60">
       <div className="flex flex-col gap-3 mb-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
@@ -68,7 +68,7 @@ export default function DiagramPanel({
       </div>
 
       {diagramActionError && (
-        <p className="text-sm text-risk-critical mb-3">{diagramActionError}</p>
+        <p className="text-sm text-risk-critical mb-3 p-2 rounded-md border border-risk-critical/30 bg-risk-critical/10">{diagramActionError}</p>
       )}
 
       {diagramLoading ? (

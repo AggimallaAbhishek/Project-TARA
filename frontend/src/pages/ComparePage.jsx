@@ -232,9 +232,9 @@ export default function ComparePage() {
       >
         <div className="flex flex-col md:flex-row md:items-end gap-4">
           <div className="flex-1 relative">
-            <label className="block text-sm text-text-secondary mb-2 font-medium" htmlFor="compare-analysis-picker">
+            <p className="block text-sm text-text-secondary mb-2 font-medium">
               Select Analyses ({selectedIds.length}/5)
-            </label>
+            </p>
             <button
               id="compare-analysis-picker"
               onClick={() => setDropdownOpen(!dropdownOpen)}
