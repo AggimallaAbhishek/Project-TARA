@@ -1,3 +1,4 @@
+/* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Lock, Shield, Target, Zap } from 'lucide-react';
