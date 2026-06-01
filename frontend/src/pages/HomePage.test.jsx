@@ -179,7 +179,8 @@ describe('HomePage', () => {
     expect(await screen.findByDisplayValue('Projects unavailable')).toBeInTheDocument()
     expect(screen.getByText(/Cannot reach the backend service/i)).toBeInTheDocument()
     expect(screen.queryByText('Create a project first')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('New project name')).toBeDisabled()
+    expect(screen.queryByLabelText('New project name')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New Project' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Retry project load' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry project load' }))
@@ -190,7 +191,7 @@ describe('HomePage', () => {
     })
 
     expect(screen.queryByRole('button', { name: 'Retry project load' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('New project name')).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'New Project' })).not.toBeDisabled()
   })
 
   it('shows create-first helper only for empty but reachable project list', async () => {
@@ -206,7 +207,8 @@ describe('HomePage', () => {
 
     expect(await screen.findByDisplayValue('Create a project first')).toBeInTheDocument()
     expect(screen.getByText(/Projects group related analyses/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('New project name')).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'New Project' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('New project name')).not.toBeInTheDocument()
   })
 
   it('submits document mode analysis', async () => {
@@ -293,6 +295,7 @@ describe('HomePage', () => {
     renderHomePage()
 
     await screen.findByLabelText('Project')
+    fireEvent.click(screen.getByRole('button', { name: 'New Project' }))
     fireEvent.change(screen.getByLabelText('New project name'), {
       target: { value: 'Inline Project' },
     })

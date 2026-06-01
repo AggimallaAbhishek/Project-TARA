@@ -391,6 +391,12 @@ test('runs text analysis from the protected home page', async ({ page }) => {
   await mockApi(page);
 
   await page.goto('/');
+  await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
+  await expect(page.getByLabel('New project name')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'New Project' }).click();
+  await expect(page.getByLabel('New project name')).toBeVisible();
+
   await page.getByLabel('Analysis Title').fill('E2E Text Analysis');
   await page.getByLabel('System Architecture Description').fill('Gateway, auth service, and database with external payments.');
   await page.getByRole('button', { name: 'Analyze System Threats' }).click();

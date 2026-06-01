@@ -13,11 +13,13 @@ export default function ProjectSelector({
 }) {
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [error, setError] = useState('');
   const hasLoadError = Boolean(loadError);
   const hasProjects = projects.length > 0;
   const selectorDisabled = loading || disabled || hasLoadError || !hasProjects;
   const createDisabled = disabled || creating || hasLoadError || loading;
+  const createToggleDisabled = disabled || loading || hasLoadError;
 
   const selectorPlaceholder = loading
     ? 'Loading projects...'
@@ -35,6 +37,7 @@ export default function ProjectSelector({
     try {
       await onCreateProject(trimmedName);
       setNewProjectName('');
+      setIsCreateOpen(false);
     } catch (createError) {
       setError(createError?.message || 'Failed to create project');
     } finally {
@@ -51,43 +54,60 @@ export default function ProjectSelector({
         </label>
       </div>
 
-      <select
-        id="project-selector"
-        value={selectedProjectId}
-        onChange={(event) => onProjectChange(event.target.value)}
-        className="input-dark"
-        disabled={selectorDisabled}
-        aria-label="Project"
-      >
-        <option value="">{selectorPlaceholder}</option>
-        {projects.map((project) => (
-          <option key={project.id} value={project.id}>
-            {project.name}
-          </option>
-        ))}
-      </select>
-
-      <div className="mt-3 grid sm:grid-cols-[1fr_auto] gap-2">
-        <input
-          type="text"
-          value={newProjectName}
-          onChange={(event) => setNewProjectName(event.target.value)}
-          placeholder="Create a new project folder"
-          maxLength={255}
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <select
+          id="project-selector"
+          value={selectedProjectId}
+          onChange={(event) => onProjectChange(event.target.value)}
           className="input-dark"
-          disabled={createDisabled}
-          aria-label="New project name"
-        />
+          disabled={selectorDisabled}
+          aria-label="Project"
+        >
+          <option value="">{selectorPlaceholder}</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+
         <button
           type="button"
-          onClick={handleCreateProject}
-          disabled={!newProjectName.trim() || createDisabled}
+          onClick={() => {
+            setError('');
+            setIsCreateOpen((current) => !current);
+          }}
+          disabled={createToggleDisabled}
           className="btn-secondary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
-          {creating ? 'Creating...' : 'Create'}
+          {isCreateOpen ? 'Hide' : 'New Project'}
         </button>
       </div>
+
+      {isCreateOpen && !hasLoadError && (
+        <div className="mt-3 grid sm:grid-cols-[1fr_auto] gap-2">
+          <input
+            type="text"
+            value={newProjectName}
+            onChange={(event) => setNewProjectName(event.target.value)}
+            placeholder="Create a new project"
+            maxLength={255}
+            className="input-dark"
+            disabled={createDisabled}
+            aria-label="New project name"
+          />
+          <button
+            type="button"
+            onClick={handleCreateProject}
+            disabled={!newProjectName.trim() || createDisabled}
+            className="btn-secondary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="w-4 h-4" />
+            {creating ? 'Creating...' : 'Create'}
+          </button>
+        </div>
+      )}
 
       {hasLoadError && (
         <div className="mt-2 space-y-2">
