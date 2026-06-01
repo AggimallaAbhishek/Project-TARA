@@ -1,6 +1,7 @@
 import {
   deriveBootModuleStatus,
   generateHexTelemetry,
+  resolveBootDurationMs,
   shouldRunLandingBoot,
 } from './landingBootUtils';
 
@@ -17,6 +18,12 @@ describe('landing boot utils', () => {
     expect(deriveBootModuleStatus(24, 0, 4)).toBe('ok');
     expect(deriveBootModuleStatus(70, 3, 4)).toBe('loading');
     expect(deriveBootModuleStatus(100, 3, 4)).toBe('ok');
+  });
+
+  it('resolves boot duration in the expected range', () => {
+    expect(resolveBootDurationMs({ minMs: 10000, maxMs: 15000, randomValue: 0 })).toBe(10000);
+    expect(resolveBootDurationMs({ minMs: 10000, maxMs: 15000, randomValue: 1 })).toBe(15000);
+    expect(resolveBootDurationMs({ minMs: 10000, maxMs: 15000, randomValue: 0.5 })).toBe(12500);
   });
 
   it('generates uppercase hex telemetry with spacing', () => {

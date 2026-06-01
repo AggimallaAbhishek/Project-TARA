@@ -8,6 +8,19 @@ export function shouldRunLandingBoot({ isE2E = false, prefersReducedMotion = fal
   return !isE2E && !prefersReducedMotion;
 }
 
+export function resolveBootDurationMs({
+  minMs = 10_000,
+  maxMs = 15_000,
+  randomValue = Math.random(),
+} = {}) {
+  const normalizedMin = Math.max(0, Number(minMs) || 0);
+  const normalizedMax = Math.max(normalizedMin, Number(maxMs) || normalizedMin);
+  const span = normalizedMax - normalizedMin;
+  if (span === 0) return normalizedMin;
+  const ratio = clamp(Number(randomValue) || 0, 0, 1);
+  return Math.round(normalizedMin + span * ratio);
+}
+
 export function deriveBootModuleStatus(progress, index, total) {
   const safeProgress = clamp(Number(progress) || 0, 0, 100);
   const safeTotal = Math.max(1, Number(total) || 1);
