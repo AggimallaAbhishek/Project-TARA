@@ -9,64 +9,65 @@ export default {
       colors: {
         // Primary dark theme
         dark: {
-          primary: '#0B0F19',
-          secondary: '#121826',
-          tertiary: '#1a2234',
-          border: '#2a3441',
+          primary: '#0b1320',
+          secondary: '#111d2d',
+          tertiary: '#17283d',
+          elevated: '#20334a',
+          border: '#2d425b',
+          'border-strong': '#3d5673',
         },
         // Accent colors
         cyber: {
-          cyan: '#00F5FF',
-          'cyan-dim': '#00c4cc',
-          purple: '#8B5CF6',
-          blue: '#3B82F6',
+          cyan: '#5ecad3',
+          'cyan-dim': '#3ba5af',
+          blue: '#6d99c7',
+          success: '#4cc38a',
         },
         // Risk levels
         risk: {
-          critical: '#FF4D4D',
-          high: '#FF6B6B',
-          medium: '#FFA500',
-          low: '#00FF94',
+          critical: '#ff6f72',
+          high: '#ff9a62',
+          medium: '#f4c15d',
+          low: '#66cfa4',
         },
         // Text colors
         text: {
-          primary: '#E6EAF2',
-          secondary: '#9AA4B2',
-          muted: '#6B7280',
+          primary: '#eef4fb',
+          secondary: '#bed0e3',
+          muted: '#8fa4bc',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+        display: ['Manrope', 'IBM Plex Sans', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        'glow-cyan': '0 0 20px rgba(0, 245, 255, 0.3)',
-        'glow-cyan-sm': '0 0 10px rgba(0, 245, 255, 0.2)',
-        'glow-red': '0 0 20px rgba(255, 77, 77, 0.3)',
-        'glow-orange': '0 0 20px rgba(255, 165, 0, 0.3)',
-        'glow-green': '0 0 20px rgba(0, 255, 148, 0.3)',
+        'glow-cyan': '0 0 24px rgba(94, 202, 211, 0.28)',
+        'glow-cyan-sm': '0 0 12px rgba(94, 202, 211, 0.2)',
+        surface: '0 8px 22px rgba(5, 12, 20, 0.28)',
+        'inner-soft': 'inset 0 1px 0 rgba(255,255,255,0.03)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'glow': 'glow 2s ease-in-out infinite alternate',
-        'float': 'float 6s ease-in-out infinite',
+        glow: 'glow 2s ease-in-out infinite alternate',
+        float: 'float 6s ease-in-out infinite',
       },
       keyframes: {
         glow: {
-          '0%': { boxShadow: '0 0 5px rgba(0, 245, 255, 0.2)' },
-          '100%': { boxShadow: '0 0 20px rgba(0, 245, 255, 0.4)' },
+          '0%': { boxShadow: '0 0 5px rgba(94, 202, 211, 0.15)' },
+          '100%': { boxShadow: '0 0 16px rgba(94, 202, 211, 0.35)' },
         },
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
+          '50%': { transform: 'translateY(-8px)' },
         },
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'cyber-grid': 'linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px)',
+        'cyber-grid': 'linear-gradient(rgba(94, 202, 211, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(94, 202, 211, 0.04) 1px, transparent 1px)',
       },
     },
   },
   plugins: [],
 }
-

@@ -70,7 +70,7 @@ function App() {
 
   if (runtimeConfig.startupConfigErrors.length > 0) {
     return (
-      <div className="min-h-screen bg-dark-primary bg-cyber-pattern flex items-center justify-center px-4">
+      <div className="app-shell flex items-center justify-center px-4">
         <div className="card-dark p-8 max-w-xl w-full border border-risk-critical/30">
           <h1 className="text-2xl font-bold font-display text-text-primary mb-3">
             Startup Configuration Error
@@ -93,7 +93,7 @@ function App() {
 
   if (authConfigLoading) {
     return (
-      <div className="min-h-screen bg-dark-primary bg-cyber-pattern flex items-center justify-center">
+      <div className="app-shell flex items-center justify-center">
         <LoadingSpinner text="Loading authentication configuration..." />
       </div>
     );
@@ -107,9 +107,9 @@ function App() {
     <GoogleOAuthProvider clientId={googleClientId || ''}>
       <AuthProvider>
         <BrowserRouter>
-          <div className="min-h-screen bg-dark-primary bg-cyber-pattern">
+          <div className="app-shell">
             <Navbar />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="page-container">
               <Suspense fallback={<LoadingSpinner text="Loading page..." />}>
                 <Routes>
                   <Route path="/welcome" element={<Navigate to="/" replace />} />

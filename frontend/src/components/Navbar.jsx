@@ -30,7 +30,7 @@ export default function Navbar() {
   // Public navbar (not logged in)
   if (!isAuthenticated) {
     return (
-      <nav className="bg-dark-secondary/80 backdrop-blur-md border-b border-dark-border sticky top-0 z-50">
+      <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
@@ -38,7 +38,7 @@ export default function Navbar() {
                 whileHover={{ scale: 1.06 }}
                 src={brandLogoSrc}
                 alt="TARA logo"
-                className="w-10 h-10 rounded-lg object-cover border border-cyber-cyan/25 bg-dark-tertiary"
+                className="w-10 h-10 rounded-lg object-cover border border-dark-border-strong bg-dark-tertiary"
               />
               <span className="text-xl font-bold font-display text-text-primary">
                 TARA
@@ -52,7 +52,7 @@ export default function Navbar() {
 
   // Authenticated navbar
   return (
-    <nav className="bg-dark-secondary/80 backdrop-blur-md border-b border-dark-border sticky top-0 z-50">
+    <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo & Nav Links */}
@@ -62,7 +62,7 @@ export default function Navbar() {
                 whileHover={{ scale: 1.06 }}
                 src={brandLogoSrc}
                 alt="TARA logo"
-                className="w-10 h-10 rounded-lg object-cover border border-cyber-cyan/25 bg-dark-tertiary"
+                className="w-10 h-10 rounded-lg object-cover border border-dark-border-strong bg-dark-tertiary"
               />
               <span className="text-xl font-bold font-display text-text-primary">
                 TARA
@@ -70,15 +70,15 @@ export default function Navbar() {
             </Link>
             
             {/* Desktop Nav Links */}
-            <div className="hidden md:flex items-center space-x-1">
+            <div className="hidden md:flex items-center space-x-1 rounded-lg p-1 bg-dark-tertiary/70 border border-dark-border">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActive(link.path)
-                      ? 'bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-dark-tertiary'
+                      ? 'bg-dark-secondary text-text-primary border border-dark-border-strong shadow-inner-soft'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-dark-elevated'
                   }`}
                 >
                   <link.icon className="w-4 h-4" />
@@ -103,10 +103,10 @@ export default function Navbar() {
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded-full bg-cyber-cyan/20 flex items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-dark-tertiary border border-dark-border flex items-center justify-center"
                   data-testid="navbar-avatar-fallback"
                 >
-                  <span className="text-sm font-medium text-cyber-cyan">
+                  <span className="text-sm font-medium text-text-secondary">
                     {userInitial}
                   </span>
                 </div>
@@ -119,7 +119,7 @@ export default function Navbar() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-risk-critical rounded-lg border border-dark-border hover:border-risk-critical/50 transition-all duration-200"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-risk-critical rounded-lg border border-dark-border hover:border-risk-critical/60 hover:bg-dark-tertiary transition-all duration-200"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
@@ -142,7 +142,7 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="md:hidden py-4 border-t border-dark-border"
+            className="md:hidden py-4 border-t border-dark-border mt-2"
           >
             {navLinks.map((link) => (
               <Link
@@ -151,8 +151,8 @@ export default function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg ${
                   isActive(link.path)
-                    ? 'bg-cyber-cyan/10 text-cyber-cyan'
-                    : 'text-text-secondary'
+                    ? 'bg-dark-tertiary border border-dark-border-strong text-text-primary'
+                    : 'text-text-secondary hover:bg-dark-tertiary'
                 }`}
               >
                 <link.icon className="w-5 h-5" />

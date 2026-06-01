@@ -123,7 +123,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="card-dark p-8 max-w-md w-full"
+        className="section-card max-w-md w-full"
       >
         {/* Header */}
         <div className="text-center mb-8">
@@ -131,16 +131,16 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-gradient-to-br from-cyber-cyan/20 to-cyber-purple/20 border border-cyber-cyan/30"
+            className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary border border-dark-border-strong"
           >
             <Shield className="w-8 h-8 text-cyber-cyan" />
           </motion.div>
           
           <h1 className="text-2xl font-bold font-display text-text-primary">
-            Welcome to <span className="text-gradient">TARA</span>
+            Welcome to TARA
           </h1>
-          <p className="text-text-secondary mt-2">
-            AI-Powered Threat Analysis
+          <p className="text-text-secondary mt-2 text-sm">
+            Secure sign-in for threat analysis workspace access
           </p>
         </div>
 
@@ -163,7 +163,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
           <div className="flex justify-center">
             {isGoogleConfigured ? (
               isCheckingBackend ? (
-                <div className="w-full max-w-[300px] p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 rounded-lg text-sm text-cyber-cyan text-center">
+                <div className="w-full max-w-[300px] p-3 bg-dark-tertiary border border-dark-border rounded-lg text-sm text-text-secondary text-center">
                   Checking backend connectivity...
                 </div>
               ) : isBackendReachable ? (
@@ -183,7 +183,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
                     width="300"
                   />
                 ) : (
-                  <div className="w-full max-w-[300px] p-3 bg-cyber-cyan/10 border border-cyber-cyan/30 rounded-lg text-sm text-cyber-cyan text-center">
+                  <div className="w-full max-w-[300px] p-3 bg-dark-tertiary border border-dark-border rounded-lg text-sm text-text-secondary text-center">
                     Preparing sign-in...
                   </div>
                 )

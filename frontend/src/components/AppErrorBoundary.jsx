@@ -30,8 +30,8 @@ export default class AppErrorBoundary extends Component {
     }
 
     return (
-      <div className="min-h-screen bg-dark-primary bg-cyber-pattern flex items-center justify-center px-4">
-        <div className="card-dark p-8 max-w-lg w-full text-center border border-risk-critical/30">
+      <div className="app-shell flex items-center justify-center px-4">
+        <div className="section-card max-w-lg w-full text-center border border-risk-critical/30">
           <h1 className="text-2xl font-bold font-display text-text-primary mb-3">
             Something went wrong
           </h1>
