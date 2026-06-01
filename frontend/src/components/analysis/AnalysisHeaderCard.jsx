@@ -33,7 +33,7 @@ export default function AnalysisHeaderCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="section-card mb-6"
+      className="ui-panel mb-6"
     >
       <div className="flex justify-end mb-4">
         <button
@@ -47,7 +47,7 @@ export default function AnalysisHeaderCard({
         </button>
       </div>
       {pdfError && (
-        <div className="mb-4 p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+        <div className="ui-alert error mb-4">
           {pdfError}
         </div>
       )}

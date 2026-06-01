@@ -123,7 +123,7 @@ export default function LoginPage({ isGoogleConfigured = false, googleConfigSour
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="section-card max-w-md w-full"
+        className="ui-panel max-w-md w-full"
       >
         {/* Header */}
         <div className="text-center mb-8">

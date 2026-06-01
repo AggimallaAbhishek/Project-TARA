@@ -7,7 +7,7 @@ function statusClass(status) {
 
 export default function OrbitalOperationsPanel({ operations, loading, error }) {
   return (
-    <section className="orbital-panel orbital-panel--ops" aria-label="operations panel">
+    <section className="orbital-panel" aria-label="operations panel">
       <div className="orbital-panel-header">
         <h2 className="orbital-panel-title">ACTIVE OPERATIONS</h2>
         <span className="orbital-badge">{operations.length} LIVE</span>

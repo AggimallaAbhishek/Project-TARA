@@ -1,6 +1,6 @@
 export default function OrbitalEntitiesPanel({ entities, loading, error }) {
   return (
-    <section className="orbital-panel orbital-panel--entities" aria-label="entities panel">
+    <section className="orbital-panel" aria-label="entities panel">
       <div className="orbital-panel-header">
         <h2 className="orbital-panel-title">PROJECT ENTITIES</h2>
         <span className="orbital-badge">{entities.length} TRACKED</span>

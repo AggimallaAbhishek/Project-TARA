@@ -113,7 +113,7 @@ export default function ProjectsPage() {
 
       <form
         onSubmit={handleSearch}
-        className="section-card mb-8"
+        className="ui-filter-bar mb-8"
       >
         <label className="sr-only" htmlFor="project-search">
           Search projects
@@ -146,7 +146,7 @@ export default function ProjectsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="empty-state p-12"
+          className="ui-empty-state p-12"
         >
           <FolderKanban className="w-14 h-14 text-text-muted mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-text-primary mb-2">
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
 
       <form
         onSubmit={handleCreateProject}
-        className="section-card mt-8"
+        className="ui-panel mt-8"
       >
         <h2 className="text-lg font-semibold text-text-primary mb-3">Create Project</h2>
         <div className="grid lg:grid-cols-[1fr_1fr_auto] gap-3 items-start">

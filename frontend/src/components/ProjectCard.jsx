@@ -14,7 +14,7 @@ export default function ProjectCard({ project }) {
   return (
     <Link
       to={`/projects/${project.id}`}
-      className="section-card block group hover:border-dark-border-strong hover:-translate-y-0.5 transition-all duration-200"
+      className="ui-panel block group hover:border-dark-border-strong hover:-translate-y-0.5 transition-all duration-200"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">

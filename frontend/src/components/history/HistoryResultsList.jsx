@@ -20,9 +20,9 @@ function getRiskBadgeLevel(score) {
 
 export default function HistoryResultsList({ analyses, actionError, onRequestDelete }) {
   return (
-    <div className="space-y-4">
+    <div className="ui-data-list">
       {actionError && (
-        <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+        <div className="ui-alert error">
           {actionError}
         </div>
       )}
@@ -35,7 +35,7 @@ export default function HistoryResultsList({ analyses, actionError, onRequestDel
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: -100 }}
             transition={{ delay: index * 0.05 }}
-            className="section-card py-5 hover:border-dark-border-strong transition-colors"
+            className="ui-panel py-5 hover:border-dark-border-strong transition-colors"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex-1 min-w-0">

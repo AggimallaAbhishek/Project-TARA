@@ -160,7 +160,7 @@ export default function AuditPage() {
         </div>
       </motion.div>
 
-      <form onSubmit={handleApplyFilters} className="section-card mb-6 space-y-4">
+      <form onSubmit={handleApplyFilters} className="ui-filter-bar mb-6">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label htmlFor="audit-action-filter" className="block text-xs text-text-secondary mb-1">
@@ -250,13 +250,13 @@ export default function AuditPage() {
       </form>
 
       {error && (
-        <div className="p-4 mb-6 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-risk-critical">
+        <div className="ui-alert error mb-6">
           {error}
         </div>
       )}
 
       {logs.length === 0 ? (
-        <div className="empty-state p-10">
+        <div className="ui-empty-state p-10">
           <FileSearch className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <h2 className="text-xl font-semibold text-text-primary mb-2">No audit events found</h2>
           <p className="text-text-secondary">
@@ -264,11 +264,11 @@ export default function AuditPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="ui-data-list">
           {logs.map((event) => {
             const metadataText = formatMetadata(event.event_metadata);
             return (
-              <div key={event.id} className="section-card p-4">
+              <div key={event.id} className="ui-panel p-4">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-text-primary">
@@ -305,7 +305,7 @@ export default function AuditPage() {
             );
           })}
 
-          <div className="section-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="ui-panel p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="text-xs text-text-muted">
               Showing {pageStart}-{pageEnd} · Page {currentPage}
             </div>

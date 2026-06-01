@@ -225,7 +225,7 @@ export default function ProjectDetailPage() {
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="section-card mb-6"
+        className="ui-panel mb-6"
       >
         {project.description ? (
           <p className="text-text-secondary">{project.description}</p>
@@ -272,7 +272,7 @@ export default function ProjectDetailPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={handleProjectUpdate}
-          className="section-card mb-6 space-y-4"
+          className="ui-panel mb-6 space-y-4"
         >
           <h2 className="section-title">Edit Project</h2>
           <div>
@@ -303,7 +303,7 @@ export default function ProjectDetailPage() {
             />
           </div>
           {projectUpdateError && (
-            <div className="p-3 rounded-lg bg-risk-critical/10 border border-risk-critical/30 text-risk-critical text-sm">
+            <div className="ui-alert error">
               {projectUpdateError}
             </div>
           )}
@@ -343,7 +343,7 @@ export default function ProjectDetailPage() {
           </div>
 
           {analyses.length === 0 ? (
-            <div className="empty-state p-8">
+            <div className="ui-empty-state p-8">
               <FileText className="w-10 h-10 text-text-muted mx-auto mb-3" />
               <p className="text-text-secondary mb-4">No analyses in this project yet.</p>
               <Link to={`/?project_id=${project.id}`}>
@@ -358,7 +358,7 @@ export default function ProjectDetailPage() {
               <Link
                 key={analysis.id}
                 to={`/analysis/${analysis.id}`}
-                className="section-card p-5 block hover:border-dark-border-strong transition-colors"
+                className="ui-panel p-5 block hover:border-dark-border-strong transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="min-w-0">

@@ -68,7 +68,7 @@ export default function DiagramPanel({
       </div>
 
       {diagramActionError && (
-        <p className="text-sm text-risk-critical mb-3 p-2 rounded-md border border-risk-critical/30 bg-risk-critical/10">{diagramActionError}</p>
+        <p className="ui-alert error mb-3">{diagramActionError}</p>
       )}
 
       {diagramLoading ? (

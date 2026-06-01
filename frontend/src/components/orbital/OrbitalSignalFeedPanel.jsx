@@ -1,6 +1,6 @@
 export default function OrbitalSignalFeedPanel({ feed, loading, error }) {
   return (
-    <section className="orbital-panel orbital-panel--feed" aria-label="signal feed panel">
+    <section className="orbital-panel" aria-label="signal feed panel">
       <div className="orbital-panel-header">
         <h2 className="orbital-panel-title">SIGNAL FEED</h2>
         <span className="orbital-badge">LIVE</span>

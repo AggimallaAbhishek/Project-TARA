@@ -56,7 +56,7 @@ export default function ComparisonResults({ comparison }) {
         </div>
       </div>
 
-      <div className="section-card overflow-hidden p-0">
+      <div className="ui-panel overflow-hidden p-0">
         <div className="p-5 border-b border-dark-border">
           <h2 className="section-title flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-cyber-cyan" />
@@ -124,7 +124,7 @@ export default function ComparisonResults({ comparison }) {
         </div>
       </div>
 
-      <div className="section-card">
+      <div className="ui-panel">
         <h2 className="section-title mb-4 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-cyber-cyan" />
           STRIDE Distribution Overlay
@@ -161,7 +161,7 @@ export default function ComparisonResults({ comparison }) {
       </div>
 
       {comparison.cross_analysis.risk_trend.length > 1 && (
-        <div className="section-card">
+        <div className="ui-panel">
           <h2 className="section-title mb-4">Risk Trend Over Time</h2>
           <div className="flex items-center gap-4 overflow-x-auto pb-2">
             {comparison.cross_analysis.risk_trend.map((point, idx) => {
@@ -202,7 +202,7 @@ export default function ComparisonResults({ comparison }) {
       )}
 
       {comparison.cross_analysis.common_threats.length > 0 && (
-        <div className="section-card">
+        <div className="ui-panel">
           <h2 className="section-title mb-4">
             Common Threats Across Analyses
           </h2>
@@ -216,7 +216,7 @@ export default function ComparisonResults({ comparison }) {
         </div>
       )}
 
-      <div className="section-card overflow-hidden p-0">
+      <div className="ui-panel overflow-hidden p-0">
         <div className="p-5 border-b border-dark-border">
           <h2 className="section-title">
             Threats by STRIDE Category

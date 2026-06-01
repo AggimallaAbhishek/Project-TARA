@@ -28,7 +28,7 @@ export default function VersionComparisonPanel({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
-      className="section-card mb-6"
+      className="ui-panel mb-6"
     >
       <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
         <TrendingUp className="w-5 h-5 text-cyber-cyan" />
@@ -38,7 +38,7 @@ export default function VersionComparisonPanel({
       {loading ? (
         <p className="text-sm text-text-secondary">Loading version comparison...</p>
       ) : error ? (
-        <div className="p-3 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-sm text-risk-critical">
+        <div className="ui-alert error">
           {error}
         </div>
       ) : versionComparison ? (

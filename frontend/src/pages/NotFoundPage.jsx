@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 export default function NotFoundPage() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
-      <div className="section-card max-w-lg w-full text-center">
+      <div className="ui-panel max-w-lg w-full text-center">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-risk-medium/10 text-risk-medium mb-4">
           <AlertTriangle className="w-6 h-6" />
         </div>

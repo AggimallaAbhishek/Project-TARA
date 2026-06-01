@@ -10,7 +10,7 @@ export default function HistoryPaginationBar({
   onNext,
 }) {
   return (
-    <div className="section-card p-4 flex items-center justify-between">
+    <div className="ui-panel p-4 flex items-center justify-between">
       <button
         type="button"
         onClick={() => onPrevious(Math.max(0, skip - limit))}

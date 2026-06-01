@@ -29,7 +29,7 @@ const CAPABILITIES = [
 export default function LandingPage() {
   return (
     <div className="max-w-6xl mx-auto pt-6 md:pt-10">
-      <section className="section-card p-7 md:p-10 relative overflow-hidden">
+      <section className="ui-panel p-7 md:p-10 relative overflow-hidden">
         <div className="absolute -right-24 -top-24 w-56 h-56 rounded-full bg-cyber-cyan/10 blur-3xl" />
         <div className="absolute -left-24 -bottom-24 w-56 h-56 rounded-full bg-cyber-blue/10 blur-3xl" />
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="relative z-10">
@@ -64,7 +64,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.06 }}
-            className="section-card"
+            className="ui-panel"
           >
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-dark-tertiary border border-dark-border text-cyber-cyan">
               <item.icon className="w-5 h-5" />

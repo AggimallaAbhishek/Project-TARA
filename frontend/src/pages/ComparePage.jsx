@@ -228,7 +228,7 @@ export default function ComparePage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="section-card mb-6"
+        className="ui-panel mb-6"
       >
         <div className="flex flex-col md:flex-row md:items-end gap-4">
           <div className="flex-1 relative">
@@ -350,7 +350,7 @@ export default function ComparePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="p-4 mb-6 bg-risk-critical/10 border border-risk-critical/30 rounded-lg text-risk-critical text-sm"
+          className="ui-alert error mb-6"
         >
           {error}
         </motion.div>
@@ -366,7 +366,7 @@ export default function ComparePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="empty-state p-12"
+          className="ui-empty-state p-12"
         >
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-xl bg-dark-tertiary border border-dark-border">
             <GitCompareArrows className="w-8 h-8 text-text-muted" />

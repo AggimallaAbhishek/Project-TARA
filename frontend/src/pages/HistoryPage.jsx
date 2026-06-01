@@ -79,7 +79,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <HistoryHeader total={total} />
 
       <HistoryFiltersPanel

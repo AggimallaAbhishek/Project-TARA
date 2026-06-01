@@ -37,7 +37,7 @@ export default function ProjectActivityTimeline({ activity = [] }) {
   }
 
   return (
-    <div className="section-card">
+    <div className="ui-panel">
       <h2 className="section-title mb-4">Activity</h2>
       <div className="space-y-4">
         {activity.map((event) => {

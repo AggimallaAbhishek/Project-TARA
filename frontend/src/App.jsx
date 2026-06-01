@@ -71,7 +71,7 @@ function App() {
   if (runtimeConfig.startupConfigErrors.length > 0) {
     return (
       <div className="app-shell flex items-center justify-center px-4">
-        <div className="card-dark p-8 max-w-xl w-full border border-risk-critical/30">
+        <div className="ui-panel p-8 max-w-xl w-full border border-risk-critical/30">
           <h1 className="text-2xl font-bold font-display text-text-primary mb-3">
             Startup Configuration Error
           </h1>
