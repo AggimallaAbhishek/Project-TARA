@@ -1,5 +1,6 @@
 import { __apiInternal, api, getBackendHealth } from './apiClient/internal/client';
 import { getAuthConfig, getMe, googleAuth, logoutRequest } from './apiClient/endpoints/auth';
+import { getAuditLogs } from './apiClient/endpoints/audit';
 import {
   analyzeDocument,
   analyzeFromDiagram,
@@ -37,6 +38,7 @@ export {
   downloadAnalysisDiagramPng,
   downloadAnalysisPdf,
   extractDiagram,
+  getAuditLogs,
   getAnalyses,
   getAnalysis,
   getAnalysisDiagramSvg,

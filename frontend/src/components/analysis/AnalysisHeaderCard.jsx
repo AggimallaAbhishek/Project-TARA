@@ -12,6 +12,7 @@ import DiagramPanel from './DiagramPanel';
 
 export default function AnalysisHeaderCard({
   analysis,
+  totalThreatCount,
   highRiskCount,
   isDownloadingPdf,
   pdfError,
@@ -86,7 +87,7 @@ export default function AnalysisHeaderCard({
           </div>
           <div className="text-center px-4 py-2 bg-dark-tertiary rounded-lg">
             <div className="text-3xl font-bold text-text-primary">
-              {analysis.threats.length}
+              {totalThreatCount}
             </div>
             <div className="text-xs text-text-muted">Threats Found</div>
           </div>

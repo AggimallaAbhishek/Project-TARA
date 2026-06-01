@@ -13,6 +13,7 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalysisPage = lazy(() => import('./pages/AnalysisPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
+const AuditPage = lazy(() => import('./pages/AuditPage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ComparePage = lazy(() => import('./pages/ComparePage'));
@@ -132,6 +133,11 @@ function App() {
                   <Route path="/history" element={
                     <ProtectedRoute>
                       <HistoryPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/audit" element={
+                    <ProtectedRoute>
+                      <AuditPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/projects" element={

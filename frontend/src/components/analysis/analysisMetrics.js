@@ -1,21 +1,52 @@
+const RISK_COLORS = {
+  Critical: '#FF4D4D',
+  High: '#FF6B6B',
+  Medium: '#FFA500',
+  Low: '#00FF94',
+};
+
+const STRIDE_CHART_CATEGORIES = [
+  { name: 'Spoofing', source: 'Spoofing' },
+  { name: 'Tampering', source: 'Tampering' },
+  { name: 'Repudiation', source: 'Repudiation' },
+  { name: 'Info Disclosure', source: 'Information Disclosure' },
+  { name: 'DoS', source: 'Denial of Service' },
+  { name: 'Elevation', source: 'Elevation of Privilege' },
+];
+
 export function buildRiskDistribution(threats) {
   return [
-    { name: 'Critical', value: threats.filter((t) => t.risk_level === 'Critical').length, color: '#FF4D4D' },
-    { name: 'High', value: threats.filter((t) => t.risk_level === 'High').length, color: '#FF6B6B' },
-    { name: 'Medium', value: threats.filter((t) => t.risk_level === 'Medium').length, color: '#FFA500' },
-    { name: 'Low', value: threats.filter((t) => t.risk_level === 'Low').length, color: '#00FF94' },
+    { name: 'Critical', value: threats.filter((t) => t.risk_level === 'Critical').length, color: RISK_COLORS.Critical },
+    { name: 'High', value: threats.filter((t) => t.risk_level === 'High').length, color: RISK_COLORS.High },
+    { name: 'Medium', value: threats.filter((t) => t.risk_level === 'Medium').length, color: RISK_COLORS.Medium },
+    { name: 'Low', value: threats.filter((t) => t.risk_level === 'Low').length, color: RISK_COLORS.Low },
   ].filter((entry) => entry.value > 0);
 }
 
 export function buildStrideDistribution(threats) {
+  return STRIDE_CHART_CATEGORIES.map((category) => ({
+    name: category.name,
+    count: threats.filter((t) => t.stride_category === category.source).length,
+  })).filter((entry) => entry.count > 0);
+}
+
+export function buildRiskDistributionFromSummary(summary) {
+  if (!summary) return [];
   return [
-    { name: 'Spoofing', count: threats.filter((t) => t.stride_category === 'Spoofing').length },
-    { name: 'Tampering', count: threats.filter((t) => t.stride_category === 'Tampering').length },
-    { name: 'Repudiation', count: threats.filter((t) => t.stride_category === 'Repudiation').length },
-    { name: 'Info Disclosure', count: threats.filter((t) => t.stride_category === 'Information Disclosure').length },
-    { name: 'DoS', count: threats.filter((t) => t.stride_category === 'Denial of Service').length },
-    { name: 'Elevation', count: threats.filter((t) => t.stride_category === 'Elevation of Privilege').length },
-  ].filter((entry) => entry.count > 0);
+    { name: 'Critical', value: Number(summary.critical_count || 0), color: RISK_COLORS.Critical },
+    { name: 'High', value: Number(summary.high_count || 0), color: RISK_COLORS.High },
+    { name: 'Medium', value: Number(summary.medium_count || 0), color: RISK_COLORS.Medium },
+    { name: 'Low', value: Number(summary.low_count || 0), color: RISK_COLORS.Low },
+  ].filter((entry) => entry.value > 0);
+}
+
+export function buildStrideDistributionFromSummary(summary) {
+  if (!summary) return [];
+  const strideDistribution = summary.stride_distribution || {};
+  return STRIDE_CHART_CATEGORIES.map((category) => ({
+    name: category.name,
+    count: Number(strideDistribution[category.source] || 0),
+  })).filter((entry) => entry.count > 0);
 }
 
 export function getHighRiskCount(threats) {

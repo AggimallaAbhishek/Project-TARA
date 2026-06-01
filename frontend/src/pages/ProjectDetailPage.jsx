@@ -7,16 +7,19 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Pencil,
   FileText,
   GitCompareArrows,
   Plus,
+  Save,
   ShieldAlert,
+  X,
 } from 'lucide-react';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProjectActivityTimeline from '../components/ProjectActivityTimeline';
 import RiskBadge from '../components/RiskBadge';
-import { getProject, getProjectActivity, getProjectAnalyses } from '../services/api';
+import { getProject, getProjectActivity, getProjectAnalyses, updateProject } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 
 function getRiskBadgeLevel(score) {
@@ -33,6 +36,11 @@ export default function ProjectDetailPage() {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [projectNameDraft, setProjectNameDraft] = useState('');
+  const [projectDescriptionDraft, setProjectDescriptionDraft] = useState('');
+  const [projectUpdateLoading, setProjectUpdateLoading] = useState(false);
+  const [projectUpdateError, setProjectUpdateError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -65,6 +73,82 @@ export default function ProjectDetailPage() {
       isMounted = false;
     };
   }, [projectId]);
+
+  useEffect(() => {
+    if (!project) return;
+    setProjectNameDraft(project.name || '');
+    setProjectDescriptionDraft(project.description || '');
+  }, [project]);
+
+  const handleProjectUpdate = async (event) => {
+    event.preventDefault();
+    if (!project || projectUpdateLoading) return;
+
+    const trimmedName = projectNameDraft.trim();
+    if (!trimmedName) {
+      setProjectUpdateError('Project name cannot be blank.');
+      return;
+    }
+
+    const payload = {};
+    if (trimmedName !== (project.name || '').trim()) {
+      payload.name = trimmedName;
+    }
+
+    const normalizedDescription = projectDescriptionDraft.trim();
+    const currentDescription = (project.description || '').trim();
+    if (normalizedDescription !== currentDescription) {
+      payload.description = normalizedDescription || null;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setProjectUpdateError('');
+      setIsEditingProject(false);
+      return;
+    }
+
+    if (import.meta.env.DEV) {
+      console.debug('projects.update.submit', {
+        projectId: project.id,
+        updatedFields: Object.keys(payload),
+      });
+    }
+
+    setProjectUpdateError('');
+    setProjectUpdateLoading(true);
+    try {
+      const updatedProject = await updateProject(project.id, payload);
+      setProject(updatedProject);
+      setIsEditingProject(false);
+      if (import.meta.env.DEV) {
+        console.debug('projects.update.success', {
+          projectId: updatedProject.id,
+          updatedFields: Object.keys(payload),
+        });
+      }
+    } catch (updateError) {
+      if (import.meta.env.DEV) {
+        console.debug('projects.update.failed', {
+          projectId: project.id,
+          message: updateError?.message || 'unknown',
+        });
+      }
+      setProjectUpdateError(getApiErrorMessage(updateError, {
+        fallbackMessage: 'Failed to update project',
+        operation: 'projects.update',
+      }));
+    } finally {
+      setProjectUpdateLoading(false);
+    }
+  };
+
+  const handleCancelProjectEdit = () => {
+    if (!project || projectUpdateLoading) return;
+    setProjectNameDraft(project.name || '');
+    setProjectDescriptionDraft(project.description || '');
+    setProjectUpdateError('');
+    setIsEditingProject(false);
+  };
 
   if (loading) {
     return (
@@ -117,6 +201,19 @@ export default function ProjectDetailPage() {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setProjectNameDraft(project.name || '');
+                setProjectDescriptionDraft(project.description || '');
+                setProjectUpdateError('');
+                setIsEditingProject((value) => !value);
+              }}
+              className="btn-secondary inline-flex items-center gap-2"
+            >
+              <Pencil className="w-5 h-5" />
+              {isEditingProject ? 'Close Edit' : 'Edit Project'}
+            </button>
             <Link to={`/?project_id=${project.id}`}>
               <button type="button" className="btn-cyber inline-flex items-center gap-2">
                 <Plus className="w-5 h-5" />
@@ -131,6 +228,63 @@ export default function ProjectDetailPage() {
             </Link>
           </div>
         </div>
+
+        {isEditingProject && (
+          <form onSubmit={handleProjectUpdate} className="mt-6 p-4 rounded-lg bg-dark-tertiary border border-dark-border space-y-4">
+            <h2 className="text-lg font-semibold text-text-primary">Edit Project</h2>
+            <div>
+              <label htmlFor="project-edit-name" className="block text-xs text-text-secondary mb-1">
+                Project Name
+              </label>
+              <input
+                id="project-edit-name"
+                type="text"
+                value={projectNameDraft}
+                onChange={(event) => setProjectNameDraft(event.target.value)}
+                maxLength={255}
+                className="input-dark"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="project-edit-description" className="block text-xs text-text-secondary mb-1">
+                Project Description
+              </label>
+              <textarea
+                id="project-edit-description"
+                value={projectDescriptionDraft}
+                onChange={(event) => setProjectDescriptionDraft(event.target.value)}
+                maxLength={2000}
+                rows={3}
+                className="textarea-dark"
+              />
+            </div>
+            {projectUpdateError && (
+              <div className="p-3 rounded-lg bg-risk-critical/10 border border-risk-critical/30 text-risk-critical text-sm">
+                {projectUpdateError}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="submit"
+                disabled={projectUpdateLoading}
+                className="btn-cyber inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-4 h-4" />
+                {projectUpdateLoading ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelProjectEdit}
+                disabled={projectUpdateLoading}
+                className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           <div className="rounded-lg bg-dark-tertiary p-4">
