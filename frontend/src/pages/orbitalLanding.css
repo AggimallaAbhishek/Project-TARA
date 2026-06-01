@@ -1,0 +1,580 @@
+.orbital-landing {
+  --orb-bg: #020508;
+  --orb-surface: #060d12;
+  --orb-surface-2: #0a1520;
+  --orb-surface-3: #111e28;
+  --orb-border: rgba(0, 200, 160, 0.12);
+  --orb-border-strong: rgba(0, 200, 160, 0.3);
+  --orb-teal: #00c8a0;
+  --orb-amber: #e8a030;
+  --orb-red: #e84040;
+  --orb-blue: #3898f0;
+  --orb-text: #b8ccc4;
+  --orb-text-mid: #6a8d80;
+  --orb-text-dim: #3a5248;
+  color: var(--orb-text);
+}
+
+.orbital-hero-section {
+  position: relative;
+  min-height: max(70vh, 560px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: -1.5rem -1rem 0;
+  padding: 4.5rem 1rem 3.5rem;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(0, 200, 160, 0.14), transparent 34%),
+    radial-gradient(circle at 82% 74%, rgba(56, 152, 240, 0.1), transparent 30%),
+    var(--orb-bg);
+  border-bottom: 1px solid var(--orb-border);
+}
+
+.orbital-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 200, 160, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 160, 0.03) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 30%, transparent 86%);
+}
+
+.orbital-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 200, 160, 0.35), transparent);
+  animation: orbital-landing-scan 8s linear infinite;
+}
+
+.orbital-hud {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  color: var(--orb-text-dim);
+  text-transform: uppercase;
+}
+
+.orbital-hud-time {
+  color: var(--orb-teal);
+}
+
+.orbital-hud-alert {
+  color: var(--orb-amber);
+}
+
+.orbital-hud-top-left {
+  top: 1.6rem;
+  left: 1.6rem;
+}
+
+.orbital-hud-top-right {
+  top: 1.6rem;
+  right: 1.6rem;
+  text-align: right;
+}
+
+.orbital-hero-content {
+  position: relative;
+  z-index: 3;
+  width: min(100%, 930px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.orbital-classification {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  color: var(--orb-red);
+  border: 1px solid rgba(232, 64, 64, 0.35);
+  background: rgba(232, 64, 64, 0.08);
+  padding: 0.3rem 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.orbital-hero-eyebrow {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.24em;
+  color: var(--orb-text-dim);
+  margin-bottom: 0.55rem;
+}
+
+.orbital-hero-title {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: clamp(2.3rem, 6vw, 4.5rem);
+  letter-spacing: 0.05em;
+  color: #d6eee6;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.orbital-hero-wordmark {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: clamp(2.8rem, 8.4vw, 6.4rem);
+  line-height: 1;
+  letter-spacing: 0.22em;
+  color: var(--orb-teal);
+  text-transform: uppercase;
+  text-shadow:
+    0 0 80px rgba(0, 200, 160, 0.22),
+    0 0 130px rgba(0, 200, 160, 0.12);
+}
+
+.orbital-hero-subtitle {
+  margin-top: 0.9rem;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.16em;
+  color: var(--orb-amber);
+  text-transform: uppercase;
+}
+
+.orbital-hero-metrics {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.orbital-hero-metrics span {
+  border: 1px solid var(--orb-border);
+  background: rgba(0, 200, 160, 0.06);
+  color: var(--orb-text-mid);
+  padding: 0.3rem 0.65rem;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+}
+
+.orbital-hero-actions {
+  margin-top: 1.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.orbital-cta-primary,
+.orbital-cta-secondary {
+  border: 1px solid var(--orb-border-strong);
+  border-radius: 0.42rem;
+  cursor: pointer;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.72rem 1rem;
+  transition: all 0.18s ease;
+}
+
+.orbital-cta-primary {
+  background: var(--orb-teal);
+  color: #03241d;
+  border-color: rgba(0, 200, 160, 0.55);
+}
+
+.orbital-cta-primary:hover {
+  background: #00ddb4;
+  box-shadow: 0 0 22px rgba(0, 200, 160, 0.38);
+}
+
+.orbital-cta-secondary {
+  background: rgba(10, 21, 32, 0.9);
+  color: var(--orb-text);
+}
+
+.orbital-cta-secondary:hover {
+  border-color: rgba(0, 200, 160, 0.5);
+  color: #d4ece4;
+}
+
+.orbital-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 4.2rem 1rem 0;
+}
+
+.orbital-brief-section,
+.orbital-capabilities-section {
+  background: transparent;
+}
+
+.orbital-section-head {
+  margin-bottom: 1.5rem;
+}
+
+.orbital-section-kicker {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  color: var(--orb-teal);
+  text-transform: uppercase;
+  margin-bottom: 0.65rem;
+}
+
+.orbital-section-title {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  letter-spacing: 0.11em;
+  color: #cde4dc;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.orbital-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.orbital-brief-card {
+  border: 1px solid var(--orb-border);
+  background: linear-gradient(180deg, rgba(6, 13, 18, 0.96), rgba(10, 21, 32, 0.88));
+  padding: 1rem 1rem 1.1rem;
+}
+
+.orbital-brief-card h3 {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--orb-teal);
+  letter-spacing: 0.2em;
+  margin-bottom: 0.55rem;
+}
+
+.orbital-brief-card p {
+  color: var(--orb-text-mid);
+  line-height: 1.6;
+  font-size: 0.96rem;
+}
+
+.orbital-surface-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.95rem;
+}
+
+.orbital-map-panel,
+.orbital-ops-panel,
+.orbital-access-card {
+  border: 1px solid var(--orb-border);
+  background: linear-gradient(180deg, rgba(6, 13, 18, 0.97), rgba(10, 21, 32, 0.92));
+  position: relative;
+}
+
+.orbital-panel-header {
+  padding: 0.88rem 1rem;
+  border-bottom: 1px solid var(--orb-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.orbital-panel-header p,
+.orbital-panel-header span {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.orbital-panel-header p {
+  color: var(--orb-text-mid);
+}
+
+.orbital-panel-header span {
+  color: var(--orb-teal);
+  border: 1px solid rgba(0, 200, 160, 0.36);
+  background: rgba(0, 200, 160, 0.08);
+  padding: 0.2rem 0.4rem;
+}
+
+.orbital-map-canvas {
+  min-height: 286px;
+  background:
+    linear-gradient(180deg, rgba(2, 5, 8, 0.9), rgba(6, 13, 18, 0.96)),
+    radial-gradient(circle at 22% 26%, rgba(0, 200, 160, 0.1), transparent 34%),
+    radial-gradient(circle at 74% 68%, rgba(56, 152, 240, 0.09), transparent 30%);
+  position: relative;
+  overflow: hidden;
+}
+
+.orbital-map-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 200, 160, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 160, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.orbital-map-point {
+  position: absolute;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  animation: orbital-point-pulse 2s ease-in-out infinite;
+}
+
+.orbital-map-point.high {
+  background: var(--orb-red);
+  box-shadow: 0 0 10px rgba(232, 64, 64, 0.55);
+}
+
+.orbital-map-point.medium {
+  background: var(--orb-amber);
+  box-shadow: 0 0 9px rgba(232, 160, 48, 0.52);
+}
+
+.orbital-map-point.low {
+  background: var(--orb-teal);
+  box-shadow: 0 0 10px rgba(0, 200, 160, 0.54);
+}
+
+.orbital-map-point.info {
+  background: var(--orb-blue);
+  box-shadow: 0 0 9px rgba(56, 152, 240, 0.52);
+}
+
+.orbital-map-icon {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(0, 200, 160, 0.15);
+  z-index: 1;
+}
+
+.orbital-map-legend {
+  border-top: 1px solid var(--orb-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.68rem 0.8rem;
+}
+
+.orbital-map-legend span {
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  border: 1px solid transparent;
+  padding: 0.14rem 0.4rem;
+}
+
+.orbital-map-legend .high {
+  color: var(--orb-red);
+  border-color: rgba(232, 64, 64, 0.3);
+}
+
+.orbital-map-legend .medium {
+  color: var(--orb-amber);
+  border-color: rgba(232, 160, 48, 0.3);
+}
+
+.orbital-map-legend .low {
+  color: var(--orb-teal);
+  border-color: rgba(0, 200, 160, 0.3);
+}
+
+.orbital-map-legend .info {
+  color: var(--orb-blue);
+  border-color: rgba(56, 152, 240, 0.3);
+}
+
+.orbital-ops-list {
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.65rem;
+  max-height: 380px;
+  overflow: auto;
+}
+
+.orbital-op-card {
+  border: 1px solid var(--orb-border);
+  background: rgba(2, 5, 8, 0.8);
+  padding: 0.65rem 0.72rem;
+}
+
+.orbital-op-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Share Tech Mono', ui-monospace, monospace;
+  font-size: 0.67rem;
+  letter-spacing: 0.14em;
+  color: var(--orb-teal);
+  margin-bottom: 0.34rem;
+}
+
+.orbital-op-card h3 {
+  color: #d0e7df;
+  font-size: 0.98rem;
+  margin-bottom: 0.2rem;
+}
+
+.orbital-op-card p {
+  color: var(--orb-text-mid);
+  font-size: 0.84rem;
+  margin-bottom: 0.5rem;
+}
+
+.orbital-op-progress {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.orbital-op-progress > div {
+  height: 100%;
+  background: var(--orb-teal);
+}
+
+.orbital-cap-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.orbital-cap-card {
+  border: 1px solid var(--orb-border);
+  background: linear-gradient(180deg, rgba(6, 13, 18, 0.94), rgba(10, 21, 32, 0.86));
+  padding: 1rem;
+}
+
+.orbital-cap-icon {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 200, 160, 0.32);
+  background: rgba(0, 200, 160, 0.08);
+  color: var(--orb-teal);
+}
+
+.orbital-cap-card h3 {
+  margin-top: 0.66rem;
+  color: #d2e8e0;
+  font-size: 1rem;
+}
+
+.orbital-cap-card p {
+  margin-top: 0.38rem;
+  color: var(--orb-text-mid);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.orbital-access-section {
+  padding-bottom: 3.4rem;
+}
+
+.orbital-access-card {
+  text-align: center;
+  padding: 2rem 1rem;
+  background:
+    radial-gradient(circle at center, rgba(0, 200, 160, 0.09), transparent 62%),
+    linear-gradient(180deg, rgba(6, 13, 18, 0.97), rgba(10, 21, 32, 0.94));
+}
+
+.orbital-access-copy {
+  margin: 0.95rem auto 0;
+  max-width: 700px;
+  color: var(--orb-text-mid);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+@keyframes orbital-landing-scan {
+  0% {
+    top: -2px;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+@keyframes orbital-point-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 1100px) {
+  .orbital-brief-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .orbital-surface-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .orbital-cap-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .orbital-hero-section {
+    margin: -1.5rem -1rem 0;
+    padding: 3.8rem 1rem 2.6rem;
+  }
+
+  .orbital-hud {
+    display: none;
+  }
+
+  .orbital-hero-subtitle {
+    font-size: 0.66rem;
+  }
+
+  .orbital-hero-metrics {
+    gap: 0.4rem;
+  }
+
+  .orbital-hero-metrics span {
+    font-size: 0.58rem;
+  }
+
+  .orbital-section {
+    padding-top: 3.2rem;
+  }
+
+  .orbital-cap-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbital-scanline,
+  .orbital-map-point {
+    animation: none;
+  }
+}

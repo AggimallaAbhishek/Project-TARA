@@ -3,7 +3,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, History, GitCompareArrows, LogOut, Menu, X, FolderKanban, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+function formatUtcNow() {
+  const now = new Date();
+  const hh = String(now.getUTCHours()).padStart(2, '0');
+  const mm = String(now.getUTCMinutes()).padStart(2, '0');
+  const ss = String(now.getUTCSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}Z`;
+}
 
 export default function Navbar() {
   const location = useLocation();
@@ -16,6 +24,7 @@ export default function Navbar() {
   const avatarUrl = (user?.picture || '').trim();
   const shouldShowAvatarImage = Boolean(avatarUrl && failedAvatarUrl !== avatarUrl);
   const brandLogoSrc = '/tara-logo.png';
+  const [publicClock, setPublicClock] = useState(formatUtcNow());
   
   const isActive = (path) => (path === '/projects' ? location.pathname.startsWith('/projects') : location.pathname === path);
   
@@ -27,23 +36,59 @@ export default function Navbar() {
     { path: '/compare', label: 'Compare', icon: GitCompareArrows },
   ];
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      setPublicClock(formatUtcNow());
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isAuthenticated]);
+
   // Public navbar (not logged in)
   if (!isAuthenticated) {
     return (
       <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/92 backdrop-blur-xl">
         <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
+          <div className="h-14 flex items-center justify-between gap-3">
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 border border-cyber-cyan/35 text-cyber-cyan bg-cyber-cyan/10">
+                TARA
+              </span>
+              <span className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 border border-risk-medium/35 text-risk-medium bg-risk-medium/10">
+                STRIDE
+              </span>
+              <span className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 border border-cyber-blue/35 text-cyber-blue bg-cyber-blue/10">
+                RISK OPS
+              </span>
+            </div>
+
             <Link to="/" className="flex items-center gap-2">
               <motion.img
                 whileHover={{ scale: 1.06 }}
                 src={brandLogoSrc}
                 alt="TARA logo"
-                className="w-10 h-10 rounded-md object-cover border border-dark-border-strong bg-dark-tertiary"
+                className="w-8 h-8 rounded-md object-cover border border-dark-border-strong bg-dark-tertiary"
               />
-              <span className="text-2xl font-bold font-display text-text-primary tracking-wide">
-                TARA
+              <span className="text-sm sm:text-base font-display tracking-[0.35em] text-text-primary">
+                ORBITAL
               </span>
             </Link>
+
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline font-mono text-[11px] text-text-muted tracking-wide">
+                UTC {publicClock}
+              </span>
+              <Link
+                to="/login"
+                className="px-3 py-1.5 text-sm rounded-lg border border-dark-border text-text-secondary hover:text-text-primary hover:border-cyber-cyan/45 transition-colors"
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
