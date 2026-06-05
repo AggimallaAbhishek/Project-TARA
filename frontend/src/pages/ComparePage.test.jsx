@@ -107,6 +107,42 @@ describe('ComparePage', () => {
     })
   })
 
+  it('shows project, date, risk, and threat metadata in the picker', async () => {
+    const createdAt = '2026-01-01T10:00:00Z'
+    getAnalyses.mockResolvedValue({
+      items: [
+        {
+          id: 42,
+          title: 'Payment Service',
+          project: { id: 7, name: 'Payments Workspace' },
+          created_at: createdAt,
+          total_risk_score: 16,
+          threat_count: 4,
+          high_risk_count: 2,
+        },
+      ],
+      total: 1,
+      skip: 0,
+      limit: 100,
+      has_more: false,
+    })
+
+    renderComparePage()
+
+    await waitFor(() => {
+      expect(getAnalyses).toHaveBeenCalled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /click to select analyses/i }))
+
+    expect(screen.getByText('Payments Workspace')).toBeInTheDocument()
+    expect(screen.getByText(new Date(createdAt).toLocaleDateString())).toBeInTheDocument()
+    expect(screen.getByText('4 threats')).toBeInTheDocument()
+    expect(screen.getByText('2 high/critical')).toBeInTheDocument()
+    expect(screen.getByText('Score 16.0')).toBeInTheDocument()
+    expect(screen.getByText('Critical')).toBeInTheDocument()
+  })
+
   it('applies search text via debounced q parameter', async () => {
     getAnalyses.mockResolvedValue({
       items: [],

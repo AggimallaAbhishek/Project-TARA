@@ -36,7 +36,6 @@ export default function InputModeSwitcher({ inputMode, onModeChange }) {
             <button
               key={option.value}
               type="button"
-              aria-label={option.label}
               aria-pressed={isActive}
               onClick={() => onModeChange(option.value)}
               className={`group rounded-lg border p-3 text-left transition-all duration-200 ${
@@ -56,7 +55,7 @@ export default function InputModeSwitcher({ inputMode, onModeChange }) {
                 </span>
                 {option.label}
               </span>
-              <span className="mt-2 block text-xs leading-relaxed text-text-muted">
+              <span aria-hidden="true" className="mt-2 block text-xs leading-relaxed text-text-muted">
                 {option.description}
               </span>
             </button>

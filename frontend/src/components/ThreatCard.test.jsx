@@ -59,4 +59,29 @@ describe('ThreatCard', () => {
     expect(screen.queryByText(/\[/)).not.toBeInTheDocument()
     expect(screen.queryByText(/\]/)).not.toBeInTheDocument()
   })
+
+  it('supports controlled expansion and remediation status changes', () => {
+    const onToggleExpanded = vi.fn()
+    const onRemediationStatusChange = vi.fn()
+
+    render(
+      <ThreatCard
+        threat={makeThreat()}
+        isExpanded
+        onToggleExpanded={onToggleExpanded}
+        remediationStatus="In Progress"
+        onRemediationStatusChange={onRemediationStatusChange}
+      />,
+    )
+
+    expect(screen.getAllByText('In Progress').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByLabelText('Remediation Status'), {
+      target: { value: 'Mitigated' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /SQL Injection/i }))
+
+    expect(onRemediationStatusChange).toHaveBeenCalledWith('Mitigated')
+    expect(onToggleExpanded).toHaveBeenCalledWith(false)
+  })
 })

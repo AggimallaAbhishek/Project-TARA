@@ -67,7 +67,7 @@ describe('UploadSection', () => {
     expect(within(progress).getByText('Select file')).toBeInTheDocument()
     expect(within(progress).getByText('Extract')).toBeInTheDocument()
     expect(within(progress).getByText('In progress')).toBeInTheDocument()
-    expect(within(progress).getByText('Pending')).toBeInTheDocument()
+    expect(within(progress).getAllByText('Pending')).toHaveLength(2)
   })
 
   it('marks document extraction and review as skipped', () => {
@@ -79,7 +79,7 @@ describe('UploadSection', () => {
     const progress = screen.getByLabelText('Upload progress')
 
     expect(within(progress).getByText('Ready')).toBeInTheDocument()
-    expect(within(progress).getByText('Done')).toBeInTheDocument()
+    expect(within(progress).getAllByText('Done')).toHaveLength(2)
     expect(within(progress).getAllByText('Skipped')).toHaveLength(2)
   })
 })
