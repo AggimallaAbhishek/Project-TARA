@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "TARA - Threat Analysis & Risk Assessment"
     ollama_host: str = "http://127.0.0.1:11434"
-    ollama_model: str = "llama3.2"
+    ollama_model: str = "gpt-oss:120b-cloud"
     ollama_temperature: float = 0.1
     ollama_num_predict: int = 2048
     ollama_num_ctx: int = 4096

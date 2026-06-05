@@ -71,9 +71,6 @@ export default function HomePage() {
     if (!modelReadiness.text?.available) {
       return modelReadiness.text?.error || 'The configured Ollama text model is unavailable.';
     }
-    if (modelReadiness.vision?.configured && !modelReadiness.vision?.available) {
-      return modelReadiness.vision?.error || 'The configured Ollama vision model is unavailable.';
-    }
     return '';
   }, [modelReadiness, modelReadinessError]);
 

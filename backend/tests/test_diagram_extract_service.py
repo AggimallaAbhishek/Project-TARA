@@ -131,7 +131,7 @@ class DiagramExtractServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_image_extraction_connection_error_maps_to_runtime_error(self):
         settings = get_settings()
         service = DiagramExtractService()
-        with patch.object(settings, "ollama_vision_model", "llava"):
+        with patch.object(settings, "ollama_vision_model", "vision-test-model"):
             with patch(
                 "app.services.diagram_extract_service.ollama.chat",
                 side_effect=ConnectionError("Failed to connect to Ollama."),

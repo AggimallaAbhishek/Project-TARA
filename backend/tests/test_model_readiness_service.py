@@ -12,7 +12,7 @@ class FakeClient:
 
     def list(self):
         FakeClient.calls += 1
-        return {"models": [{"name": "llama3.2"}, {"model": "llava"}]}
+        return {"models": [{"name": "gpt-oss:120b-cloud"}, {"model": "vision-test-model"}]}
 
 
 def test_model_readiness_reports_available_models_and_uses_cache():
@@ -20,8 +20,8 @@ def test_model_readiness_reports_available_models_and_uses_cache():
     FakeClient.calls = 0
     settings = SimpleNamespace(
         ollama_host="http://localhost:11434",
-        ollama_model="llama3.2",
-        ollama_vision_model="llava",
+        ollama_model="gpt-oss:120b-cloud",
+        ollama_vision_model="vision-test-model",
         ollama_readiness_cache_ttl_seconds=30,
     )
 
@@ -39,8 +39,8 @@ def test_model_readiness_reports_unreachable_provider():
     service = ModelReadinessService()
     settings = SimpleNamespace(
         ollama_host="http://localhost:11434",
-        ollama_model="llama3.2",
-        ollama_vision_model="llava",
+        ollama_model="gpt-oss:120b-cloud",
+        ollama_vision_model="vision-test-model",
         ollama_readiness_cache_ttl_seconds=30,
     )
 

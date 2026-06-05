@@ -26,6 +26,10 @@ class SettingsConfigTest(unittest.TestCase):
         self.assertTrue(settings.ollama_retry_on_invalid_response)
         self.assertEqual(settings.ollama_retry_num_predict, 4096)
 
+    def test_default_text_model_matches_reasoning_model(self):
+        settings = Settings(_env_file=None)
+        self.assertEqual(settings.ollama_model, "gpt-oss:120b-cloud")
+
     def test_db_startup_strict_derives_from_environment(self):
         dev_settings = Settings(app_env="development", db_startup_strict=None)
         prod_settings = Settings(app_env="production", db_startup_strict=None)

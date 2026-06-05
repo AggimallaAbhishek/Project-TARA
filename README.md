@@ -44,7 +44,7 @@ AI-powered security threat analysis using STRIDE methodology, powered by Ollama 
 | **GPU** | Not required (CPU inference works) | NVIDIA GPU with 6+ GB VRAM (dramatically faster inference) |
 | **Network** | Internet required only for initial setup (downloading models, npm packages, Docker images) | — |
 
-> **Note**: Ollama runs the LLM locally. Smaller models like `llama3.2` (3B) run well on 8 GB RAM. Larger models (7B+) benefit from 16 GB+ RAM or a dedicated GPU.
+> **Note**: TARA defaults to `gpt-oss:120b-cloud` for text threat analysis and reasoning. Large local models need substantial memory/GPU resources; Ollama cloud models can reduce local hardware requirements.
 
 ## Software Requirements
 
@@ -98,17 +98,17 @@ ollama --version       # Should print ollama version 0.x+
 Open a terminal and pull the required Ollama models:
 
 ```bash
-# Text model for threat analysis (required — ~2 GB download)
-ollama pull llama3.2
+# Text model for threat analysis (required)
+ollama pull gpt-oss:120b-cloud
 
-# Vision model for diagram extraction (optional — ~4 GB download)
-ollama pull llava
+# Vision model for image/PDF diagram extraction (optional)
+# Configure OLLAMA_VISION_MODEL only if you have an installed vision-capable model.
 ```
 
 Verify Ollama is running:
 
 ```bash
-ollama list            # Should show llama3.2 and llava
+ollama list            # Should show gpt-oss:120b-cloud and any optional vision model
 curl http://localhost:11434/api/tags   # Should return JSON
 ```
 
@@ -132,8 +132,8 @@ Edit `backend/.env` and set at minimum:
 ```env
 APP_ENV=development
 OLLAMA_HOST=http://127.0.0.1:11434
-OLLAMA_MODEL=llama3.2
-OLLAMA_VISION_MODEL=llava
+OLLAMA_MODEL=gpt-oss:120b-cloud
+OLLAMA_VISION_MODEL=
 DATABASE_URL=postgresql+psycopg2://tara:tara@localhost:5432/tara
 REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=replace-with-any-random-string-for-demo
@@ -293,7 +293,7 @@ E-commerce platform with microservices architecture:
 ```env
 APP_ENV=development
 OLLAMA_HOST=http://127.0.0.1:11434
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=gpt-oss:120b-cloud
 OLLAMA_TEMPERATURE=0.1
 OLLAMA_NUM_PREDICT=2048
 OLLAMA_NUM_CTX=4096
@@ -302,7 +302,7 @@ OLLAMA_KEEP_ALIVE=10m
 OLLAMA_ENABLE_CACHE=true
 OLLAMA_CACHE_TTL_SECONDS=600
 OLLAMA_CACHE_MAX_ENTRIES=128
-OLLAMA_VISION_MODEL=llava
+OLLAMA_VISION_MODEL=
 DATABASE_URL=postgresql+psycopg2://tara:tara@localhost:5432/tara
 # DATABASE_URL=sqlite:///./tara.db
 DB_STARTUP_STRICT=false

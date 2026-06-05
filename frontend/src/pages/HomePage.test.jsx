@@ -91,7 +91,7 @@ describe('HomePage', () => {
     createProject.mockResolvedValue({ id: 8, name: 'New Project' })
     getModelReadiness.mockResolvedValue({
       status: 'ready',
-      text: { configured: true, available: true, model: 'llama3.2', error: null },
+      text: { configured: true, available: true, model: 'gpt-oss:120b-cloud', error: null },
       vision: { configured: false, available: false, model: null, error: 'Model is not configured.' },
       checked_at: '2026-06-05T00:00:00Z',
     })
@@ -220,8 +220,8 @@ describe('HomePage', () => {
       text: {
         configured: true,
         available: false,
-        model: 'llama3.2',
-        error: "Model 'llama3.2' is not installed in Ollama.",
+        model: 'gpt-oss:120b-cloud',
+        error: "Model 'gpt-oss:120b-cloud' is not installed in Ollama.",
       },
       vision: { configured: false, available: false, model: null, error: 'Model is not configured.' },
       checked_at: '2026-06-05T00:00:00Z',
@@ -233,6 +233,77 @@ describe('HomePage', () => {
 
     expect(await screen.findByText(/not installed in Ollama/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Analyze System Threats' })).toBeDisabled()
+  })
+
+  it('does not block text analysis when only the vision model is unavailable', async () => {
+    getModelReadiness.mockResolvedValueOnce({
+      status: 'degraded',
+      text: { configured: true, available: true, model: 'gpt-oss:120b-cloud', error: null },
+      vision: {
+        configured: true,
+        available: false,
+        model: 'vision-test-model',
+        error: "Model 'vision-test-model' is not installed in Ollama.",
+      },
+      checked_at: '2026-06-05T00:00:00Z',
+    })
+
+    renderHomePage()
+
+    await screen.findByLabelText('Project')
+
+    expect(screen.queryByText(/vision-test-model/i)).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Analysis Title'), {
+      target: { value: 'Text Analysis Without Vision' },
+    })
+    fireEvent.change(screen.getByLabelText('System Architecture Description'), {
+      target: { value: 'Gateway, auth service, and database with external integrations.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze System Threats' }))
+
+    await waitFor(() => {
+      expect(analyzeSystemJob).toHaveBeenCalledWith(
+        'Text Analysis Without Vision',
+        'Gateway, auth service, and database with external integrations.',
+        { projectId: 7 },
+      )
+      expect(mockNavigate).toHaveBeenCalledWith('/analysis/101')
+    })
+  })
+
+  it('blocks image diagram extraction when the configured vision model is unavailable', async () => {
+    getModelReadiness.mockResolvedValueOnce({
+      status: 'degraded',
+      text: { configured: true, available: true, model: 'gpt-oss:120b-cloud', error: null },
+      vision: {
+        configured: true,
+        available: false,
+        model: 'vision-test-model',
+        error: "Model 'vision-test-model' is not installed in Ollama.",
+      },
+      checked_at: '2026-06-05T00:00:00Z',
+    })
+
+    renderHomePage()
+
+    await screen.findByLabelText('Project')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload File' }))
+    fireEvent.change(screen.getByLabelText('Analysis Title'), {
+      target: { value: 'Image Diagram Analysis' },
+    })
+
+    const fileInput = screen.getByLabelText('Upload Architecture Diagram')
+    const diagramFile = new File(['png bytes'], 'architecture.png', {
+      type: 'image/png',
+    })
+    fireEvent.change(fileInput, { target: { files: [diagramFile] } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extract Architecture' }))
+
+    expect(await screen.findByText(/vision-test-model/i)).toBeInTheDocument()
+    expect(extractDiagram).not.toHaveBeenCalled()
   })
 
   it('shows projects unavailable state and retries project loading when backend is unreachable', async () => {
