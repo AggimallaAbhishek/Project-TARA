@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import LandingPage from './LandingPage';
@@ -39,7 +39,10 @@ describe('LandingPage boot behavior', () => {
     renderLandingPage();
 
     expect(screen.queryByTestId('orbital-landing-boot')).not.toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: /Project TARA/i })).toBeVisible();
+    const heading = await screen.findByRole('heading', { name: /Project TARA/i });
+    await waitFor(() => {
+      expect(heading).toBeVisible();
+    });
   });
 
   it('shows the boot overlay when reduced motion is not preferred', () => {

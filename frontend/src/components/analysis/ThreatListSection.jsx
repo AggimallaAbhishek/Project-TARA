@@ -3,10 +3,11 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, ChevronDown, ChevronUp, Filter, Search } from 'lucide-react';
 
-import ThreatCard, { REMEDIATION_STATUS_OPTIONS } from '../ThreatCard';
+import ThreatCard from '../ThreatCard';
 
 const ALL_OPTION = 'all';
 const RISK_LEVELS = ['Critical', 'High', 'Medium', 'Low'];
+const REMEDIATION_STATUS_OPTIONS = ['Open', 'In Progress', 'Mitigated'];
 const STRIDE_CATEGORIES = [
   'Spoofing',
   'Tampering',

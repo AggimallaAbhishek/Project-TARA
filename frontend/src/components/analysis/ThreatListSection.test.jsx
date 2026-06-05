@@ -62,7 +62,7 @@ describe('ThreatListSection', () => {
     expect(screen.queryByText('Session spoofing')).not.toBeInTheDocument()
   })
 
-  it('expands and collapses visible threats in bulk', () => {
+  it('expands and collapses visible threats in bulk', async () => {
     render(<ThreatListSection threats={threats} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand All' }))
