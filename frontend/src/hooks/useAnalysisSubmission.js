@@ -1,9 +1,19 @@
 import {
-  analyzeDocument,
-  analyzeFromDiagram,
-  analyzeFromUmlCode,
-  analyzeSystem,
+  analyzeDocumentJob,
+  analyzeFromDiagramJob,
+  analyzeFromUmlCodeJob,
+  analyzeSystemJob,
+  getAnalysisJob,
 } from '../services/api';
+
+const JOB_POLL_INTERVAL_MS = 1000;
+const JOB_MAX_POLLS = 600;
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 function getSubmissionValidationError({
   title,
@@ -55,7 +65,43 @@ function getOperationForMode(inputMode, uploadSource) {
   return 'diagram.analyze_code';
 }
 
-export default function useAnalysisSubmission({ navigate, getApiErrorMessage, setError, setIsLoading }) {
+function getReadinessError(modelReadiness) {
+  if (!modelReadiness) {
+    return null;
+  }
+  if (!modelReadiness.text?.available) {
+    return modelReadiness.text?.error || 'The configured Ollama text model is unavailable.';
+  }
+  return null;
+}
+
+async function waitForAnalysisJob(job, onProgress) {
+  let currentJob = job;
+  for (let attempt = 0; attempt < JOB_MAX_POLLS; attempt += 1) {
+    onProgress?.(currentJob);
+    if (currentJob.status === 'succeeded') {
+      if (!currentJob.analysis_id) {
+        throw new Error('Completed analysis job is missing analysis ID');
+      }
+      return currentJob.analysis_id;
+    }
+    if (currentJob.status === 'failed') {
+      throw new Error(currentJob.error || 'Analysis job failed.');
+    }
+    await sleep(JOB_POLL_INTERVAL_MS);
+    currentJob = await getAnalysisJob(currentJob.job_id);
+  }
+  throw new Error('Analysis job timed out while waiting for completion.');
+}
+
+export default function useAnalysisSubmission({
+  navigate,
+  getApiErrorMessage,
+  setError,
+  setIsLoading,
+  setLoadingMessage,
+  modelReadiness,
+}) {
   const submitAnalysis = async ({
     title,
     selectedProjectId,
@@ -85,23 +131,31 @@ export default function useAnalysisSubmission({ navigate, getApiErrorMessage, se
       return;
     }
 
+    const readinessError = getReadinessError(modelReadiness);
+    if (readinessError) {
+      setError(readinessError);
+      return;
+    }
+
     setIsLoading(true);
+    setLoadingMessage?.('Queueing analysis job...');
     setError(null);
 
     try {
       const projectOptions = { projectId: Number(selectedProjectId) };
       const result = inputMode === 'text'
-        ? await analyzeSystem(title, description, projectOptions)
+        ? await analyzeSystemJob(title, description, projectOptions)
         : inputMode === 'upload'
           ? (uploadSource === 'diagram'
-            ? await analyzeFromDiagram(title, extractId, extractedDescription, projectOptions)
-            : await analyzeDocument(title, documentFile, projectOptions))
-          : await analyzeFromUmlCode(title, umlFormat, umlCode, projectOptions);
+            ? await analyzeFromDiagramJob(title, extractId, extractedDescription, projectOptions)
+            : await analyzeDocumentJob(title, documentFile, projectOptions))
+          : await analyzeFromUmlCodeJob(title, umlFormat, umlCode, projectOptions);
 
-      const analysisId = result?.id ?? result?.analysis?.id;
-      if (!analysisId) {
-        throw new Error('Missing analysis ID in API response');
-      }
+      const analysisId = await waitForAnalysisJob(result, (job) => {
+        const progress = Number(job.progress_percent || 0).toFixed(0);
+        const stage = String(job.stage || 'running').replace(/_/g, ' ');
+        setLoadingMessage?.(`Analyzing threats: ${progress}% (${stage})`);
+      });
 
       navigate(`/analysis/${analysisId}`);
     } catch (err) {
@@ -112,6 +166,7 @@ export default function useAnalysisSubmission({ navigate, getApiErrorMessage, se
       }));
     } finally {
       setIsLoading(false);
+      setLoadingMessage?.('Analyzing system threats...');
     }
   };
 
@@ -127,6 +182,10 @@ export default function useAnalysisSubmission({ navigate, getApiErrorMessage, se
     umlCode,
   }) => {
     if (isExtracting || projectsLoading) {
+      return true;
+    }
+
+    if (getReadinessError(modelReadiness)) {
       return true;
     }
 

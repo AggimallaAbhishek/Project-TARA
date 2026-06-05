@@ -17,6 +17,7 @@ from app.config import get_settings
 from app.database import engine
 from app.routes import analysis, audit, auth, comparison, diagram, document, projects
 from app.services.auth_service import ACCESS_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
+from app.services.analysis_job_service import analysis_job_service
 
 # Configure logging before anything else
 logging.basicConfig(
@@ -146,6 +147,7 @@ def initialize_database_for_startup() -> bool:
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     application.state.db_startup_ready = initialize_database_for_startup()
+    analysis_job_service.mark_interrupted_jobs_queued()
     yield
 
 

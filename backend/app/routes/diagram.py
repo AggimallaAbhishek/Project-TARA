@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.analysis import AnalysisResponse
+from app.schemas.analysis import AnalysisJobResponse, AnalysisResponse
 from app.schemas.diagram import (
     DiagramAnalyzeRequest,
     DiagramCodeAnalyzeRequest,
@@ -16,14 +16,21 @@ from app.schemas.diagram import (
     DiagramSourceMetadata,
 )
 from app.services.analysis_workflow_service import analysis_workflow_service
+from app.services.analysis_job_service import analysis_job_service
 from app.services.auth_service import get_current_user
 from app.services.diagram_extract_service import DiagramExtractionError, diagram_extract_service
 from app.services.extract_session_service import extract_session_service
 from app.services.rate_limit_service import diagram_analyze_rate_limiter, diagram_extract_rate_limiter
+from app.services.source_context_service import build_source_context
 
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+
+def _diagram_source_type(source_metadata: dict) -> str:
+    input_type = str(source_metadata.get("input_type") or "file").strip().lower()
+    return f"diagram_{input_type}"
 
 
 def _decode_text_diagram_payload(file_bytes: bytes) -> str:
@@ -221,10 +228,49 @@ async def analyze_diagram(
         diagram_format=session_payload.get("diagram_format"),
         diagram_code=session_payload.get("diagram_code"),
         source="diagram",
+        source_context=build_source_context(
+            source_type=_diagram_source_type(session_payload.get("source_metadata") or {}),
+            raw_or_extracted_text=system_description,
+            source_metadata=session_payload.get("source_metadata") or {},
+            structured_context=(session_payload.get("source_metadata") or {}).get("structured_context"),
+            editable_summary=(session_payload.get("source_metadata") or {}).get("editable_summary") or system_description,
+        ),
         background_tasks=background_tasks,
     )
     extract_session_service.delete_session(request.extract_id)
     return analysis
+
+
+@router.post(
+    "/diagram/analyze/jobs",
+    response_model=AnalysisJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue extracted diagram architecture analysis",
+    response_description="Queued diagram analysis job",
+)
+async def analyze_diagram_job(
+    request: DiagramAnalyzeRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(enforce_diagram_analyze_rate_limit),
+):
+    session_payload = extract_session_service.get_session(
+        extract_id=request.extract_id,
+        user_id=current_user.id,
+    )
+    if not session_payload:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Diagram extraction session not found or expired.",
+        )
+    job = analysis_job_service.create_job(
+        db,
+        user_id=current_user.id,
+        source_type="diagram",
+        payload=request.model_dump(),
+    )
+    background_tasks.add_task(analysis_job_service.process_job, job.job_id)
+    return job
 
 
 @router.post(
@@ -272,6 +318,52 @@ async def analyze_diagram_code(
         diagram_format=request.uml_format,
         diagram_code=request.uml_code,
         source="uml_code",
+        source_context=build_source_context(
+            source_type=f"uml_{request.uml_format}",
+            raw_or_extracted_text=extracted_description,
+            source_metadata={
+                "input_type": request.uml_format,
+                "extractor_used": f"{request.uml_format}_parser_v1",
+                "code_length": len(request.uml_code),
+            },
+        ),
         background_tasks=background_tasks,
     )
     return analysis
+
+
+@router.post(
+    "/diagram/analyze-code/jobs",
+    response_model=AnalysisJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue Mermaid or PlantUML code analysis",
+    response_description="Queued UML code analysis job",
+)
+async def analyze_diagram_code_job(
+    request: DiagramCodeAnalyzeRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(enforce_diagram_analyze_rate_limit),
+):
+    try:
+        diagram_extract_service.extract_from_uml_code(
+            uml_format=request.uml_format,
+            uml_code=request.uml_code,
+        )
+    except DiagramExtractionError as exc:
+        logger.warning(
+            "UML code extraction rejected user_id=%s format=%s error=%s",
+            current_user.id,
+            request.uml_format,
+            str(exc),
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    job = analysis_job_service.create_job(
+        db,
+        user_id=current_user.id,
+        source_type="uml",
+        payload=request.model_dump(),
+    )
+    background_tasks.add_task(analysis_job_service.process_job, job.job_id)
+    return job

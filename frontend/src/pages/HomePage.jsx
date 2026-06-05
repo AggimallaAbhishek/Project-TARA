@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { createProject, extractDiagram, getProjects } from '../services/api';
+import { createProject, extractDiagram, getModelReadiness, getProjects } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import { FullPageLoader } from '../components/LoadingSpinner';
 import { OrbitalDashboard } from '../components/orbital';
@@ -26,7 +26,10 @@ import {
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Analyzing system threats...');
   const [error, setError] = useState(null);
+  const [modelReadiness, setModelReadiness] = useState(null);
+  const [modelReadinessError, setModelReadinessError] = useState('');
   const [title, setTitle] = useState('');
   const [inputMode, setInputMode] = useState('text');
   const [description, setDescription] = useState('');
@@ -36,6 +39,43 @@ export default function HomePage() {
   const requestedProjectId = searchParams.get('project_id') || '';
 
   const remainingDescriptionChars = DESCRIPTION_MAX_LENGTH - description.length;
+
+  useEffect(() => {
+    let isMounted = true;
+    getModelReadiness()
+      .then((readiness) => {
+        if (!isMounted) return;
+        setModelReadiness(readiness);
+        setModelReadinessError('');
+      })
+      .catch((readinessError) => {
+        if (!isMounted) return;
+        console.error('Model readiness check failed:', readinessError);
+        setModelReadinessError(getApiErrorMessage(readinessError, {
+          fallbackMessage: 'Could not verify Ollama model readiness.',
+          operation: 'model.readiness',
+        }));
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const readinessWarning = useMemo(() => {
+    if (modelReadinessError) {
+      return modelReadinessError;
+    }
+    if (!modelReadiness) {
+      return '';
+    }
+    if (!modelReadiness.text?.available) {
+      return modelReadiness.text?.error || 'The configured Ollama text model is unavailable.';
+    }
+    if (modelReadiness.vision?.configured && !modelReadiness.vision?.available) {
+      return modelReadiness.vision?.error || 'The configured Ollama vision model is unavailable.';
+    }
+    return '';
+  }, [modelReadiness, modelReadinessError]);
 
   const {
     projects,
@@ -94,6 +134,8 @@ export default function HomePage() {
     getApiErrorMessage,
     setError,
     setIsLoading,
+    setLoadingMessage,
+    modelReadiness,
   });
 
   const { dashboard, loading: dashboardLoading, errors: dashboardErrors } = useOrbitalDashboardData();
@@ -128,14 +170,31 @@ export default function HomePage() {
     });
   };
 
+  const diagramExtractionNeedsVision = () => {
+    const fileName = diagramFile?.name?.toLowerCase() || '';
+    return ['.png', '.jpg', '.jpeg', '.pdf'].some((extension) => fileName.endsWith(extension));
+  };
+
+  const handleExtractWithReadiness = () => {
+    if (
+      diagramExtractionNeedsVision()
+      && (!modelReadiness?.vision?.configured || !modelReadiness?.vision?.available)
+    ) {
+      setError(modelReadiness?.vision?.error || 'Configure an available Ollama vision model before extracting image or PDF diagrams.');
+      return;
+    }
+    handleExtractDiagram({ title });
+  };
+
   if (isLoading) {
-    return <FullPageLoader text="Analyzing system threats..." />;
+    return <FullPageLoader text={loadingMessage} />;
   }
 
   return (
     <OrbitalDashboard
       form={{
         error,
+        readinessWarning,
         title,
         setTitle,
         inputMode,
@@ -161,7 +220,7 @@ export default function HomePage() {
         setExtractedDescription,
         handleDiagramFileChange,
         handleDocumentFileChange,
-        handleExtractDiagram: () => handleExtractDiagram({ title }),
+        handleExtractDiagram: handleExtractWithReadiness,
         umlFormat,
         umlCode,
         umlFileName,
@@ -188,6 +247,7 @@ export default function HomePage() {
         extractedDescription,
         documentFile,
         umlCode,
+        modelReadiness,
       })}
       examples={examples}
       onSelectExample={(example) => {

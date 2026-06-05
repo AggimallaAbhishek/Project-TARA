@@ -5,6 +5,8 @@ pydantic
 pydantic-settings
 python-multipart
 ollama
+defusedxml
+pillow
 python-dotenv
 python-jose[cryptography]
 google-auth

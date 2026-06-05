@@ -24,6 +24,24 @@ export async function analyzeSystem(title, systemDescription, projectOptions = {
   return response.data;
 }
 
+export async function analyzeSystemJob(title, systemDescription, projectOptions = {}) {
+  const response = await api.post(
+    '/analyze/jobs',
+    appendProjectFields(
+      {
+        title,
+        system_description: systemDescription,
+      },
+      projectOptions,
+    ),
+    {
+      timeout: LONG_TASK_TIMEOUT_MS,
+    },
+  );
+
+  return response.data;
+}
+
 export async function extractDiagram(file) {
   const formData = new FormData();
   formData.append('file', file);
@@ -58,9 +76,48 @@ export async function analyzeFromDiagram(title, extractId, editedDescription = '
   return response.data;
 }
 
+export async function analyzeFromDiagramJob(title, extractId, editedDescription = '', projectOptions = {}) {
+  const payload = appendProjectFields(
+    {
+      title,
+      extract_id: extractId,
+    },
+    projectOptions,
+  );
+
+  if (editedDescription.trim()) {
+    payload.system_description = editedDescription.trim();
+  }
+
+  const response = await api.post('/diagram/analyze/jobs', payload, {
+    timeout: LONG_TASK_TIMEOUT_MS,
+  });
+
+  return response.data;
+}
+
 export async function analyzeFromUmlCode(title, umlFormat, umlCode, projectOptions = {}) {
   const response = await api.post(
     '/diagram/analyze-code',
+    appendProjectFields(
+      {
+        title,
+        uml_format: umlFormat,
+        uml_code: umlCode,
+      },
+      projectOptions,
+    ),
+    {
+      timeout: LONG_TASK_TIMEOUT_MS,
+    },
+  );
+
+  return response.data;
+}
+
+export async function analyzeFromUmlCodeJob(title, umlFormat, umlCode, projectOptions = {}) {
+  const response = await api.post(
+    '/diagram/analyze-code/jobs',
     appendProjectFields(
       {
         title,
@@ -95,6 +152,37 @@ export async function analyzeDocument(title, file, projectOptions = {}) {
     },
   });
 
+  return response.data;
+}
+
+export async function analyzeDocumentJob(title, file, projectOptions = {}) {
+  const formData = new FormData();
+  formData.append('title', title);
+  if (projectOptions.projectId) {
+    formData.append('project_id', String(projectOptions.projectId));
+  }
+  if (projectOptions.projectName?.trim()) {
+    formData.append('project_name', projectOptions.projectName.trim());
+  }
+  formData.append('file', file);
+
+  const response = await api.post('/document/analyze/jobs', formData, {
+    timeout: LONG_TASK_TIMEOUT_MS,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return response.data;
+}
+
+export async function getAnalysisJob(jobId) {
+  const response = await api.get(`/analysis-jobs/${jobId}`);
+  return response.data;
+}
+
+export async function getModelReadiness() {
+  const response = await api.get('/model-readiness');
   return response.data;
 }
 
