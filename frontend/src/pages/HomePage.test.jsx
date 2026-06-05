@@ -4,12 +4,14 @@ import { MemoryRouter } from 'react-router-dom'
 
 import HomePage from './HomePage'
 import {
-  analyzeDocument,
-  analyzeFromDiagram,
-  analyzeFromUmlCode,
-  analyzeSystem,
+  analyzeDocumentJob,
+  analyzeFromDiagramJob,
+  analyzeFromUmlCodeJob,
+  analyzeSystemJob,
   createProject,
   extractDiagram,
+  getAnalysisJob,
+  getModelReadiness,
   getProjects,
 } from '../services/api'
 
@@ -24,11 +26,13 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('../services/api', () => ({
-  analyzeSystem: vi.fn(),
+  analyzeSystemJob: vi.fn(),
   extractDiagram: vi.fn(),
-  analyzeFromDiagram: vi.fn(),
-  analyzeFromUmlCode: vi.fn(),
-  analyzeDocument: vi.fn(),
+  analyzeFromDiagramJob: vi.fn(),
+  analyzeFromUmlCodeJob: vi.fn(),
+  analyzeDocumentJob: vi.fn(),
+  getAnalysisJob: vi.fn(),
+  getModelReadiness: vi.fn(),
   getProjects: vi.fn(),
   createProject: vi.fn(),
 }))
@@ -65,6 +69,16 @@ function renderHomePage() {
   )
 }
 
+function completedJob(jobId, analysisId) {
+  return {
+    job_id: jobId,
+    status: 'succeeded',
+    stage: 'completed',
+    progress_percent: 100,
+    analysis_id: analysisId,
+  }
+}
+
 describe('HomePage', () => {
   beforeEach(() => {
     getProjects.mockResolvedValue({
@@ -75,7 +89,23 @@ describe('HomePage', () => {
       has_more: false,
     })
     createProject.mockResolvedValue({ id: 8, name: 'New Project' })
-    analyzeSystem.mockResolvedValue({ id: 101 })
+    getModelReadiness.mockResolvedValue({
+      status: 'ready',
+      text: { configured: true, available: true, model: 'llama3.2', error: null },
+      vision: { configured: false, available: false, model: null, error: 'Model is not configured.' },
+      checked_at: '2026-06-05T00:00:00Z',
+    })
+    analyzeSystemJob.mockResolvedValue(completedJob('job-text', 101))
+    getAnalysisJob.mockImplementation(async (jobId) => {
+      const analysisIds = {
+        'job-text': 101,
+        'job-diagram': 202,
+        'job-document': 303,
+        'job-uml': 404,
+        'job-inline': 505,
+      }
+      return completedJob(jobId, analysisIds[jobId] || 101)
+    })
     extractDiagram.mockResolvedValue({
       extract_id: 'extract-123',
       extracted_system_description: 'Extracted architecture with gateway and database.',
@@ -84,12 +114,9 @@ describe('HomePage', () => {
         extractor_used: 'mermaid_parser_v1',
       },
     })
-    analyzeFromDiagram.mockResolvedValue({ id: 202 })
-    analyzeFromUmlCode.mockResolvedValue({ id: 404 })
-    analyzeDocument.mockResolvedValue({
-      analysis: { id: 303 },
-      version_comparison: { has_previous_version: false },
-    })
+    analyzeFromDiagramJob.mockResolvedValue(completedJob('job-diagram', 202))
+    analyzeFromUmlCodeJob.mockResolvedValue(completedJob('job-uml', 404))
+    analyzeDocumentJob.mockResolvedValue(completedJob('job-document', 303))
   })
 
   afterEach(() => {
@@ -114,7 +141,7 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze System Threats' }))
 
     await waitFor(() => {
-      expect(analyzeSystem).toHaveBeenCalledWith(
+      expect(analyzeSystemJob).toHaveBeenCalledWith(
         'Text Analysis',
         'Gateway, auth service, and database with external integrations.',
         { projectId: 7 },
@@ -153,7 +180,7 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze Diagram Threats' }))
 
     await waitFor(() => {
-      expect(analyzeFromDiagram).toHaveBeenCalledWith(
+      expect(analyzeFromDiagramJob).toHaveBeenCalledWith(
         'Diagram Analysis',
         'extract-123',
         'Edited extracted architecture with gateway and identity service.',
@@ -164,7 +191,7 @@ describe('HomePage', () => {
   })
 
   it('shows normalized backend-unreachable error when API is down', async () => {
-    analyzeSystem.mockRejectedValue({
+    analyzeSystemJob.mockRejectedValue({
       code: 'ERR_NETWORK',
       message: 'Network Error',
       config: { url: '/analyze' },
@@ -185,6 +212,27 @@ describe('HomePage', () => {
     expect(
       await screen.findByText(/Cannot reach the backend service/i),
     ).toBeInTheDocument()
+  })
+
+  it('warns and disables analysis when the text model is unavailable', async () => {
+    getModelReadiness.mockResolvedValueOnce({
+      status: 'degraded',
+      text: {
+        configured: true,
+        available: false,
+        model: 'llama3.2',
+        error: "Model 'llama3.2' is not installed in Ollama.",
+      },
+      vision: { configured: false, available: false, model: null, error: 'Model is not configured.' },
+      checked_at: '2026-06-05T00:00:00Z',
+    })
+
+    renderHomePage()
+
+    await screen.findByLabelText('Project')
+
+    expect(await screen.findByText(/not installed in Ollama/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Analyze System Threats' })).toBeDisabled()
   })
 
   it('shows projects unavailable state and retries project loading when backend is unreachable', async () => {
@@ -262,7 +310,7 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze Document Threats' }))
 
     await waitFor(() => {
-      expect(analyzeDocument).toHaveBeenCalledWith('Policy Document Analysis', documentFile, { projectId: 7 })
+      expect(analyzeDocumentJob).toHaveBeenCalledWith('Policy Document Analysis', documentFile, { projectId: 7 })
       expect(mockNavigate).toHaveBeenCalledWith('/analysis/303')
     })
   })
@@ -285,7 +333,7 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze UML Threats' }))
 
     await waitFor(() => {
-      expect(analyzeFromUmlCode).toHaveBeenCalledWith(
+      expect(analyzeFromUmlCodeJob).toHaveBeenCalledWith(
         'UML Threat Model',
         'plantuml',
         '@startuml\nClient -> API\nAPI -> DB\n@enduml',
@@ -342,7 +390,7 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze System Threats' }))
 
     await waitFor(() => {
-      expect(analyzeSystem).toHaveBeenCalledWith(
+      expect(analyzeSystemJob).toHaveBeenCalledWith(
         'Inline Analysis',
         'Gateway, auth service, and database with external integrations.',
         { projectId: 8 },

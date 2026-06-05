@@ -31,7 +31,7 @@ def _append_unique(items: list[str], value: str, *, limit: int = 40) -> None:
 
 def _extract_section_items(text: str, section_name: str) -> list[str]:
     pattern = re.compile(
-        rf"^{re.escape(section_name)}\s*:?\s*$([\s\S]*?)(?=^\S[^\n]{{0,80}}\s*:?\s*$|\Z)",
+        rf"^\s*{re.escape(section_name)}\s*:?\s*$([\s\S]*?)(?=^\s*[A-Za-z][^\n]{{0,80}}\s*:?\s*$|\Z)",
         flags=re.IGNORECASE | re.MULTILINE,
     )
     match = pattern.search(text)

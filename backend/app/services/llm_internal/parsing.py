@@ -247,8 +247,9 @@ def validate_threat(threat: dict[str, Any], logger) -> dict[str, Any] | None:
         )
         normalized["risk_level"] = risk_service.get_risk_level_from_score(derived_score)
 
+    raw_name = str(threat.get("name") or "").strip().lower()
     if (
-        normalized["name"].strip().lower() in GENERIC_THREAT_NAMES
+        raw_name in GENERIC_THREAT_NAMES
         and normalized["affected_component"] == "Unspecified component"
     ):
         logger.warning("Rejected generic LLM threat without affected component")

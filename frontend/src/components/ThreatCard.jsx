@@ -6,7 +6,7 @@ import { CheckCircle2, ChevronDown, CircleDot, Clock, Target, Shield, Lightbulb 
 import RiskBadge from './RiskBadge';
 import StrideBadge from './StrideBadge';
 
-export const REMEDIATION_STATUS_OPTIONS = ['Open', 'In Progress', 'Mitigated'];
+const REMEDIATION_STATUS_OPTIONS = ['Open', 'In Progress', 'Mitigated'];
 
 function getStatusConfig(status) {
   switch (status) {
