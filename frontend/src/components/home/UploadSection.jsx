@@ -1,5 +1,166 @@
+import { useRef, useState } from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
+import {
+  CheckCircle2,
+  Circle,
+  FileCheck,
+  FileSearch,
+  Loader2,
+  UploadCloud,
+} from 'lucide-react';
+
+function createFileChangeEvent(files) {
+  return {
+    target: {
+      files,
+    },
+  };
+}
+
+function formatFileSize(file) {
+  if (!file) return '';
+  return `${Math.ceil(file.size / 1024)} KB`;
+}
+
+function DropZone({
+  id,
+  label,
+  helpText,
+  selectedFile,
+  accept,
+  onFileChange,
+  disabled = false,
+}) {
+  const inputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const openFilePicker = () => {
+    if (!disabled) {
+      inputRef.current?.click();
+    }
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setIsDragging(false);
+    if (disabled) return;
+    const droppedFiles = event.dataTransfer?.files;
+    if (droppedFiles?.length) {
+      onFileChange(createFileChangeEvent(droppedFiles));
+    }
+  };
+
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-text-secondary mb-2">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept={accept}
+        onChange={onFileChange}
+        className="sr-only"
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        onClick={openFilePicker}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          if (!disabled) setIsDragging(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          if (!disabled) setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        disabled={disabled}
+        className={`w-full rounded-lg border border-dashed p-4 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+          isDragging
+              ? 'border-cyber-cyan bg-cyber-cyan/10 text-text-primary'
+            : selectedFile
+              ? 'border-cyber-cyan/45 bg-cyber-cyan/10 text-text-primary'
+              : 'border-dark-border bg-dark-tertiary/60 text-text-secondary hover:border-cyber-cyan/40 hover:bg-dark-elevated/60'
+        }`}
+      >
+        <span className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-cyber-cyan/25 bg-cyber-cyan/10 text-cyber-cyan">
+            {selectedFile ? <FileCheck className="h-5 w-5" /> : <UploadCloud className="h-5 w-5" />}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">
+              {selectedFile ? selectedFile.name : 'Drop a file here or browse'}
+            </span>
+            <span className="mt-1 block text-xs leading-relaxed text-text-muted">
+              {selectedFile ? `Selected file size: ${formatFileSize(selectedFile)}` : helpText}
+            </span>
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function UploadStep({ label, state }) {
+  const Icon = state === 'active' ? Loader2 : state === 'complete' || state === 'skipped' ? CheckCircle2 : Circle;
+  const stateLabel = state === 'active'
+    ? 'In progress'
+    : state === 'complete'
+      ? 'Done'
+      : state === 'skipped'
+        ? 'Skipped'
+        : 'Pending';
+
+  return (
+    <li className={`rounded-lg border px-3 py-2 ${
+      state === 'complete'
+        ? 'border-cyber-cyan/35 bg-cyber-cyan/10 text-text-primary'
+        : state === 'active'
+          ? 'border-risk-medium/40 bg-risk-medium/10 text-risk-medium'
+          : state === 'skipped'
+            ? 'border-dark-border bg-dark-tertiary/45 text-text-muted'
+            : 'border-dark-border bg-dark-tertiary/35 text-text-muted'
+    }`}
+    >
+      <span className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 flex-shrink-0 ${state === 'active' ? 'animate-spin' : ''}`} />
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold">{label}</span>
+          <span className="block text-[11px]">{stateLabel}</span>
+        </span>
+      </span>
+    </li>
+  );
+}
+
+function UploadProgress({ uploadSource, diagramFile, documentFile, isExtracting, extractId, extractedDescription }) {
+  const hasReviewedExtraction = Boolean(extractId && extractedDescription.trim());
+  const steps = uploadSource === 'diagram'
+    ? [
+      { label: 'Select file', state: diagramFile ? 'complete' : 'pending' },
+      { label: 'Extract', state: isExtracting ? 'active' : extractId ? 'complete' : 'pending' },
+      { label: 'Review', state: hasReviewedExtraction ? 'complete' : extractId ? 'active' : 'pending' },
+      { label: 'Ready', state: hasReviewedExtraction ? 'complete' : 'pending' },
+    ]
+    : [
+      { label: 'Select file', state: documentFile ? 'complete' : 'pending' },
+      { label: 'Extract', state: 'skipped' },
+      { label: 'Review', state: 'skipped' },
+      { label: 'Ready', state: documentFile ? 'complete' : 'pending' },
+    ];
+
+  return (
+    <ol className="grid grid-cols-2 sm:grid-cols-4 gap-2" aria-label="Upload progress">
+      {steps.map((step) => (
+        <UploadStep key={step.label} label={step.label} state={step.state} />
+      ))}
+    </ol>
+  );
+}
 
 export default function UploadSection({
   uploadSource,
@@ -53,26 +214,24 @@ export default function UploadSection({
 
       {uploadSource === 'diagram' ? (
         <>
-          <div>
-            <label htmlFor="diagram-file" className="block text-sm font-medium text-text-secondary mb-2">
-              Upload Architecture Diagram
-            </label>
-            <input
-              id="diagram-file"
-              type="file"
-              accept={diagramAcceptTypes}
-              onChange={onDiagramFileChange}
-              className="input-dark cursor-pointer"
-            />
-            <p className="mt-2 text-xs text-text-muted">
-              Supported: PNG, JPG, JPEG, PDF, Mermaid, PlantUML, draw.io XML. Max size: 10 MB.
-            </p>
-            {diagramFile && (
-              <p className="mt-1 text-xs text-text-secondary">
-                Selected: {diagramFile.name} ({Math.ceil(diagramFile.size / 1024)} KB)
-              </p>
-            )}
-          </div>
+          <DropZone
+            id="diagram-file"
+            label="Upload Architecture Diagram"
+            helpText="Supported: PNG, JPG, JPEG, PDF, Mermaid, PlantUML, draw.io XML. Max size: 10 MB."
+            selectedFile={diagramFile}
+            accept={diagramAcceptTypes}
+            onFileChange={onDiagramFileChange}
+            disabled={isExtracting}
+          />
+
+          <UploadProgress
+            uploadSource={uploadSource}
+            diagramFile={diagramFile}
+            documentFile={documentFile}
+            isExtracting={isExtracting}
+            extractId={extractId}
+            extractedDescription={extractedDescription}
+          />
 
           <div className="flex items-center gap-3">
             <motion.button
@@ -96,7 +255,10 @@ export default function UploadSection({
           {extractId && (
             <div>
               <label htmlFor="extracted-description" className="block text-sm font-medium text-text-secondary mb-2">
-                Review Extracted Architecture
+                <span className="inline-flex items-center gap-2">
+                  <FileSearch className="h-4 w-4 text-cyber-cyan" />
+                  Review Extracted Architecture
+                </span>
               </label>
               <textarea
                 id="extracted-description"
@@ -114,26 +276,25 @@ export default function UploadSection({
           )}
         </>
       ) : (
-        <div>
-          <label htmlFor="document-file" className="block text-sm font-medium text-text-secondary mb-2">
-            Upload Document
-          </label>
-          <input
+        <>
+          <DropZone
             id="document-file"
-            type="file"
+            label="Upload Document"
+            helpText="Supported: PDF, TXT. Max size: 10 MB."
+            selectedFile={documentFile}
             accept={documentAcceptTypes}
-            onChange={onDocumentFileChange}
-            className="input-dark cursor-pointer"
+            onFileChange={onDocumentFileChange}
           />
-          <p className="mt-2 text-xs text-text-muted">
-            Supported: PDF, TXT. Max size: 10 MB.
-          </p>
-          {documentFile && (
-            <p className="mt-1 text-xs text-text-secondary">
-              Selected: {documentFile.name} ({Math.ceil(documentFile.size / 1024)} KB)
-            </p>
-          )}
-        </div>
+
+          <UploadProgress
+            uploadSource={uploadSource}
+            diagramFile={diagramFile}
+            documentFile={documentFile}
+            isExtracting={isExtracting}
+            extractId={extractId}
+            extractedDescription={extractedDescription}
+          />
+        </>
       )}
     </div>
   );

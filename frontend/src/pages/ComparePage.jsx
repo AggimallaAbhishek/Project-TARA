@@ -5,24 +5,42 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   BarChart3,
+  Calendar,
   Check,
   ChevronDown,
+  FolderKanban,
   GitCompareArrows,
+  AlertTriangle,
   Loader2,
   Search,
   X,
 } from 'lucide-react';
 
 import LoadingSpinner from '../components/LoadingSpinner';
+import RiskBadge from '../components/RiskBadge';
 import { compareAnalyses, getAnalyses, getProject } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import {
   ANALYSES_PAGE_SIZE,
   filterAnalysesByTitle,
+  getRiskBadgeLevel,
   SEARCH_DEBOUNCE_MS,
 } from './comparePageUtils';
 
 const ComparisonResults = lazy(() => import('../components/compare/ComparisonResults'));
+
+function formatAnalysisDate(value) {
+  if (!value) return 'Date unavailable';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date unavailable';
+  return date.toLocaleDateString();
+}
+
+function formatRiskScore(score) {
+  const numericScore = Number(score);
+  if (Number.isNaN(numericScore)) return 'N/A';
+  return numericScore.toFixed(1);
+}
 
 export default function ComparePage() {
   const [analyses, setAnalyses] = useState([]);
@@ -280,7 +298,7 @@ export default function ComparePage() {
                             key={a.id}
                             onClick={() => !isDisabled && toggleSelection(a.id)}
                             disabled={isDisabled}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
+                            className={`w-full flex items-start gap-3 px-3 py-3 text-left text-sm transition-colors ${
                               isSelected
                                 ? 'bg-cyber-cyan/10 text-cyber-cyan'
                                 : isDisabled
@@ -293,9 +311,39 @@ export default function ComparePage() {
                             }`}>
                               {isSelected && <Check className="w-3 h-3 text-dark-primary" />}
                             </div>
-                            <span className="flex-1 truncate">{a.title}</span>
-                            <span className="text-xs text-text-muted">
-                              Score: {a.total_risk_score?.toFixed(1)}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-text-primary">{a.title}</span>
+                              <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+                                <span className="inline-flex items-center gap-1">
+                                  <FolderKanban className="h-3 w-3" />
+                                  {a.project?.name || 'Unassigned project'}
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatAnalysisDate(a.created_at)}
+                                </span>
+                                {a.threat_count !== undefined && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    {a.threat_count} threats
+                                  </span>
+                                )}
+                                {a.high_risk_count > 0 && (
+                                  <span className="text-risk-critical">
+                                    {a.high_risk_count} high/critical
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+                            <span className="flex flex-shrink-0 flex-col items-end gap-1 text-xs text-text-muted">
+                              <span>Score {formatRiskScore(a.total_risk_score)}</span>
+                              {a.total_risk_score !== undefined && (
+                                <RiskBadge
+                                  level={getRiskBadgeLevel(Number(a.total_risk_score || 0))}
+                                  showIcon={false}
+                                  size="small"
+                                />
+                              )}
                             </span>
                           </button>
                         );

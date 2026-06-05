@@ -2,9 +2,31 @@ import { useState } from 'react';
 // motion is used in JSX as motion.div, motion.button
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Target, Shield, Lightbulb } from 'lucide-react';
+import { CheckCircle2, ChevronDown, CircleDot, Clock, Target, Shield, Lightbulb } from 'lucide-react';
 import RiskBadge from './RiskBadge';
 import StrideBadge from './StrideBadge';
+
+export const REMEDIATION_STATUS_OPTIONS = ['Open', 'In Progress', 'Mitigated'];
+
+function getStatusConfig(status) {
+  switch (status) {
+    case 'Mitigated':
+      return {
+        icon: CheckCircle2,
+        className: 'border-risk-low/30 bg-risk-low/10 text-risk-low',
+      };
+    case 'In Progress':
+      return {
+        icon: Clock,
+        className: 'border-risk-medium/30 bg-risk-medium/10 text-risk-medium',
+      };
+    default:
+      return {
+        icon: CircleDot,
+        className: 'border-dark-border bg-dark-tertiary text-text-secondary',
+      };
+  }
+}
 
 function sanitizeMitigationSegment(text) {
   let cleaned = text.trim();
@@ -21,8 +43,20 @@ function sanitizeMitigationSegment(text) {
   return cleaned;
 }
 
-export default function ThreatCard({ threat, index = 0 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export default function ThreatCard({
+  threat,
+  index = 0,
+  isExpanded,
+  onToggleExpanded,
+  remediationStatus,
+  onRemediationStatusChange,
+}) {
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const [localRemediationStatus, setLocalRemediationStatus] = useState('Open');
+  const expanded = isExpanded ?? localExpanded;
+  const currentStatus = remediationStatus ?? localRemediationStatus;
+  const statusConfig = getStatusConfig(currentStatus);
+  const StatusIcon = statusConfig.icon;
   const normalizedMitigationText = sanitizeMitigationSegment(threat.mitigation || '');
   const mitigationSteps = normalizedMitigationText
     .split('\n')
@@ -32,6 +66,24 @@ export default function ThreatCard({ threat, index = 0 }) {
     .map((line) => sanitizeMitigationSegment(line))
     .filter(Boolean);
   const hasMitigationSteps = mitigationSteps.length > 1;
+  const statusSelectId = `threat-${threat.id}-remediation-status`;
+
+  const handleToggle = () => {
+    if (onToggleExpanded) {
+      onToggleExpanded(!expanded);
+      return;
+    }
+    setLocalExpanded((value) => !value);
+  };
+
+  const handleStatusChange = (event) => {
+    const nextStatus = event.target.value;
+    if (onRemediationStatusChange) {
+      onRemediationStatusChange(nextStatus);
+      return;
+    }
+    setLocalRemediationStatus(nextStatus);
+  };
 
   return (
     <motion.div
@@ -43,8 +95,8 @@ export default function ThreatCard({ threat, index = 0 }) {
       {/* Card Header - Always visible */}
       <button
         type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        aria-expanded={isExpanded}
+        onClick={handleToggle}
+        aria-expanded={expanded}
         className="w-full text-left p-5 cursor-pointer hover:bg-dark-tertiary/50 transition-colors"
       >
         <div className="flex items-start justify-between gap-4">
@@ -64,12 +116,16 @@ export default function ThreatCard({ threat, index = 0 }) {
                 <Target className="w-3 h-3" />
                 {threat.affected_component}
               </span>
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium ${statusConfig.className}`}>
+                <StatusIcon className="w-3 h-3" />
+                {currentStatus}
+              </span>
             </div>
           </div>
 
           {/* Expand Button */}
           <motion.span
-            animate={{ rotate: isExpanded ? 180 : 0 }}
+            animate={{ rotate: expanded ? 180 : 0 }}
             className="p-2 rounded-lg bg-dark-tertiary text-text-secondary"
           >
             <ChevronDown className="w-5 h-5" />
@@ -79,7 +135,7 @@ export default function ThreatCard({ threat, index = 0 }) {
 
       {/* Expandable Content */}
       <AnimatePresence>
-        {isExpanded && (
+        {expanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -105,6 +161,24 @@ export default function ThreatCard({ threat, index = 0 }) {
                   STRIDE Category
                 </h4>
                 <StrideBadge category={threat.stride_category} showFull={true} />
+              </div>
+
+              <div>
+                <label htmlFor={statusSelectId} className="block text-sm font-medium text-text-secondary mb-2">
+                  Remediation Status
+                </label>
+                <select
+                  id={statusSelectId}
+                  value={currentStatus}
+                  onChange={handleStatusChange}
+                  className="input-dark max-w-xs"
+                >
+                  {REMEDIATION_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Risk Details */}
