@@ -9,7 +9,9 @@ from app.models.analysis import Analysis, Threat
 from app.models.user import User
 from app.schemas.analysis import (
     AnalysisCreate,
+    AnalysisJobResponse,
     AnalysisListResponse,
+    ModelReadinessResponse,
     AnalysisResponse,
     AnalysisRiskSummary,
     AnalysisSummary,
@@ -21,6 +23,8 @@ from app.services.analysis_version_comparison_service import analysis_version_co
 from app.services.audit_service import audit_service
 from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
+from app.services.analysis_job_service import analysis_job_service
+from app.services.model_readiness_service import model_readiness_service
 from app.services.pdf_service import pdf_report_service
 from app.services.diagram_render_service import (
     DiagramRenderError,
@@ -30,6 +34,7 @@ from app.services.diagram_render_service import (
 from app.services.project_service import project_service
 from app.services.rate_limit_service import analyze_rate_limiter
 from app.services.risk_service import risk_service
+from app.services.source_context_service import build_source_context
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -122,8 +127,64 @@ async def create_analysis(
         project_id=request.project_id,
         project_name=request.project_name,
         source="text",
+        source_context=build_source_context(
+            source_type="text",
+            raw_or_extracted_text=request.system_description,
+            source_metadata={"input_type": "text"},
+        ),
         background_tasks=background_tasks,
     )
+
+
+@router.post(
+    "/analyze/jobs",
+    response_model=AnalysisJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue threat analysis job",
+    response_description="Queued analysis job status",
+)
+async def create_analysis_job(
+    request: AnalysisCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(enforce_analyze_rate_limit),
+):
+    job = analysis_job_service.create_job(
+        db,
+        user_id=current_user.id,
+        source_type="text",
+        payload=request.model_dump(),
+    )
+    background_tasks.add_task(analysis_job_service.process_job, job.job_id)
+    return job
+
+
+@router.get(
+    "/analysis-jobs/{job_id}",
+    response_model=AnalysisJobResponse,
+    summary="Get analysis job status",
+    response_description="Analysis job progress and completion state",
+)
+async def get_analysis_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    job = analysis_job_service.get_user_job(db, job_id=job_id, user_id=current_user.id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis job not found.")
+    return job
+
+
+@router.get(
+    "/model-readiness",
+    response_model=ModelReadinessResponse,
+    summary="Check configured Ollama model readiness",
+    response_description="Text and vision model availability",
+)
+async def get_model_readiness(current_user: User = Depends(get_current_user)):
+    _ = current_user
+    return model_readiness_service.check()
 
 
 @router.get(

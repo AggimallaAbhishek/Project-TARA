@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.analysis import AnalysisCreate, DocumentAnalysisResponse
+from app.schemas.analysis import AnalysisCreate, AnalysisJobResponse, DocumentAnalysisResponse
+from app.services.analysis_job_service import analysis_job_service
 from app.services.analysis_version_comparison_service import analysis_version_comparison_service
 from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
@@ -94,6 +95,13 @@ async def analyze_document(
             project_id=validated_request.project_id,
             project_name=validated_request.project_name,
             source="document",
+            source_context={
+                "source_type": f"document_{source_metadata.get('input_type', 'txt')}",
+                "source_metadata": source_metadata,
+                "structured_context": source_metadata.get("structured_context", {}),
+                "editable_summary": source_metadata.get("editable_summary", extracted_description),
+                "raw_or_extracted_text": extracted_description,
+            },
             background_tasks=background_tasks,
         )
         version_comparison = analysis_version_comparison_service.get_version_comparison(
@@ -154,3 +162,46 @@ async def analyze_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Document analysis failed due to an internal server error.",
         )
+
+
+@router.post(
+    "/document/analyze/jobs",
+    response_model=AnalysisJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue uploaded document analysis",
+    response_description="Queued document analysis job",
+)
+async def analyze_document_job(
+    background_tasks: BackgroundTasks,
+    title: str = Form(...),
+    project_id: int | None = Form(default=None),
+    project_name: str | None = Form(default=None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(enforce_document_analyze_rate_limit),
+):
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A filename is required for document analysis.",
+        )
+    staged_path, file_size = await analysis_job_service.stage_upload(
+        file,
+        settings.document_max_upload_mb * 1024 * 1024,
+    )
+    job = analysis_job_service.create_job(
+        db,
+        user_id=current_user.id,
+        source_type="document",
+        staged_file_path=staged_path,
+        payload={
+            "title": title,
+            "project_id": project_id,
+            "project_name": project_name,
+            "file_name": file.filename,
+            "content_type": file.content_type,
+            "file_size": file_size,
+        },
+    )
+    background_tasks.add_task(analysis_job_service.process_job, job.job_id)
+    return job
