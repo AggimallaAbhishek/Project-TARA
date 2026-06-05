@@ -9,6 +9,7 @@ except ImportError:
     raise ImportError("ollama package not installed. Run: pip install ollama")
 
 from app.config import get_settings
+from app.services.source_context_service import build_editable_summary, build_structured_context
 from app.services.diagram_extract_internal import (
     DRAWIO_EXTENSIONS,
     IMAGE_EXTENSIONS,
@@ -66,59 +67,79 @@ class DiagramExtractService:
 
         if extension in IMAGE_EXTENSIONS:
             self._validate_image(file_bytes)
+            self._validate_image_dimensions(file_bytes)
             extracted = await self._extract_from_image(file_bytes)
+            structured = build_structured_context(extracted)
             metadata = {
                 "input_type": "image",
                 "file_name": file_name,
                 "file_size": len(file_bytes),
                 "pages_processed": None,
                 "extractor_used": f"ollama_vision:{current_settings.ollama_vision_model}",
+                "structured_context": structured,
+                "editable_summary": build_editable_summary(extracted, structured),
             }
             return self._normalize_extracted_text(extracted), metadata
 
         if extension in PDF_EXTENSIONS:
             self._validate_pdf(file_bytes)
             extracted, pages_processed = await self._extract_from_pdf(file_bytes)
+            structured = build_structured_context(extracted)
             metadata = {
                 "input_type": "pdf",
                 "file_name": file_name,
                 "file_size": len(file_bytes),
                 "pages_processed": pages_processed,
                 "extractor_used": f"ollama_vision:{current_settings.ollama_vision_model}",
+                "structured_context": structured,
+                "editable_summary": build_editable_summary(extracted, structured),
             }
             return self._normalize_extracted_text(extracted), metadata
 
         text_content = self._decode_text(file_bytes)
+        if len(text_content) > current_settings.diagram_max_text_chars:
+            raise DiagramExtractionError(
+                f"Text diagram is too large. Maximum allowed size is {current_settings.diagram_max_text_chars} characters."
+            )
 
         if extension in MERMAID_EXTENSIONS:
             extracted = self._extract_from_mermaid(text_content)
+            structured = build_structured_context(extracted)
             metadata = {
                 "input_type": "mermaid",
                 "file_name": file_name,
                 "file_size": len(file_bytes),
                 "pages_processed": None,
                 "extractor_used": "mermaid_parser_v1",
+                "structured_context": structured,
+                "editable_summary": build_editable_summary(extracted, structured),
             }
             return self._normalize_extracted_text(extracted), metadata
 
         if extension in PLANTUML_EXTENSIONS:
             extracted = self._extract_from_plantuml(text_content)
+            structured = build_structured_context(extracted)
             metadata = {
                 "input_type": "plantuml",
                 "file_name": file_name,
                 "file_size": len(file_bytes),
                 "pages_processed": None,
                 "extractor_used": "plantuml_parser_v1",
+                "structured_context": structured,
+                "editable_summary": build_editable_summary(extracted, structured),
             }
             return self._normalize_extracted_text(extracted), metadata
 
         extracted = self._extract_from_drawio(text_content)
+        structured = build_structured_context(extracted)
         metadata = {
             "input_type": "drawio",
             "file_name": file_name,
             "file_size": len(file_bytes),
             "pages_processed": None,
             "extractor_used": "drawio_parser_v1",
+            "structured_context": structured,
+            "editable_summary": build_editable_summary(extracted, structured),
         }
         return self._normalize_extracted_text(extracted), metadata
 
@@ -165,6 +186,26 @@ class DiagramExtractService:
     @staticmethod
     def _validate_image(file_bytes: bytes) -> None:
         validate_image(file_bytes, error_cls=DiagramExtractionError)
+
+    @staticmethod
+    def _validate_image_dimensions(file_bytes: bytes) -> None:
+        try:
+            from PIL import Image
+        except ImportError as exc:
+            raise RuntimeError("Image validation dependency is missing. Install Pillow.") from exc
+
+        try:
+            from io import BytesIO
+            with Image.open(BytesIO(file_bytes)) as image:
+                width, height = image.size
+        except Exception as exc:
+            raise DiagramExtractionError("Could not inspect image dimensions.") from exc
+
+        max_pixels = get_settings().diagram_max_image_pixels
+        if width <= 0 or height <= 0 or width * height > max_pixels:
+            raise DiagramExtractionError(
+                f"Image dimensions are too large. Maximum allowed pixels: {max_pixels}."
+            )
 
     async def _extract_from_image(self, image_bytes: bytes) -> str:
         return await extract_from_image(
