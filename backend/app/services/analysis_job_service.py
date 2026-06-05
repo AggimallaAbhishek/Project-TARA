@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -105,6 +106,9 @@ class AnalysisJobService:
             if jobs:
                 logger.info("Requeued interrupted analysis jobs count=%s", len(jobs))
             return len(jobs)
+        except SQLAlchemyError as exc:
+            logger.warning("Could not requeue interrupted analysis jobs on startup: %s", exc)
+            return 0
         finally:
             db.close()
 
