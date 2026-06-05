@@ -71,6 +71,11 @@ class ThreatBase(BaseModel):
     owasp_tags: list[str] = []
     cwe_tags: list[str] = []
 
+    @field_validator("evidence", "assumptions", "owasp_tags", "cwe_tags", mode="before")
+    @classmethod
+    def default_list_fields(cls, value):
+        return value or []
+
 
 class ThreatResponse(ThreatBase):
     id: int
@@ -110,6 +115,16 @@ class AnalysisResponse(AnalysisBase):
     threats: list[ThreatResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("source_metadata", "structured_context", mode="before")
+    @classmethod
+    def default_dict_fields(cls, value):
+        return value or {}
+
+    @field_validator("quality_warnings", mode="before")
+    @classmethod
+    def default_quality_warnings(cls, value):
+        return value or []
 
 
 class VersionComparisonIssue(BaseModel):

@@ -86,6 +86,12 @@ async def extract_from_pdf(
         raise error_cls("Failed to open PDF file.") from exc
 
     try:
+        if getattr(document, "is_encrypted", False):
+            raise error_cls("Encrypted PDFs are not supported.")
+        if len(document) > getattr(settings, "diagram_pdf_hard_max_pages", settings.diagram_pdf_max_pages):
+            raise error_cls(
+                f"Diagram PDF has too many pages. Maximum allowed is {settings.diagram_pdf_hard_max_pages} pages."
+            )
         pages_to_process = min(len(document), max(1, settings.diagram_pdf_max_pages))
         if pages_to_process <= 0:
             raise error_cls("PDF contains no pages to process.")

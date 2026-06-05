@@ -1,5 +1,7 @@
 import logging
+import inspect
 from time import perf_counter
+from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
@@ -16,6 +18,16 @@ logger = logging.getLogger(__name__)
 
 
 class AnalysisWorkflowService:
+    async def _analyze_with_optional_context(
+        self,
+        system_description: str,
+        source_context: dict[str, Any] | None,
+    ) -> tuple[list[dict[str, Any]], float]:
+        analyze_signature = inspect.signature(llm_service.analyze_system)
+        if "source_context" in analyze_signature.parameters:
+            return await llm_service.analyze_system(system_description, source_context=source_context)
+        return await llm_service.analyze_system(system_description)
+
     async def create_analysis(
         self,
         *,
@@ -28,6 +40,7 @@ class AnalysisWorkflowService:
         diagram_format: str | None = None,
         diagram_code: str | None = None,
         source: str = "text",
+        source_context: dict[str, Any] | None = None,
         background_tasks: BackgroundTasks | None = None,
     ) -> Analysis:
         request_start = perf_counter()
@@ -39,7 +52,13 @@ class AnalysisWorkflowService:
                 project_id=project_id,
                 project_name=project_name,
             )
-            threat_data, analysis_time = await llm_service.analyze_system(system_description)
+            threat_data, analysis_time = await self._analyze_with_optional_context(system_description, source_context)
+            source_context = source_context or {
+                "source_type": source,
+                "source_metadata": {},
+                "structured_context": {},
+                "editable_summary": system_description,
+            }
 
             analysis = Analysis(
                 user_id=current_user.id,
@@ -49,6 +68,10 @@ class AnalysisWorkflowService:
                 analysis_time=analysis_time,
                 diagram_format=(diagram_format or None),
                 diagram_code=(diagram_code or None),
+                source_type=source_context.get("source_type") or source,
+                source_metadata=source_context.get("source_metadata") or {},
+                structured_context=source_context.get("structured_context") or {},
+                quality_warnings=source_context.get("quality_warnings") or [],
             )
             db.add(analysis)
             db.flush()
@@ -84,6 +107,11 @@ class AnalysisWorkflowService:
                     impact=threat_item["impact"],
                     risk_score=risk_score,
                     mitigation=threat_item["mitigation"],
+                    evidence=threat_item.get("evidence") or [],
+                    assumptions=threat_item.get("assumptions") or [],
+                    confidence=threat_item.get("confidence"),
+                    owasp_tags=threat_item.get("owasp_tags") or [],
+                    cwe_tags=threat_item.get("cwe_tags") or [],
                 )
                 db.add(threat)
                 threats.append(threat)
@@ -108,6 +136,7 @@ class AnalysisWorkflowService:
                     "project_id": project.id,
                     "project_name": project.name,
                     "source": source,
+                    "source_type": analysis.source_type,
                     "diagram_format": (diagram_format or None),
                     "diagram_code_length": len(diagram_code or ""),
                     "title": analysis.title,

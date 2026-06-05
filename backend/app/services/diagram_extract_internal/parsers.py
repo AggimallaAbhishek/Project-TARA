@@ -1,6 +1,10 @@
 import html
 import re
-import xml.etree.ElementTree as ET
+
+try:
+    import defusedxml.ElementTree as ET
+except ImportError:  # pragma: no cover - dependency is declared for runtime.
+    import xml.etree.ElementTree as ET
 
 
 def clean_drawio_label(value: str) -> str:

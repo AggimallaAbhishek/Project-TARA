@@ -23,6 +23,7 @@ from app.services.llm_internal.prompting import (
     build_stride_prompt,
     estimate_target_threat_count,
     normalize_description,
+    normalize_source_context,
 )
 from app.services.llm_internal.transport import build_chat_request_kwargs
 from app.services.threat_cache_service import HybridThreatCache
@@ -116,13 +117,23 @@ class LLMService:
     def _extract_json_payload(self, response_text: str) -> Any:
         return extract_json_payload(response_text)
 
-    async def analyze_system(self, system_description: str) -> tuple[list[dict[str, Any]], float]:
+    async def analyze_system(
+        self,
+        system_description: str,
+        source_context: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], float]:
         """
         Analyze a system description and return identified threats with timing.
         Returns: (threats, analysis_time_seconds)
         """
         overall_start = time.perf_counter()
-        normalized_description = self._normalize_description(system_description)
+        normalized_context = normalize_source_context(source_context)
+        normalized_description = self._normalize_description(
+            f"{normalized_context['source_type']} "
+            f"{normalized_context['source_metadata']} "
+            f"{normalized_context['structured_context']} "
+            f"{system_description}"
+        )
         cache_key = self._build_cache_key(normalized_description)
 
         logger.debug(
@@ -145,7 +156,7 @@ class LLMService:
                 )
                 return cached_threats, round(elapsed, 2)
 
-        prompt = build_stride_prompt(system_description)
+        prompt = build_stride_prompt(system_description, normalized_context)
         attempts: list[tuple[int, bool]] = [(self.num_predict, False)]
         if self.retry_on_invalid_response:
             attempts.append((max(self.num_predict, self.retry_num_predict), True))

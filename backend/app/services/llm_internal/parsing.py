@@ -14,6 +14,13 @@ VALID_STRIDE_CATEGORIES = [
     "Elevation of Privilege",
 ]
 VALID_RISK_LEVELS = ["Low", "Medium", "High", "Critical"]
+GENERIC_THREAT_NAMES = {
+    "threat",
+    "security threat",
+    "potential threat",
+    "generic threat",
+    "untitled threat",
+}
 
 
 def extract_json_payload(response_text: str) -> Any:
@@ -138,6 +145,50 @@ def _as_str(value: Any, default: str) -> str:
     return text or default
 
 
+def _as_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()][:8]
+    if isinstance(value, str):
+        parsed = parse_serialized_mitigation_list(value)
+        if parsed:
+            return [item.strip() for item in parsed if item.strip()][:8]
+        return [value.strip()] if value.strip() else []
+    return [str(value).strip()] if str(value).strip() else []
+
+
+def _as_confidence(value: Any) -> float:
+    if value is None:
+        return 0.5
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"high", "strong"}:
+            return 0.85
+        if lowered in {"medium", "moderate"}:
+            return 0.6
+        if lowered in {"low", "weak"}:
+            return 0.35
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        numeric = 0.5
+    if numeric > 1:
+        numeric = numeric / 100
+    return max(0.0, min(1.0, numeric))
+
+
+def _normalize_tag_list(value: Any, *, prefix: str | None = None) -> list[str]:
+    tags: list[str] = []
+    for item in _as_list(value):
+        cleaned = item.strip().upper()
+        if prefix and not cleaned.startswith(prefix):
+            continue
+        if cleaned and cleaned not in tags:
+            tags.append(cleaned)
+    return tags[:8]
+
+
 def validate_threat(threat: dict[str, Any], logger) -> dict[str, Any] | None:
     if not isinstance(threat, dict):
         return None
@@ -152,6 +203,11 @@ def validate_threat(threat: dict[str, Any], logger) -> dict[str, Any] | None:
 
     mitigation_text = _as_str(threat.get("mitigation"), "Mitigation not provided.")
     normalized["mitigation"] = normalize_mitigation_steps(mitigation_text)
+    normalized["evidence"] = _as_list(threat.get("evidence"))
+    normalized["assumptions"] = _as_list(threat.get("assumptions"))
+    normalized["confidence"] = _as_confidence(threat.get("confidence"))
+    normalized["owasp_tags"] = _normalize_tag_list(threat.get("owasp_tags") or threat.get("owasp"), prefix="A")
+    normalized["cwe_tags"] = _normalize_tag_list(threat.get("cwe_tags") or threat.get("cwe"), prefix="CWE-")
 
     stride = _as_str(threat.get("stride_category"), "")
     if stride not in VALID_STRIDE_CATEGORIES:
@@ -191,7 +247,34 @@ def validate_threat(threat: dict[str, Any], logger) -> dict[str, Any] | None:
         )
         normalized["risk_level"] = risk_service.get_risk_level_from_score(derived_score)
 
+    if (
+        normalized["name"].strip().lower() in GENERIC_THREAT_NAMES
+        and normalized["affected_component"] == "Unspecified component"
+    ):
+        logger.warning("Rejected generic LLM threat without affected component")
+        return None
+
     return normalized
+
+
+def _dedupe_key(threat: dict[str, Any]) -> str:
+    return "|".join(
+        re.sub(r"[^a-z0-9]+", " ", str(threat.get(field, "")).lower()).strip()
+        for field in ("stride_category", "affected_component", "name")
+    )
+
+
+def deduplicate_threats(threats: list[dict[str, Any]], logger) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for threat in threats:
+        key = _dedupe_key(threat)
+        if key in seen:
+            logger.warning("Dropped duplicate LLM threat key=%s", key)
+            continue
+        seen.add(key)
+        deduped.append(threat)
+    return deduped
 
 
 def parse_llm_response(response_text: str, logger) -> list[dict[str, Any]]:
@@ -210,4 +293,4 @@ def parse_llm_response(response_text: str, logger) -> list[dict[str, Any]]:
         if validated:
             validated_threats.append(validated)
 
-    return validated_threats
+    return deduplicate_threats(validated_threats, logger)
