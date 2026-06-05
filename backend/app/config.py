@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_name: str = "TARA - Threat Analysis & Risk Assessment"
     ollama_host: str = "http://127.0.0.1:11434"
-    ollama_model: str = "qwen3-coder:480b-cloud"
+    ollama_model: str = "llama3.2"
     ollama_temperature: float = 0.1
     ollama_num_predict: int = 2048
     ollama_num_ctx: int = 4096
@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     ollama_enable_cache: bool = True
     ollama_cache_ttl_seconds: int = 600
     ollama_cache_max_entries: int = 128
+    ollama_readiness_cache_ttl_seconds: int = 30
     ollama_vision_model: str = ""
+    analysis_job_worker_concurrency: int = 1
+    analysis_job_stage_dir: str = "/tmp/tara-analysis-jobs"
     database_url: str = "postgresql+psycopg2://tara:tara@localhost:5432/tara"
     database_pool_size: int = 5
     database_max_overflow: int = 10
@@ -52,9 +55,15 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     diagram_max_upload_mb: int = 10
     diagram_pdf_max_pages: int = 3
+    diagram_pdf_hard_max_pages: int = 10
+    diagram_max_image_pixels: int = 20_000_000
+    diagram_max_text_chars: int = 250000
     diagram_extract_ttl_seconds: int = 1800
     document_max_upload_mb: int = 10
     document_pdf_max_pages: int = 20
+    document_pdf_hard_max_pages: int = 100
+    document_chunk_chars: int = 3500
+    document_summary_max_chars: int = 5000
     diagram_renderer_url: str = "http://kroki:8000"
     diagram_render_timeout_seconds: int = 20
     diagram_render_max_chars: int = 250000

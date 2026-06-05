@@ -1,10 +1,13 @@
 from app.schemas.analysis import (
     AnalysisCreate,
+    AnalysisJobResponse,
     DocumentAnalysisResponse,
     AnalysisListResponse,
     AnalysisResponse,
     AnalysisRiskSummary,
     AnalysisSummary,
+    ModelReadinessResponse,
+    ModelStatus,
     ThreatResponse,
     VersionComparisonResponse,
 )
@@ -21,10 +24,13 @@ from app.schemas.project import ProjectActivityResponse, ProjectCreate, ProjectL
 
 __all__ = [
     "AnalysisCreate",
+    "AnalysisJobResponse",
     "AnalysisResponse",
     "AnalysisSummary",
     "AnalysisRiskSummary",
     "AnalysisListResponse",
+    "ModelReadinessResponse",
+    "ModelStatus",
     "ThreatResponse",
     "DocumentAnalysisResponse",
     "VersionComparisonResponse",

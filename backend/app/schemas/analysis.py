@@ -65,6 +65,11 @@ class ThreatBase(BaseModel):
     impact: int = Field(ge=1, le=5)
     risk_score: float
     mitigation: str
+    evidence: list[str] = []
+    assumptions: list[str] = []
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    owasp_tags: list[str] = []
+    cwe_tags: list[str] = []
 
 
 class ThreatResponse(ThreatBase):
@@ -98,6 +103,10 @@ class AnalysisResponse(AnalysisBase):
     diagram_format: DiagramFormat | None = None
     diagram_code: str | None = None
     has_diagram: bool = False
+    source_type: str = "text"
+    source_metadata: dict | None = None
+    structured_context: dict | None = None
+    quality_warnings: list[str] = []
     threats: list[ThreatResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -176,3 +185,35 @@ class LLMThreatResponse(BaseModel):
     likelihood: int
     impact: int
     mitigation: str
+    evidence: list[str] = []
+    assumptions: list[str] = []
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    owasp_tags: list[str] = []
+    cwe_tags: list[str] = []
+
+
+class AnalysisJobResponse(BaseModel):
+    job_id: str
+    status: str
+    stage: str
+    progress_percent: float
+    analysis_id: int | None = None
+    error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ModelStatus(BaseModel):
+    configured: bool
+    available: bool
+    model: str | None = None
+    error: str | None = None
+
+
+class ModelReadinessResponse(BaseModel):
+    status: str
+    text: ModelStatus
+    vision: ModelStatus
+    checked_at: datetime
