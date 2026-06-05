@@ -18,6 +18,7 @@ export default function OrbitalMissionPanel({
 }) {
   const {
     error,
+    readinessWarning,
     title,
     setTitle,
     inputMode,
@@ -75,6 +76,17 @@ export default function OrbitalMissionPanel({
           >
             <AlertCircle className="w-5 h-5 text-risk-critical flex-shrink-0 mt-0.5" />
             <p className="text-sm text-risk-critical">{error}</p>
+          </motion.div>
+        )}
+
+        {!error && readinessWarning && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-lg border border-risk-medium/35 bg-risk-medium/10 p-3 flex items-start gap-3"
+          >
+            <AlertCircle className="w-5 h-5 text-risk-medium flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-risk-medium">{readinessWarning}</p>
           </motion.div>
         )}
 
