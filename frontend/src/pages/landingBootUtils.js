@@ -9,8 +9,8 @@ export function shouldRunLandingBoot({ isE2E = false, prefersReducedMotion = fal
 }
 
 export function resolveBootDurationMs({
-  minMs = 10_000,
-  maxMs = 15_000,
+  minMs = 6_000,
+  maxMs = 7_000,
   randomValue = Math.random(),
 } = {}) {
   const normalizedMin = Math.max(0, Number(minMs) || 0);
@@ -25,7 +25,7 @@ export function deriveBootModuleStatus(progress, index, total) {
   const safeProgress = clamp(Number(progress) || 0, 0, 100);
   const safeTotal = Math.max(1, Number(total) || 1);
   const safeIndex = clamp(Number(index) || 0, 0, safeTotal - 1);
-  const threshold = Math.round(((safeIndex + 1) / safeTotal) * 86);
+  const threshold = Math.round(((safeIndex + 1) / safeTotal) * 72);
 
   if (safeProgress >= threshold) return 'ok';
   if (safeProgress >= Math.max(0, threshold - 18)) return 'loading';

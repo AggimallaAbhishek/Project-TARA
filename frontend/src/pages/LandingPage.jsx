@@ -223,7 +223,7 @@ export default function LandingPage() {
 
     const hexTimer = window.setInterval(() => {
       setBootHexStream(generateHexTelemetry(36));
-    }, 120);
+    }, 180);
 
     return () => {
       window.cancelAnimationFrame(frameId);
@@ -247,7 +247,7 @@ export default function LandingPage() {
       setIsBootRunning(false);
       setIsPageVisible(true);
       setIsBootExiting(false);
-    }, 550);
+    }, 300);
 
     return () => {
       window.clearTimeout(exitTimer);
