@@ -23,6 +23,31 @@ GENERIC_THREAT_NAMES = {
 }
 
 
+def _validate_evidence_relevance(threat: dict[str, Any], logger) -> bool:
+    """
+    Check if evidence is relevant and coherent with the threat.
+    Returns True if valid, False if should be rejected.
+    """
+    evidence_list = threat.get("evidence") or []
+    if not evidence_list:
+        return False
+
+    component = threat.get("affected_component", "").lower()
+    too_generic_evidence = {"data", "system", "information", "system data"}
+
+    for evidence_point in evidence_list:
+        evidence_lower = str(evidence_point or "").lower().strip()
+        if evidence_lower in too_generic_evidence:
+            logger.warning(
+                "Rejected threat with overly generic evidence: component=%s evidence='%s'",
+                component,
+                evidence_point,
+            )
+            return False
+
+    return True
+
+
 def extract_json_payload(response_text: str) -> Any:
     cleaned = response_text.strip()
     if cleaned.startswith("```"):
@@ -253,6 +278,41 @@ def validate_threat(threat: dict[str, Any], logger) -> dict[str, Any] | None:
         and normalized["affected_component"] == "Unspecified component"
     ):
         logger.warning("Rejected generic LLM threat without affected component")
+        return None
+
+    # ===== NEW VALIDATION: Evidence Enforcement =====
+    if not normalized["evidence"] or len(normalized["evidence"]) < 2:
+        logger.warning(
+            "Rejected threat without sufficient evidence (need ≥2 points, got %d): name=%s component=%s",
+            len(normalized["evidence"]),
+            normalized["name"],
+            normalized["affected_component"],
+        )
+        return None
+
+    # ===== NEW VALIDATION: Confidence Threshold =====
+    if normalized["confidence"] < 0.5:
+        logger.warning(
+            "Rejected low-confidence threat (%.2f < 0.5): name=%s component=%s",
+            normalized["confidence"],
+            normalized["name"],
+            normalized["affected_component"],
+        )
+        return None
+
+    # ===== NEW VALIDATION: Generic Component Rejection =====
+    generic_components = {"system", "data", "component", "service", "unspecified", "unspecified component"}
+    component_lower = normalized["affected_component"].lower().strip()
+    if component_lower in generic_components:
+        logger.warning(
+            "Rejected threat with generic component: name=%s component=%s",
+            normalized["name"],
+            normalized["affected_component"],
+        )
+        return None
+
+    # ===== NEW VALIDATION: Evidence Relevance Check =====
+    if not _validate_evidence_relevance(normalized, logger):
         return None
 
     return normalized
