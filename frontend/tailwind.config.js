@@ -70,4 +70,20 @@ export default {
     },
   },
   plugins: [],
+  // Production build optimization: safelist ensures critical utilities are preserved
+  safelist: [
+    // Risk level classes
+    { pattern: /^bg-(risk|cyber)-(critical|high|medium|low|cyan|blue|success)/ },
+    { pattern: /^text-(risk|cyber|text)-(critical|high|medium|low|cyan|cyan-dim|blue|success|primary|secondary|muted)/ },
+    { pattern: /^border-(risk|cyber|text|dark)/ },
+    // Animation/animation states
+    'animate-pulse-slow',
+    'animate-glow',
+    'animate-float',
+    // Common dynamic classes
+    'opacity-0',
+    'opacity-100',
+    'scale-0',
+    'scale-100',
+  ],
 }

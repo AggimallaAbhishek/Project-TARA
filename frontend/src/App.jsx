@@ -9,6 +9,12 @@ import { runtimeConfig } from './config/runtimeConfig';
 import { getAuthConfig } from './services/api';
 import { resolveGoogleClientId } from './services/authConfig';
 
+// Start auth config loading immediately (parallel to JS parsing)
+const authConfigPromise =
+  runtimeConfig.startupConfigErrors.length === 0
+    ? resolveGoogleClientId(runtimeConfig.envGoogleClientId, getAuthConfig).catch(() => '')
+    : Promise.resolve('');
+
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const AnalysisPage = lazy(() => import('./pages/AnalysisPage'));
@@ -44,19 +50,23 @@ function App() {
     let isMounted = true;
 
     const loadAuthConfig = async () => {
-      const resolvedClientId = await resolveGoogleClientId(
-        runtimeConfig.envGoogleClientId,
-        getAuthConfig,
-      );
-      if (isMounted) {
-        setGoogleClientId(resolvedClientId);
-      }
-      if (isMounted) {
-        setAuthConfigLoading(false);
+      try {
+        const resolvedClientId = await authConfigPromise;
+        if (isMounted) {
+          setGoogleClientId(resolvedClientId);
+          setAuthConfigLoading(false);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Failed to resolve Google Client ID:', error);
+          setGoogleClientId('');
+          setAuthConfigLoading(false);
+        }
       }
     };
 
     if (runtimeConfig.startupConfigErrors.length > 0) {
+      setAuthConfigLoading(false);
       return () => {
         isMounted = false;
       };
