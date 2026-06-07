@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
@@ -31,54 +32,87 @@ function getRiskBadgeLevel(score) {
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams();
-  const [project, setProject] = useState(null);
-  const [analyses, setAnalyses] = useState([]);
-  const [activity, setActivity] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [isEditingProject, setIsEditingProject] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState('');
   const [projectDescriptionDraft, setProjectDescriptionDraft] = useState('');
-  const [projectUpdateLoading, setProjectUpdateLoading] = useState(false);
   const [projectUpdateError, setProjectUpdateError] = useState('');
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadProjectWorkspace = async () => {
-      setLoading(true);
-      try {
-        const [projectData, analysesData, activityData] = await Promise.all([
-          getProject(projectId),
-          getProjectAnalyses(projectId, { limit: 20 }),
-          getProjectActivity(projectId, { limit: 50 }),
-        ]);
-        if (!isMounted) return;
-        setProject(projectData);
-        setAnalyses(analysesData.items || []);
-        setActivity(activityData || []);
-        setError(null);
-      } catch (loadError) {
-        if (!isMounted) return;
-        setError(getApiErrorMessage(loadError, {
-          fallbackMessage: 'Failed to load project',
-          operation: 'projects.detail',
-        }));
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
+  const {
+    data: projectData,
+    isLoading: loadingProject,
+    error: loadProjectError,
+  } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId),
+    enabled: !!projectId,
+  });
 
-    loadProjectWorkspace();
-    return () => {
-      isMounted = false;
-    };
-  }, [projectId]);
+  const {
+    data: analysesData,
+    isLoading: loadingAnalyses,
+  } = useQuery({
+    queryKey: ['projectAnalyses', projectId, { limit: 20 }],
+    queryFn: () => getProjectAnalyses(projectId, { limit: 20 }),
+    enabled: !!projectId,
+  });
+
+  const {
+    data: activityData,
+    isLoading: loadingActivity,
+  } = useQuery({
+    queryKey: ['projectActivity', projectId, { limit: 50 }],
+    queryFn: () => getProjectActivity(projectId, { limit: 50 }),
+    enabled: !!projectId,
+  });
+
+  const project = projectData;
+  const analyses = analysesData?.items || [];
+  const activity = activityData || [];
+
+  const loading = loadingProject || loadingAnalyses || loadingActivity;
+  const error = loadProjectError
+    ? getApiErrorMessage(loadProjectError, {
+        fallbackMessage: 'Failed to load project',
+        operation: 'projects.detail',
+      })
+    : null;
 
   useEffect(() => {
     if (!project) return;
     setProjectNameDraft(project.name || '');
     setProjectDescriptionDraft(project.description || '');
   }, [project]);
+
+  const updateMutation = useMutation({
+    mutationFn: (payload) => updateProject(projectId, payload),
+    onSuccess: (updatedProject) => {
+      queryClient.setQueryData(['project', projectId], updatedProject);
+      setIsEditingProject(false);
+      setProjectUpdateError('');
+      if (import.meta.env.DEV) {
+        console.debug('projects.update.success', {
+          projectId: updatedProject.id,
+        });
+      }
+    },
+    onError: (updateError) => {
+      if (import.meta.env.DEV) {
+        console.debug('projects.update.failed', {
+          projectId,
+          message: updateError?.message || 'unknown',
+        });
+      }
+      setProjectUpdateError(
+        getApiErrorMessage(updateError, {
+          fallbackMessage: 'Failed to update project',
+          operation: 'projects.update',
+        })
+      );
+    },
+  });
+
+  const projectUpdateLoading = updateMutation.isLoading || updateMutation.isPending;
 
   const handleProjectUpdate = async (event) => {
     event.preventDefault();
@@ -115,31 +149,7 @@ export default function ProjectDetailPage() {
     }
 
     setProjectUpdateError('');
-    setProjectUpdateLoading(true);
-    try {
-      const updatedProject = await updateProject(project.id, payload);
-      setProject(updatedProject);
-      setIsEditingProject(false);
-      if (import.meta.env.DEV) {
-        console.debug('projects.update.success', {
-          projectId: updatedProject.id,
-          updatedFields: Object.keys(payload),
-        });
-      }
-    } catch (updateError) {
-      if (import.meta.env.DEV) {
-        console.debug('projects.update.failed', {
-          projectId: project.id,
-          message: updateError?.message || 'unknown',
-        });
-      }
-      setProjectUpdateError(getApiErrorMessage(updateError, {
-        fallbackMessage: 'Failed to update project',
-        operation: 'projects.update',
-      }));
-    } finally {
-      setProjectUpdateLoading(false);
-    }
+    updateMutation.mutate(payload);
   };
 
   const handleCancelProjectEdit = () => {
