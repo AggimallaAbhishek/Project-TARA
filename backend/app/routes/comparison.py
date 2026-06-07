@@ -1,9 +1,9 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.user import User
 from app.schemas.comparison import ComparisonRequest, ComparisonResponse
 from app.services.audit_service import audit_service
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 )
 async def compare_analyses(
     request: ComparisonRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     """Compare threats across multiple analyses side-by-side."""
@@ -38,13 +38,13 @@ async def compare_analyses(
         )
 
     try:
-        result = comparison_service.compare_analyses(
+        result = await comparison_service.compare_analyses(
             db,
             analysis_ids=request.analysis_ids,
             user_id=current_user.id,
         )
         for project_id in result.get("project_ids", []):
-            audit_service.record_event(
+            await audit_service.record_event(
                 db,
                 user_id=current_user.id,
                 action="comparison_created",
@@ -55,7 +55,7 @@ async def compare_analyses(
                 },
             )
         if result.get("project_ids"):
-            db.commit()
+            await db.commit()
         result.pop("project_ids", None)
         return result
     except ValueError as exc:

@@ -333,5 +333,91 @@ class LLMService:
     def _validate_threat(self, threat: dict[str, Any]) -> dict[str, Any] | None:
         return validate_threat(threat, logger)
 
+    async def analyze_system_streaming(
+        self,
+        system_description: str,
+        source_context: dict[str, Any] | None = None,
+    ):
+        """
+        Stream threat analysis results using ollama.AsyncClient.
+        Yields JSON-serializable dicts suitable for Server-Sent Events:
+          {"event": "status", "data": {"message": "..."}}
+          {"event": "threat", "data": {<threat dict>}}
+          {"event": "complete", "data": {"threats_count": N, "analysis_time": T}}
+          {"event": "error", "data": {"message": "..."}}
+        """
+        import json as _json
+        overall_start = time.perf_counter()
+        normalized_context = normalize_source_context(source_context)
+        normalized_description = self._normalize_description(
+            f"{normalized_context['source_type']} "
+            f"{normalized_context['source_metadata']} "
+            f"{normalized_context['structured_context']} "
+            f"{system_description}"
+        )
+
+        yield {"event": "status", "data": {"message": "Building analysis prompt..."}}
+
+        prompt = build_stride_prompt(system_description, normalized_context)
+
+        yield {"event": "status", "data": {"message": f"Sending to {self.model}..."}}
+
+        try:
+            client = ollama.AsyncClient(host=settings.ollama_host)
+            response_chunks: list[str] = []
+
+            async for chunk in await client.chat(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a security expert. Output valid JSON only, no explanations.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                options={
+                    "temperature": self.temperature,
+                    "num_predict": self.num_predict,
+                    "num_ctx": self.num_ctx,
+                },
+                keep_alive=self.keep_alive,
+                stream=True,
+            ):
+                content = chunk.get("message", {}).get("content", "")
+                if content:
+                    response_chunks.append(content)
+
+            yield {"event": "status", "data": {"message": "Parsing threats..."}}
+
+            full_response = "".join(response_chunks)
+            threats = self._parse_response(full_response)
+
+            for threat in threats:
+                yield {"event": "threat", "data": threat}
+
+            elapsed = round(time.perf_counter() - overall_start, 2)
+            yield {
+                "event": "complete",
+                "data": {
+                    "threats_count": len(threats),
+                    "analysis_time": elapsed,
+                },
+            }
+            logger.info(
+                "Streaming analysis completed model=%s chars=%d threats=%d elapsed=%.2fs",
+                self.model,
+                len(system_description),
+                len(threats),
+                elapsed,
+            )
+
+        except asyncio.TimeoutError:
+            yield {"event": "error", "data": {"message": f"Analysis timed out after {self.request_timeout_seconds}s"}}
+        except ConnectionError:
+            yield {"event": "error", "data": {"message": "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST."}}
+        except Exception as exc:
+            logger.exception("Streaming analysis failed")
+            yield {"event": "error", "data": {"message": f"Analysis failed: {str(exc)}"}}
+
 
 llm_service = LLMService()
