@@ -3,10 +3,10 @@ import logging
 from time import perf_counter
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_async_db
 from app.models.user import User
 from app.schemas.analysis import AnalysisJobResponse, AnalysisResponse
 from app.schemas.diagram import (
@@ -194,7 +194,7 @@ async def extract_diagram(
 async def analyze_diagram(
     request: DiagramAnalyzeRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_diagram_analyze_rate_limit),
 ):
     session_payload = extract_session_service.get_session(
@@ -251,7 +251,7 @@ async def analyze_diagram(
 async def analyze_diagram_job(
     request: DiagramAnalyzeRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_diagram_analyze_rate_limit),
 ):
     session_payload = extract_session_service.get_session(
@@ -263,7 +263,7 @@ async def analyze_diagram_job(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Diagram extraction session not found or expired.",
         )
-    job = analysis_job_service.create_job(
+    job = await analysis_job_service.create_job(
         db,
         user_id=current_user.id,
         source_type="diagram",
@@ -288,7 +288,7 @@ async def analyze_diagram_job(
 async def analyze_diagram_code(
     request: DiagramCodeAnalyzeRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_diagram_analyze_rate_limit),
 ):
     try:
@@ -342,7 +342,7 @@ async def analyze_diagram_code(
 async def analyze_diagram_code_job(
     request: DiagramCodeAnalyzeRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_diagram_analyze_rate_limit),
 ):
     try:
@@ -359,7 +359,7 @@ async def analyze_diagram_code_job(
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    job = analysis_job_service.create_job(
+    job = await analysis_job_service.create_job(
         db,
         user_id=current_user.id,
         source_type="uml",

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.analysis import Analysis
 from app.models.audit import AuditLog
 from app.models.project import Project
@@ -32,10 +34,10 @@ async def list_projects(
     q: str | None = Query(default=None, description="Case-insensitive search by project name"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
-    projects, total = project_service.list_projects(
+    projects, total = await project_service.list_projects(
         db,
         user_id=current_user.id,
         q=q,
@@ -65,21 +67,21 @@ async def list_projects(
 )
 async def create_project(
     request: ProjectCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        project = project_service.create_project(
+        project = await project_service.create_project(
             db,
             current_user=current_user,
             name=request.name,
             description=request.description,
         )
-        db.commit()
-        db.refresh(project)
+        await db.commit()
+        await db.refresh(project)
         return project_service.build_project_response(project)
     except ValueError as exc:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
 
@@ -92,15 +94,15 @@ async def create_project(
 )
 async def get_project(
     project_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
-    project = (
-        db.query(Project)
+    result = await db.execute(
+        select(Project)
         .options(selectinload(Project.analyses).selectinload(Analysis.threats))
-        .filter(Project.id == project_id, Project.user_id == current_user.id)
-        .first()
+        .where(Project.id == project_id, Project.user_id == current_user.id)
     )
+    project = result.scalars().first()
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project with id {project_id} not found")
     return project_service.build_project_response(project)
@@ -120,13 +122,13 @@ async def get_project(
 async def update_project(
     project_id: int,
     request: ProjectUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        project = project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
+        project = await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
         provided_fields = request.model_fields_set
-        project_service.update_project(
+        await project_service.update_project(
             db,
             project=project,
             current_user=current_user,
@@ -134,11 +136,11 @@ async def update_project(
             description=request.description if "description" in provided_fields else None,
             update_description="description" in provided_fields,
         )
-        db.commit()
-        db.refresh(project)
+        await db.commit()
+        await db.refresh(project)
         return project_service.build_project_response(project)
     except ValueError as exc:
-        db.rollback()
+        await db.rollback()
         detail = str(exc)
         code = status.HTTP_409_CONFLICT if "already exists" in detail else status.HTTP_404_NOT_FOUND
         raise HTTPException(status_code=code, detail=detail)
@@ -155,26 +157,29 @@ async def list_project_analyses(
     project_id: int,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
+        await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
-    query = db.query(Analysis).filter(
-        Analysis.user_id == current_user.id,
-        Analysis.project_id == project_id,
-    )
-    total = query.count()
-    analyses = (
-        query.options(selectinload(Analysis.threats), selectinload(Analysis.project))
+    filters = [Analysis.user_id == current_user.id, Analysis.project_id == project_id]
+
+    count_result = await db.execute(select(func.count(Analysis.id)).where(*filters))
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
+        select(Analysis)
+        .where(*filters)
+        .options(selectinload(Analysis.threats), selectinload(Analysis.project))
         .order_by(Analysis.created_at.desc(), Analysis.id.desc())
         .offset(skip)
         .limit(limit)
-        .all()
     )
+    analyses = list(result.scalars().all())
+
     items = [_build_analysis_summary(analysis) for analysis in analyses]
     return AnalysisListResponse(
         items=items,
@@ -196,19 +201,19 @@ async def list_project_activity(
     project_id: int,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
+        await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
-    return (
-        db.query(AuditLog)
-        .filter(AuditLog.user_id == current_user.id, AuditLog.project_id == project_id)
+    result = await db.execute(
+        select(AuditLog)
+        .where(AuditLog.user_id == current_user.id, AuditLog.project_id == project_id)
         .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
         .offset(skip)
         .limit(limit)
-        .all()
     )
+    return list(result.scalars().all())

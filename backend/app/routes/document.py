@@ -3,10 +3,10 @@ from time import perf_counter
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_async_db
 from app.models.user import User
 from app.schemas.analysis import AnalysisCreate, AnalysisJobResponse, DocumentAnalysisResponse
 from app.services.analysis_job_service import analysis_job_service
@@ -57,7 +57,7 @@ async def analyze_document(
     project_id: int | None = Form(default=None),
     project_name: str | None = Form(default=None),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_document_analyze_rate_limit),
 ):
     request_start = perf_counter()
@@ -104,7 +104,7 @@ async def analyze_document(
             },
             background_tasks=background_tasks,
         )
-        version_comparison = analysis_version_comparison_service.get_version_comparison(
+        version_comparison = await analysis_version_comparison_service.get_version_comparison(
             db,
             analysis_id=analysis.id,
             user_id=current_user.id,
@@ -177,7 +177,7 @@ async def analyze_document_job(
     project_id: int | None = Form(default=None),
     project_name: str | None = Form(default=None),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_document_analyze_rate_limit),
 ):
     if not file.filename:
@@ -189,7 +189,7 @@ async def analyze_document_job(
         file,
         settings.document_max_upload_mb * 1024 * 1024,
     )
-    job = analysis_job_service.create_job(
+    job = await analysis_job_service.create_job(
         db,
         user_id=current_user.id,
         source_type="document",
