@@ -2,9 +2,11 @@ import logging
 from datetime import date, datetime, time, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.database import get_db
+from app.database import get_async_db
 from app.models.analysis import Analysis, Threat
 from app.models.user import User
 from app.schemas.analysis import (
@@ -89,12 +91,12 @@ def _build_analysis_risk_summary(analysis: Analysis) -> AnalysisRiskSummary:
     )
 
 
-def _build_analysis_detail_response(db: Session, *, analysis: Analysis, user_id: int) -> AnalysisResponse:
+async def _build_analysis_detail_response(db: AsyncSession, *, analysis: Analysis, user_id: int) -> AnalysisResponse:
     risk_summary = _build_analysis_risk_summary(analysis)
     version_comparison: VersionComparisonResponse | None = None
     try:
         version_comparison = VersionComparisonResponse.model_validate(
-            analysis_version_comparison_service.build_version_comparison(
+            await analysis_version_comparison_service.build_version_comparison(
                 db,
                 current_analysis=analysis,
             )
@@ -121,27 +123,29 @@ def _build_analysis_detail_response(db: Session, *, analysis: Analysis, user_id:
     )
 
 
-def _apply_risk_level_filter(query, risk_level: RiskLevel):
+def _apply_risk_level_filter(stmt, risk_level: RiskLevel):
     if risk_level == RiskLevel.CRITICAL:
-        return query.filter(Analysis.total_risk_score >= 16)
+        return stmt.where(Analysis.total_risk_score >= 16)
     if risk_level == RiskLevel.HIGH:
-        return query.filter(Analysis.total_risk_score >= 10, Analysis.total_risk_score < 16)
+        return stmt.where(Analysis.total_risk_score >= 10, Analysis.total_risk_score < 16)
     if risk_level == RiskLevel.MEDIUM:
-        return query.filter(Analysis.total_risk_score >= 5, Analysis.total_risk_score < 10)
-    return query.filter(Analysis.total_risk_score < 5)
+        return stmt.where(Analysis.total_risk_score >= 5, Analysis.total_risk_score < 10)
+    return stmt.where(Analysis.total_risk_score < 5)
 
 
-def _get_user_analysis(
-    db: Session,
+async def _get_user_analysis(
+    db: AsyncSession,
     *,
     analysis_id: int,
     user_id: int,
     include_threats: bool = True,
 ) -> Analysis | None:
-    query = db.query(Analysis).options(selectinload(Analysis.project))
+    stmt = select(Analysis).options(selectinload(Analysis.project))
     if include_threats:
-        query = query.options(selectinload(Analysis.threats))
-    return query.filter(Analysis.id == analysis_id, Analysis.user_id == user_id).first()
+        stmt = stmt.options(selectinload(Analysis.threats))
+    stmt = stmt.where(Analysis.id == analysis_id, Analysis.user_id == user_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
 def _sanitize_filename(value: str) -> str:
@@ -164,7 +168,7 @@ def _sanitize_filename(value: str) -> str:
 async def create_analysis(
     request: AnalysisCreate,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_analyze_rate_limit),
 ):
     """Create a threat analysis using STRIDE methodology."""
@@ -195,10 +199,10 @@ async def create_analysis(
 async def create_analysis_job(
     request: AnalysisCreate,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(enforce_analyze_rate_limit),
 ):
-    job = analysis_job_service.create_job(
+    job = await analysis_job_service.create_job(
         db,
         user_id=current_user.id,
         source_type="text",
@@ -216,10 +220,10 @@ async def create_analysis_job(
 )
 async def get_analysis_job(
     job_id: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
-    job = analysis_job_service.get_user_job(db, job_id=job_id, user_id=current_user.id)
+    job = await analysis_job_service.get_user_job(db, job_id=job_id, user_id=current_user.id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis job not found.")
     return job
@@ -252,46 +256,56 @@ async def list_analyses(
     project_id: int | None = Query(default=None, ge=1, description="Project id filter"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     """List user's analyses with pagination and filters."""
-    query = db.query(Analysis).filter(Analysis.user_id == current_user.id)
+    filters = [Analysis.user_id == current_user.id]
 
     if project_id is not None:
         try:
-            project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
+            await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
-        query = query.filter(Analysis.project_id == project_id)
+        filters.append(Analysis.project_id == project_id)
 
     if q and q.strip():
         safe_q = q.strip().replace("%", r"\%").replace("_", r"\_")
-        query = query.filter(Analysis.title.ilike(f"%{safe_q}%", escape="\\"))
+        filters.append(Analysis.title.ilike(f"%{safe_q}%", escape="\\"))
+
+    # Build base statement with filters
+    base_stmt = select(Analysis).where(*filters)
 
     if risk_level:
-        query = _apply_risk_level_filter(query, risk_level)
+        base_stmt = _apply_risk_level_filter(base_stmt, risk_level)
 
     if stride_category:
-        query = query.filter(Analysis.threats.any(Threat.stride_category == stride_category.value))
+        base_stmt = base_stmt.where(Analysis.threats.any(Threat.stride_category == stride_category.value))
 
     if date_from:
         start_datetime = datetime.combine(date_from, time.min)
-        query = query.filter(Analysis.created_at >= start_datetime)
+        base_stmt = base_stmt.where(Analysis.created_at >= start_datetime)
 
     if date_to:
         end_exclusive = datetime.combine(date_to + timedelta(days=1), time.min)
-        query = query.filter(Analysis.created_at < end_exclusive)
+        base_stmt = base_stmt.where(Analysis.created_at < end_exclusive)
 
-    total = query.count()
-    analyses = (
-        query.options(selectinload(Analysis.threats))
+    # Count total
+    count_result = await db.execute(
+        select(func.count()).select_from(base_stmt.subquery())
+    )
+    total = count_result.scalar() or 0
+
+    # Fetch paginated results
+    result = await db.execute(
+        base_stmt
+        .options(selectinload(Analysis.threats))
         .options(selectinload(Analysis.project))
         .order_by(Analysis.created_at.desc())
         .offset(skip)
         .limit(limit)
-        .all()
     )
+    analyses = list(result.scalars().all())
 
     items = [_build_analysis_summary(analysis) for analysis in analyses]
     has_more = (skip + len(items)) < total
@@ -307,17 +321,17 @@ async def list_analyses(
 )
 async def get_analysis(
     analysis_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get a specific analysis with all threats for current user."""
-    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
+    analysis = await _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Analysis with id {analysis_id} not found",
         )
-    return _build_analysis_detail_response(db, analysis=analysis, user_id=current_user.id)
+    return await _build_analysis_detail_response(db, analysis=analysis, user_id=current_user.id)
 
 
 @router.get(
@@ -334,10 +348,10 @@ async def get_analysis(
 async def get_analysis_diagram_svg(
     analysis_id: int,
     refresh: bool = Query(default=False, description="Force renderer refresh and overwrite cached output"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
-    analysis = _get_user_analysis(
+    analysis = await _get_user_analysis(
         db,
         analysis_id=analysis_id,
         user_id=current_user.id,
@@ -396,10 +410,10 @@ async def get_analysis_diagram_svg(
 async def get_analysis_diagram_png(
     analysis_id: int,
     refresh: bool = Query(default=False, description="Force renderer refresh and overwrite cached output"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
-    analysis = _get_user_analysis(
+    analysis = await _get_user_analysis(
         db,
         analysis_id=analysis_id,
         user_id=current_user.id,
@@ -458,11 +472,11 @@ async def get_analysis_diagram_png(
 )
 async def get_analysis_summary(
     analysis_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get risk summary for a specific analysis."""
-    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
+    analysis = await _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -481,11 +495,11 @@ async def get_analysis_summary(
 )
 async def get_analysis_version_comparison(
     analysis_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return analysis_version_comparison_service.get_version_comparison(
+        return await analysis_version_comparison_service.get_version_comparison(
             db,
             analysis_id=analysis_id,
             user_id=current_user.id,
@@ -509,11 +523,11 @@ async def get_analysis_version_comparison(
 )
 async def export_analysis_pdf(
     analysis_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     """Download an analysis report as PDF."""
-    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
+    analysis = await _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -529,7 +543,7 @@ async def export_analysis_pdf(
             detail=str(exc),
         ) from exc
 
-    audit_service.record_event(
+    await audit_service.record_event(
         db,
         user_id=current_user.id,
         action="pdf_exported",
@@ -541,7 +555,7 @@ async def export_analysis_pdf(
             "title": analysis.title,
         },
     )
-    db.commit()
+    await db.commit()
 
     filename = f"{_sanitize_filename(analysis.title)}-{analysis.id}.pdf"
     return Response(
@@ -560,18 +574,18 @@ async def export_analysis_pdf(
 )
 async def delete_analysis(
     analysis_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_user),
 ):
     """Delete an analysis and related threats for current user."""
-    analysis = _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
+    analysis = await _get_user_analysis(db, analysis_id=analysis_id, user_id=current_user.id)
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Analysis with id {analysis_id} not found",
         )
 
-    audit_service.record_event(
+    await audit_service.record_event(
         db,
         user_id=current_user.id,
         action="analysis_deleted",
@@ -586,6 +600,6 @@ async def delete_analysis(
             "total_risk_score": analysis.total_risk_score,
         },
     )
-    db.delete(analysis)
-    db.commit()
+    await db.delete(analysis)
+    await db.commit()
     return None

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_async_db
 from app.schemas.auth import AuthConfigResponse, GoogleAuthRequest, TokenResponse, UserResponse
 from app.services.auth_service import (
     ACCESS_TOKEN_COOKIE_NAME,
@@ -25,7 +25,7 @@ async def google_auth(
     request: GoogleAuthRequest,
     response: Response,
     raw_request: Request,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Authenticate user with Google OAuth.
@@ -44,7 +44,7 @@ async def google_auth(
     google_data = verify_google_token(request.credential)
     
     # Get or create user
-    user = get_or_create_user(db, google_data)
+    user = await get_or_create_user(db, google_data)
     
     # Create JWT token - sub must be a string per JWT spec
     access_token = create_access_token(data={"sub": str(user.id)})
