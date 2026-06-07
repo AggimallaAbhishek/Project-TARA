@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
@@ -10,66 +11,60 @@ import { createProject, getProjects } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
-  const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadProjects = async () => {
-      setLoading(true);
-      try {
-        const data = await getProjects({ q: searchQuery, limit: 100 });
-        if (!isMounted) return;
-        setProjects(data.items || []);
-        setTotal(data.total || 0);
-        setError(null);
-      } catch (loadError) {
-        if (!isMounted) return;
-        setError(getApiErrorMessage(loadError, {
-          fallbackMessage: 'Failed to load projects',
-          operation: 'projects.load',
-        }));
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
+  const {
+    data: projectsData,
+    isLoading: loading,
+    error: loadError,
+  } = useQuery({
+    queryKey: ['projects', { q: searchQuery, limit: 100 }],
+    queryFn: () => getProjects({ q: searchQuery, limit: 100 }),
+    keepPreviousData: true,
+  });
 
-    loadProjects();
-    return () => {
-      isMounted = false;
-    };
-  }, [searchQuery, refreshKey]);
+  const projects = projectsData?.items || [];
+  const total = projectsData?.total || 0;
+  const error = loadError
+    ? getApiErrorMessage(loadError, {
+        fallbackMessage: 'Failed to load projects',
+        operation: 'projects.load',
+      })
+    : null;
+
+  const createMutation = useMutation({
+    mutationFn: (newProject) => createProject(newProject),
+    onSuccess: () => {
+      setNewProjectName('');
+      setNewProjectDescription('');
+      setCreateError(null);
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+    onError: (err) => {
+      setCreateError(
+        getApiErrorMessage(err, {
+          fallbackMessage: 'Failed to create project',
+          operation: 'projects.create',
+        })
+      );
+    },
+  });
+
+  const creating = createMutation.isLoading || createMutation.isPending;
 
   const handleCreateProject = async (event) => {
     event.preventDefault();
     if (!newProjectName.trim() || creating) return;
-    setCreating(true);
     setCreateError(null);
-    try {
-      await createProject({
-        name: newProjectName,
-        description: newProjectDescription,
-      });
-      setNewProjectName('');
-      setNewProjectDescription('');
-      setRefreshKey((value) => value + 1);
-    } catch (createProjectError) {
-      setCreateError(getApiErrorMessage(createProjectError, {
-        fallbackMessage: 'Failed to create project',
-        operation: 'projects.create',
-      }));
-    } finally {
-      setCreating(false);
-    }
+    createMutation.mutate({
+      name: newProjectName,
+      description: newProjectDescription,
+    });
   };
 
   const handleSearch = (event) => {

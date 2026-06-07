@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-/* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
 import { CalendarClock, FileSearch, Filter, RefreshCcw } from 'lucide-react';
 
@@ -71,40 +71,27 @@ export default function AuditPage() {
     [appliedFilters],
   );
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAuditLogs = async () => {
-      setLoading(true);
-      try {
-        const data = await getAuditLogs({
-          ...appliedFilters,
-          skip,
-          limit,
-        });
-        if (!isMounted) return;
-        setLogs(data || []);
-        setHasMore((data || []).length >= limit);
-        setError('');
-      } catch (fetchError) {
-        if (!isMounted) return;
-        setError(getApiErrorMessage(fetchError, {
-          fallbackMessage: 'Failed to load audit logs',
-          operation: 'audit.list',
-        }));
-        setLogs([]);
-        setHasMore(false);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+  const {
+    data: logsData,
+    isLoading: loading,
+    error: loadError,
+  } = useQuery({
+    queryKey: ['auditLogs', { ...appliedFilters, skip, limit }],
+    queryFn: () => getAuditLogs({ ...appliedFilters, skip, limit }),
+    keepPreviousData: true,
+  });
 
-    fetchAuditLogs();
-    return () => {
-      isMounted = false;
-    };
-  }, [appliedFilters, skip, limit]);
+  const logs = logsData || [];
+  const error = loadError
+    ? getApiErrorMessage(loadError, {
+        fallbackMessage: 'Failed to load audit logs',
+        operation: 'audit.list',
+      })
+    : '';
+
+  useEffect(() => {
+    setHasMore((logsData || []).length >= limit);
+  }, [logsData, limit]);
 
   const handleApplyFilters = (event) => {
     event.preventDefault();

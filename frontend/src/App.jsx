@@ -7,6 +7,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 import { runtimeConfig } from './config/runtimeConfig';
 import { getAuthConfig } from './services/api';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './config/queryClient';
 import { resolveGoogleClientId } from './services/authConfig';
 
 // Start auth config loading immediately (parallel to JS parsing)
@@ -114,65 +116,67 @@ function App() {
   }
 
   return (
-    <GoogleOAuthProvider clientId={googleClientId || ''}>
-      <AuthProvider>
-        <BrowserRouter>
-          <div className="ui-app-shell">
-            <Navbar />
-            <main className="page-container">
-              <Suspense fallback={<LoadingSpinner text="Loading page..." />}>
-                <Routes>
-                  <Route path="/welcome" element={<Navigate to="/" replace />} />
-                  <Route
-                    path="/login"
-                    element={
-                      <LoginPage
-                        isGoogleConfigured={Boolean(googleClientId)}
-                        googleConfigSource={
-                          runtimeConfig.envGoogleClientId ? 'frontend-env' : 'backend-config'
-                        }
-                      />
-                    }
-                  />
-                  <Route path="/" element={<RootEntryRoute />} />
-                  <Route path="/analysis/:id" element={
-                    <ProtectedRoute>
-                      <AnalysisPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/history" element={
-                    <ProtectedRoute>
-                      <HistoryPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/audit" element={
-                    <ProtectedRoute>
-                      <AuditPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/projects" element={
-                    <ProtectedRoute>
-                      <ProjectsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/projects/:projectId" element={
-                    <ProtectedRoute>
-                      <ProjectDetailPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/compare" element={
-                    <ProtectedRoute>
-                      <ComparePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </Suspense>
-            </main>
-          </div>
-        </BrowserRouter>
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <GoogleOAuthProvider clientId={googleClientId || ''}>
+        <AuthProvider>
+          <BrowserRouter>
+            <div className="ui-app-shell">
+              <Navbar />
+              <main className="page-container">
+                <Suspense fallback={<LoadingSpinner text="Loading page..." />}>
+                  <Routes>
+                    <Route path="/welcome" element={<Navigate to="/" replace />} />
+                    <Route
+                      path="/login"
+                      element={
+                        <LoginPage
+                          isGoogleConfigured={Boolean(googleClientId)}
+                          googleConfigSource={
+                            runtimeConfig.envGoogleClientId ? 'frontend-env' : 'backend-config'
+                          }
+                        />
+                      }
+                    />
+                    <Route path="/" element={<RootEntryRoute />} />
+                    <Route path="/analysis/:id" element={
+                      <ProtectedRoute>
+                        <AnalysisPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/history" element={
+                      <ProtectedRoute>
+                        <HistoryPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/audit" element={
+                      <ProtectedRoute>
+                        <AuditPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/projects" element={
+                      <ProtectedRoute>
+                        <ProjectsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/projects/:projectId" element={
+                      <ProtectedRoute>
+                        <ProjectDetailPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/compare" element={
+                      <ProtectedRoute>
+                        <ComparePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </Suspense>
+              </main>
+            </div>
+          </BrowserRouter>
+        </AuthProvider>
+      </GoogleOAuthProvider>
+    </QueryClientProvider>
   );
 }
 

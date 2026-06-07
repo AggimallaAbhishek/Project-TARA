@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function useHistoryData({
   analysesQuery,
@@ -10,67 +11,59 @@ export default function useHistoryData({
   deleteAnalysis,
   getApiErrorMessage,
 }) {
-  const [analyses, setAnalyses] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [actionError, setActionError] = useState(null);
+  const queryClient = useQueryClient();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const hasLoadedOnceRef = useRef(false);
+  const [actionError, setActionError] = useState(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects', { limit: 100 }],
+    queryFn: () => getProjects({ limit: 100 }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const projects = projectsData?.items || [];
 
-    const loadProjects = async () => {
-      try {
-        const data = await getProjects({ limit: 100 });
-        if (isMounted) {
-          setProjects(data.items || []);
-        }
-      } catch (projectLoadError) {
-        console.error('Failed to load project filter options:', projectLoadError);
+  const {
+    data: analysesData,
+    isLoading: loading,
+    error: loadError,
+    refetch: refreshAnalyses,
+  } = useQuery({
+    queryKey: ['analyses', analysesQuery],
+    queryFn: () => getAnalyses(analysesQuery),
+    keepPreviousData: true,
+  });
+
+  const analyses = analysesData?.items || [];
+  const total = analysesData?.total || 0;
+  const hasMore = Boolean(analysesData?.has_more);
+  const error = loadError
+    ? getApiErrorMessage(loadError, {
+        fallbackMessage: 'Failed to load analyses',
+        operation: 'history.load',
+      })
+    : null;
+
+  const deleteMutation = useMutation({
+    mutationFn: (analysisId) => deleteAnalysis(analysisId),
+    onSuccess: () => {
+      setDeleteConfirm(null);
+      setActionError(null);
+      if (analyses.length === 1 && skip > 0) {
+        setSkip(Math.max(0, skip - limit));
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['analyses'] });
       }
-    };
-
-    loadProjects();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [getProjects]);
-
-  useEffect(() => {
-    const loadAnalyses = async () => {
-      try {
-        if (!hasLoadedOnceRef.current) {
-          setLoading(true);
-        }
-
-        const data = await getAnalyses(analysesQuery);
-        setAnalyses(data.items || []);
-        setTotal(data.total || 0);
-        setHasMore(Boolean(data.has_more));
-        setError(null);
-      } catch (loadError) {
-        setError(getApiErrorMessage(loadError, {
-          fallbackMessage: 'Failed to load analyses',
-          operation: 'history.load',
-        }));
-      } finally {
-        setLoading(false);
-        hasLoadedOnceRef.current = true;
-      }
-    };
-
-    loadAnalyses();
-  }, [analysesQuery, getAnalyses, getApiErrorMessage, refreshKey]);
-
-  const refreshAnalyses = () => {
-    setRefreshKey((value) => value + 1);
-  };
+    },
+    onError: (err) => {
+      console.error('Failed to delete analysis:', err);
+      setActionError(
+        getApiErrorMessage(err, {
+          fallbackMessage: 'Failed to delete analysis',
+          operation: 'history.delete',
+        })
+      );
+    },
+  });
 
   const requestDelete = (analysis) => {
     setDeleteConfirm(analysis);
@@ -81,23 +74,7 @@ export default function useHistoryData({
   };
 
   const confirmDelete = async (analysisId) => {
-    try {
-      await deleteAnalysis(analysisId);
-      setDeleteConfirm(null);
-      setActionError(null);
-
-      if (analyses.length === 1 && skip > 0) {
-        setSkip(Math.max(0, skip - limit));
-      } else {
-        refreshAnalyses();
-      }
-    } catch (deleteError) {
-      console.error('Failed to delete analysis:', deleteError);
-      setActionError(getApiErrorMessage(deleteError, {
-        fallbackMessage: 'Failed to delete analysis',
-        operation: 'history.delete',
-      }));
-    }
+    deleteMutation.mutate(analysisId);
   };
 
   return {
