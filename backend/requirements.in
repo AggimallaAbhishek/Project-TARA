@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
+sqlalchemy[asyncio]
 pydantic
 pydantic-settings
 python-multipart
@@ -13,6 +13,7 @@ google-auth
 reportlab
 pymupdf
 psycopg2-binary
+asyncpg
 alembic
 redis
 aiosmtplib

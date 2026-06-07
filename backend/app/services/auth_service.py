@@ -5,11 +5,12 @@ from typing import Optional
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_async_db
 from app.models.user import User
 
 settings = get_settings()
@@ -84,10 +85,10 @@ def create_csrf_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def get_current_user(
+async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> User:
     """Dependency to get current authenticated user."""
     token = credentials.credentials if credentials else request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)
@@ -114,24 +115,26 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
     if user is None:
         raise credentials_exception
     
     return user
 
 
-def get_or_create_user(db: Session, google_data: dict) -> User:
+async def get_or_create_user(db: AsyncSession, google_data: dict) -> User:
     """Get existing user or create new one from Google data."""
-    user = db.query(User).filter(User.google_id == google_data['google_id']).first()
+    result = await db.execute(select(User).where(User.google_id == google_data['google_id']))
+    user = result.scalars().first()
     
     if user:
         # Update last login and any changed info
         user.last_login = datetime.now(timezone.utc)
         user.name = google_data['name']
         user.picture = google_data.get('picture')
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
     else:
         # Create new user
         user = User(
@@ -141,7 +144,7 @@ def get_or_create_user(db: Session, google_data: dict) -> User:
             google_id=google_data['google_id']
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
     
     return user
