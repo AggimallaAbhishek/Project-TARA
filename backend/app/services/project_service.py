@@ -3,8 +3,10 @@ import re
 from datetime import datetime, timezone
 from typing import Iterable
 
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.analysis import Analysis
 from app.models.project import Project
@@ -24,30 +26,28 @@ class ProjectService:
         cleaned = re.sub(r"\s+", " ", value).strip()
         return cleaned or "Untitled Project"
 
-    def get_project_for_user(self, db: Session, *, project_id: int, user_id: int) -> Project | None:
-        return (
-            db.query(Project)
-            .filter(Project.id == project_id, Project.user_id == user_id)
-            .first()
+    async def get_project_for_user(self, db: AsyncSession, *, project_id: int, user_id: int) -> Project | None:
+        result = await db.execute(
+            select(Project).where(Project.id == project_id, Project.user_id == user_id)
         )
+        return result.scalars().first()
 
-    def get_project_or_raise(self, db: Session, *, project_id: int, user_id: int) -> Project:
-        project = self.get_project_for_user(db, project_id=project_id, user_id=user_id)
+    async def get_project_or_raise(self, db: AsyncSession, *, project_id: int, user_id: int) -> Project:
+        project = await self.get_project_for_user(db, project_id=project_id, user_id=user_id)
         if not project:
             raise ValueError(f"Project with id {project_id} not found")
         return project
 
-    def find_by_normalized_name(self, db: Session, *, user_id: int, name: str) -> Project | None:
+    async def find_by_normalized_name(self, db: AsyncSession, *, user_id: int, name: str) -> Project | None:
         normalized_name = self.normalize_name(name)
-        return (
-            db.query(Project)
-            .filter(Project.user_id == user_id, Project.normalized_name == normalized_name)
-            .first()
+        result = await db.execute(
+            select(Project).where(Project.user_id == user_id, Project.normalized_name == normalized_name)
         )
+        return result.scalars().first()
 
-    def create_project(
+    async def create_project(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         current_user: User,
         name: str,
@@ -56,7 +56,7 @@ class ProjectService:
     ) -> Project:
         display_name = self._display_name(name)
         normalized_name = self.normalize_name(display_name)
-        existing = self.find_by_normalized_name(
+        existing = await self.find_by_normalized_name(
             db,
             user_id=current_user.id,
             name=display_name,
@@ -72,7 +72,7 @@ class ProjectService:
         )
         db.add(project)
         try:
-            db.flush()
+            await db.flush()
         except IntegrityError as exc:
             logger.warning(
                 "Project create failed duplicate user_id=%s normalized_name=%s",
@@ -82,7 +82,7 @@ class ProjectService:
             raise ValueError("A project with this name already exists") from exc
 
         if record_audit:
-            audit_service.record_event(
+            await audit_service.record_event(
                 db,
                 user_id=current_user.id,
                 project_id=project.id,
@@ -96,9 +96,9 @@ class ProjectService:
         logger.info("Project created user_id=%s project_id=%s", current_user.id, project.id)
         return project
 
-    def update_project(
+    async def update_project(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         project: Project,
         current_user: User,
@@ -113,7 +113,7 @@ class ProjectService:
             display_name = self._display_name(name)
             normalized_name = self.normalize_name(display_name)
             if normalized_name != project.normalized_name:
-                existing = self.find_by_normalized_name(
+                existing = await self.find_by_normalized_name(
                     db,
                     user_id=current_user.id,
                     name=display_name,
@@ -131,8 +131,8 @@ class ProjectService:
 
         if changed_fields:
             project.updated_at = datetime.now(timezone.utc)
-            db.flush()
-            audit_service.record_event(
+            await db.flush()
+            await audit_service.record_event(
                 db,
                 user_id=current_user.id,
                 project_id=project.id,
@@ -153,9 +153,9 @@ class ProjectService:
 
         return project
 
-    def resolve_project_for_analysis(
+    async def resolve_project_for_analysis(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         current_user: User,
         title: str,
@@ -163,14 +163,14 @@ class ProjectService:
         project_name: str | None = None,
     ) -> Project:
         if project_id is not None:
-            return self.get_project_or_raise(
+            return await self.get_project_or_raise(
                 db,
                 project_id=project_id,
                 user_id=current_user.id,
             )
 
         fallback_name = project_name or title
-        existing = self.find_by_normalized_name(
+        existing = await self.find_by_normalized_name(
             db,
             user_id=current_user.id,
             name=fallback_name,
@@ -178,35 +178,41 @@ class ProjectService:
         if existing:
             return existing
 
-        return self.create_project(
+        return await self.create_project(
             db,
             current_user=current_user,
             name=fallback_name,
             record_audit=True,
         )
 
-    def list_projects(
+    async def list_projects(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         user_id: int,
         q: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Project], int]:
-        query = db.query(Project).filter(Project.user_id == user_id)
+        base_filter = [Project.user_id == user_id]
         if q and q.strip():
             safe_q = q.strip().replace("%", r"\%").replace("_", r"\_")
-            query = query.filter(Project.name.ilike(f"%{safe_q}%", escape="\\"))
+            base_filter.append(Project.name.ilike(f"%{safe_q}%", escape="\\"))
 
-        total = query.count()
-        projects = (
-            query.options(selectinload(Project.analyses).selectinload(Analysis.threats))
+        count_result = await db.execute(
+            select(func.count(Project.id)).where(*base_filter)
+        )
+        total = count_result.scalar() or 0
+
+        result = await db.execute(
+            select(Project)
+            .where(*base_filter)
+            .options(selectinload(Project.analyses).selectinload(Analysis.threats))
             .order_by(Project.updated_at.desc(), Project.id.desc())
             .offset(skip)
             .limit(limit)
-            .all()
         )
+        projects = list(result.scalars().all())
         return projects, total
 
     @staticmethod

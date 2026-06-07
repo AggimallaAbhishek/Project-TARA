@@ -4,7 +4,7 @@ from time import perf_counter
 from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analysis import Analysis, Threat
 from app.models.user import User
@@ -31,7 +31,7 @@ class AnalysisWorkflowService:
     async def create_analysis(
         self,
         *,
-        db: Session,
+        db: AsyncSession,
         current_user: User,
         title: str,
         system_description: str,
@@ -45,7 +45,7 @@ class AnalysisWorkflowService:
     ) -> Analysis:
         request_start = perf_counter()
         try:
-            project = project_service.resolve_project_for_analysis(
+            project = await project_service.resolve_project_for_analysis(
                 db,
                 current_user=current_user,
                 title=title,
@@ -74,7 +74,7 @@ class AnalysisWorkflowService:
                 quality_warnings=source_context.get("quality_warnings") or [],
             )
             db.add(analysis)
-            db.flush()
+            await db.flush()
 
             threats: list[Threat] = []
             for threat_item in threat_data:
@@ -117,7 +117,7 @@ class AnalysisWorkflowService:
                 threats.append(threat)
 
             if not threats:
-                db.rollback()
+                await db.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Analysis failed: No valid threats could be generated",
@@ -126,7 +126,7 @@ class AnalysisWorkflowService:
             threat_dicts = [{"risk_score": threat.risk_score} for threat in threats]
             analysis.total_risk_score = risk_service.calculate_total_risk_score(threat_dicts)
 
-            audit_service.record_event(
+            await audit_service.record_event(
                 db,
                 user_id=current_user.id,
                 action="analysis_created",
@@ -145,8 +145,8 @@ class AnalysisWorkflowService:
                 },
             )
 
-            db.commit()
-            db.refresh(analysis)
+            await db.commit()
+            await db.refresh(analysis)
             total_elapsed = perf_counter() - request_start
             logger.info(
                 "Analysis created user_id=%s project_id=%s analysis_id=%s source=%s threats=%s llm_time=%.2fs total=%.2fs",
@@ -182,10 +182,10 @@ class AnalysisWorkflowService:
 
             return analysis
         except HTTPException:
-            db.rollback()
+            await db.rollback()
             raise
         except ValueError as exc:
-            db.rollback()
+            await db.rollback()
             status_code = status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_409_CONFLICT
             logger.warning(
                 "Analysis project resolution failed user_id=%s status=%s error=%s",
@@ -195,7 +195,7 @@ class AnalysisWorkflowService:
             )
             raise HTTPException(status_code=status_code, detail=str(exc))
         except RuntimeError as exc:
-            db.rollback()
+            await db.rollback()
             logger.warning(
                 "Analysis runtime error user_id=%s elapsed=%.2fs error=%s",
                 current_user.id,
@@ -207,7 +207,7 @@ class AnalysisWorkflowService:
                 detail=f"Analysis failed: {str(exc)}",
             )
         except Exception:
-            db.rollback()
+            await db.rollback()
             logger.exception(
                 "Unexpected error while creating analysis user_id=%s elapsed=%.2fs",
                 current_user.id,

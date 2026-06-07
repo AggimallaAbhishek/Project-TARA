@@ -1,8 +1,9 @@
 import logging
 import re
 
-from sqlalchemy import and_, or_
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.analysis import Analysis, Threat
 
@@ -49,16 +50,16 @@ class AnalysisVersionComparisonService:
             ),
         )
 
-    def _find_previous_version(
+    async def _find_previous_version(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         current_analysis: Analysis,
     ) -> Analysis | None:
-        return (
-            db.query(Analysis)
+        result = await db.execute(
+            select(Analysis)
             .options(selectinload(Analysis.threats))
-            .filter(
+            .where(
                 Analysis.user_id == current_analysis.user_id,
                 Analysis.project_id == current_analysis.project_id,
                 Analysis.id != current_analysis.id,
@@ -71,27 +72,28 @@ class AnalysisVersionComparisonService:
                 ),
             )
             .order_by(Analysis.created_at.desc(), Analysis.id.desc())
-            .first()
+            .limit(1)
         )
+        return result.scalars().first()
 
-    def get_version_comparison(
+    async def get_version_comparison(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         analysis_id: int,
         user_id: int,
     ) -> dict:
-        current_analysis = (
-            db.query(Analysis)
+        result = await db.execute(
+            select(Analysis)
             .options(selectinload(Analysis.threats))
-            .filter(Analysis.id == analysis_id, Analysis.user_id == user_id)
-            .first()
+            .where(Analysis.id == analysis_id, Analysis.user_id == user_id)
         )
+        current_analysis = result.scalars().first()
         if not current_analysis:
             raise ValueError(f"Analysis with id {analysis_id} not found")
-        return self.build_version_comparison(db, current_analysis=current_analysis)
+        return await self.build_version_comparison(db, current_analysis=current_analysis)
 
-    def build_version_comparison(self, db: Session, *, current_analysis: Analysis) -> dict:
+    async def build_version_comparison(self, db: AsyncSession, *, current_analysis: Analysis) -> dict:
         normalized_title = self._normalize_text(current_analysis.title or "")
         logger.info(
             "Version comparison start analysis_id=%s user_id=%s project_id=%s title_key=%s",
@@ -102,7 +104,7 @@ class AnalysisVersionComparisonService:
         )
 
         current_lookup = self._build_issue_lookup(list(current_analysis.threats or []))
-        previous_analysis = self._find_previous_version(
+        previous_analysis = await self._find_previous_version(
             db,
             current_analysis=current_analysis,
         )

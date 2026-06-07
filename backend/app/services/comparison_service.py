@@ -1,7 +1,9 @@
 import logging
 from typing import Any
 
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.analysis import Analysis, Threat
 
@@ -11,19 +13,19 @@ logger = logging.getLogger(__name__)
 class ComparisonService:
     """Compare threats across multiple analyses."""
 
-    def compare_analyses(
+    async def compare_analyses(
         self,
-        db: Session,
+        db: AsyncSession,
         *,
         analysis_ids: list[int],
         user_id: int,
     ) -> dict[str, Any]:
-        analyses = (
-            db.query(Analysis)
+        result = await db.execute(
+            select(Analysis)
             .options(selectinload(Analysis.threats))
-            .filter(Analysis.id.in_(analysis_ids), Analysis.user_id == user_id)
-            .all()
+            .where(Analysis.id.in_(analysis_ids), Analysis.user_id == user_id)
         )
+        analyses = list(result.scalars().all())
 
         found_ids = {a.id for a in analyses}
         missing = [aid for aid in analysis_ids if aid not in found_ids]
