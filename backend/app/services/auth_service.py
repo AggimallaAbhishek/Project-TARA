@@ -12,6 +12,7 @@ from google.auth.transport import requests
 from app.config import get_settings
 from app.database import get_async_db
 from app.models.user import User
+from app.utils.time import utc_now_for_db
 
 settings = get_settings()
 security = HTTPBearer(auto_error=False)
@@ -130,13 +131,15 @@ async def get_or_create_user(db: AsyncSession, google_data: dict) -> User:
     
     if user:
         # Update last login and any changed info
-        user.last_login = datetime.now(timezone.utc)
+        logger.debug("Updating Google auth profile user_id=%s", user.id)
+        user.last_login = utc_now_for_db()
         user.name = google_data['name']
         user.picture = google_data.get('picture')
         await db.commit()
         await db.refresh(user)
     else:
         # Create new user
+        logger.debug("Creating user from verified Google auth token")
         user = User(
             email=google_data['email'],
             name=google_data['name'],
@@ -146,5 +149,6 @@ async def get_or_create_user(db: AsyncSession, google_data: dict) -> User:
         db.add(user)
         await db.commit()
         await db.refresh(user)
+        logger.debug("Created Google auth user_id=%s", user.id)
     
     return user

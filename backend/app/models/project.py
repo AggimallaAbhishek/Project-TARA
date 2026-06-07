@@ -1,9 +1,8 @@
-from datetime import datetime, timezone
-
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.time import utc_now_for_db
 
 
 class Project(Base):
@@ -17,11 +16,11 @@ class Project(Base):
     name = Column(String(255), nullable=False)
     normalized_name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=utc_now_for_db, index=True)
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=utc_now_for_db,
+        onupdate=utc_now_for_db,
         index=True,
     )
 

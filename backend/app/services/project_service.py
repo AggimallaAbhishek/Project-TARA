@@ -1,6 +1,5 @@
 import logging
 import re
-from datetime import datetime, timezone
 from typing import Iterable
 
 from sqlalchemy import func, select
@@ -12,6 +11,7 @@ from app.models.analysis import Analysis
 from app.models.project import Project
 from app.models.user import User
 from app.services.audit_service import audit_service
+from app.utils.time import utc_now_for_db
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class ProjectService:
             changed_fields.append("description")
 
         if changed_fields:
-            project.updated_at = datetime.now(timezone.utc)
+            project.updated_at = utc_now_for_db()
             await db.flush()
             await audit_service.record_event(
                 db,

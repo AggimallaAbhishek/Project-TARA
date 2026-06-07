@@ -1,9 +1,8 @@
-from datetime import datetime, timezone
-
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.utils.time import utc_now_for_db
 
 
 class AuditLog(Base):
@@ -18,6 +17,6 @@ class AuditLog(Base):
     project_id = Column(Integer, nullable=True, index=True)
     action = Column(String(64), nullable=False, index=True)
     event_metadata = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=utc_now_for_db, index=True)
 
     user = relationship("User", backref="audit_logs")

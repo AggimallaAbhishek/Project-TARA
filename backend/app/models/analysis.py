@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 from app.database import Base
+from app.utils.time import utc_now_for_db
 
 
 class Analysis(Base):
@@ -12,8 +12,8 @@ class Analysis(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     system_description = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=utc_now_for_db, index=True)
+    updated_at = Column(DateTime, default=utc_now_for_db, onupdate=utc_now_for_db)
     total_risk_score = Column(Float, default=0.0)
     analysis_time = Column(Float, default=0.0)  # Time in seconds
     diagram_format = Column(String(32), nullable=True)
@@ -58,7 +58,7 @@ class Threat(Base):
     owasp_tags = Column(JSON, nullable=True)
     cwe_tags = Column(JSON, nullable=True)
     
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=utc_now_for_db)
     
     # Relationships
     analysis = relationship("Analysis", back_populates="threats")
@@ -78,11 +78,11 @@ class AnalysisJob(Base):
     payload = Column(JSON, nullable=True)
     error = Column(Text, nullable=True)
     staged_file_path = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=utc_now_for_db, index=True)
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=utc_now_for_db,
+        onupdate=utc_now_for_db,
         index=True,
     )
 

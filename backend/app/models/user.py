@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime, timezone
 from app.database import Base
+from app.utils.time import utc_now_for_db
 
 
 class User(Base):
@@ -11,5 +11,5 @@ class User(Base):
     name = Column(String(255), nullable=False)
     picture = Column(String(500), nullable=True)
     google_id = Column(String(255), unique=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_login = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=utc_now_for_db)
+    last_login = Column(DateTime, default=utc_now_for_db, onupdate=utc_now_for_db)

@@ -31,6 +31,10 @@ PROJECT_INDEXES = (
     "ix_projects_user_id",
 )
 
+
+def _utc_now_for_db() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 projects_table = sa.table(
     "projects",
     sa.column("id", sa.Integer()),
@@ -114,7 +118,7 @@ def _backfill_projects() -> None:
         project_id = project_lookup.get(key)
 
         if project_id is None:
-            timestamp = analysis["created_at"] or datetime.now(timezone.utc)
+            timestamp = analysis["created_at"] or _utc_now_for_db()
             result = bind.execute(
                 projects_table.insert().values(
                     user_id=analysis["user_id"],
