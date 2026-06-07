@@ -58,6 +58,32 @@ describe('AnalysisPage PDF export', () => {
       system_description: 'System description',
       has_diagram: false,
       threats: [],
+      risk_summary: {
+        analysis_id: 42,
+        title: 'Payments Platform',
+        total_threats: 0,
+        critical_count: 0,
+        high_count: 0,
+        medium_count: 0,
+        low_count: 0,
+        average_risk_score: 0,
+        max_risk_score: 0,
+        stride_distribution: {},
+      },
+      version_comparison: {
+        current_analysis_id: 42,
+        current_created_at: '2026-01-01T10:00:00',
+        previous_analysis_id: null,
+        previous_created_at: null,
+        has_previous_version: false,
+        previous_total_issues: 0,
+        resolved_issues_count: 0,
+        unresolved_issues_count: 0,
+        new_issues_count: 0,
+        resolved_issues: [],
+        unresolved_issues: [],
+        new_issues: [],
+      },
     })
     getAnalysisSummary.mockResolvedValue({
       analysis_id: 42,
@@ -131,10 +157,11 @@ describe('AnalysisPage PDF export', () => {
     await waitFor(() => {
       expect(downloadAnalysisPdf).toHaveBeenCalledWith('42')
     })
-    expect(getAnalysisSummary).toHaveBeenCalledWith('42')
+    expect(getAnalysisSummary).not.toHaveBeenCalled()
+    expect(getAnalysisVersionComparison).not.toHaveBeenCalled()
   })
 
-  it('uses summary API metrics as primary chart source', async () => {
+  it('uses consolidated summary metrics as primary chart source', async () => {
     getAnalysis.mockResolvedValueOnce({
       id: 42,
       title: 'Payments Platform',
@@ -158,25 +185,26 @@ describe('AnalysisPage PDF export', () => {
           created_at: '2026-01-01T10:00:00',
         },
       ],
-    })
-    getAnalysisSummary.mockResolvedValueOnce({
-      analysis_id: 42,
-      title: 'Payments Platform',
-      total_threats: 5,
-      critical_count: 1,
-      high_count: 2,
-      medium_count: 1,
-      low_count: 1,
-      average_risk_score: 9.4,
-      max_risk_score: 16,
-      stride_distribution: {
-        Spoofing: 2,
-        Tampering: 1,
-        Repudiation: 0,
-        'Information Disclosure': 1,
-        'Denial of Service': 0,
-        'Elevation of Privilege': 1,
+      risk_summary: {
+        analysis_id: 42,
+        title: 'Payments Platform',
+        total_threats: 5,
+        critical_count: 1,
+        high_count: 2,
+        medium_count: 1,
+        low_count: 1,
+        average_risk_score: 9.4,
+        max_risk_score: 16,
+        stride_distribution: {
+          Spoofing: 2,
+          Tampering: 1,
+          Repudiation: 0,
+          'Information Disclosure': 1,
+          'Denial of Service': 0,
+          'Elevation of Privilege': 1,
+        },
       },
+      version_comparison: null,
     })
 
     renderAnalysisPage()
@@ -186,9 +214,11 @@ describe('AnalysisPage PDF export', () => {
     expect(screen.getByText('Medium: 1')).toBeInTheDocument()
     expect(screen.getByText('Low: 1')).toBeInTheDocument()
     expect(screen.queryByText(/Could not load server summary metrics/i)).not.toBeInTheDocument()
+    expect(getAnalysisSummary).not.toHaveBeenCalled()
+    expect(getAnalysisVersionComparison).not.toHaveBeenCalled()
   })
 
-  it('falls back to local metrics when summary API fails', async () => {
+  it('falls back to local metrics when consolidated summary is missing', async () => {
     getAnalysis.mockResolvedValueOnce({
       id: 42,
       title: 'Payments Platform',
@@ -212,17 +242,16 @@ describe('AnalysisPage PDF export', () => {
           created_at: '2026-01-01T10:00:00',
         },
       ],
-    })
-    getAnalysisSummary.mockRejectedValueOnce({
-      response: { data: { detail: 'Summary endpoint unavailable' } },
+      risk_summary: null,
+      version_comparison: null,
     })
 
     renderAnalysisPage()
 
     expect(await screen.findByText('Critical: 1')).toBeInTheDocument()
-    expect(
-      screen.getByText('Summary endpoint unavailable'),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/Summary endpoint unavailable/i)).not.toBeInTheDocument()
+    expect(getAnalysisSummary).not.toHaveBeenCalled()
+    expect(getAnalysisVersionComparison).not.toHaveBeenCalled()
   })
 
   it('shows error message when PDF download fails', async () => {

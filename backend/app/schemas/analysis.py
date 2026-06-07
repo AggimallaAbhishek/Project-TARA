@@ -98,33 +98,17 @@ class AnalysisProjectReference(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AnalysisResponse(AnalysisBase):
-    id: int
-    project_id: int
-    project: AnalysisProjectReference | None = None
-    created_at: datetime
-    total_risk_score: float
-    analysis_time: float = 0.0
-    diagram_format: DiagramFormat | None = None
-    diagram_code: str | None = None
-    has_diagram: bool = False
-    source_type: str = "text"
-    source_metadata: dict | None = None
-    structured_context: dict | None = None
-    quality_warnings: list[str] = []
-    threats: list[ThreatResponse] = []
-
-    model_config = ConfigDict(from_attributes=True)
-
-    @field_validator("source_metadata", "structured_context", mode="before")
-    @classmethod
-    def default_dict_fields(cls, value):
-        return value or {}
-
-    @field_validator("quality_warnings", mode="before")
-    @classmethod
-    def default_quality_warnings(cls, value):
-        return value or []
+class AnalysisRiskSummary(BaseModel):
+    analysis_id: int
+    title: str
+    total_threats: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    average_risk_score: float
+    max_risk_score: float
+    stride_distribution: dict[str, int]
 
 
 class VersionComparisonIssue(BaseModel):
@@ -148,6 +132,37 @@ class VersionComparisonResponse(BaseModel):
     resolved_issues: list[VersionComparisonIssue] = []
     unresolved_issues: list[VersionComparisonIssue] = []
     new_issues: list[VersionComparisonIssue] = []
+
+
+class AnalysisResponse(AnalysisBase):
+    id: int
+    project_id: int
+    project: AnalysisProjectReference | None = None
+    created_at: datetime
+    total_risk_score: float
+    analysis_time: float = 0.0
+    diagram_format: DiagramFormat | None = None
+    diagram_code: str | None = None
+    has_diagram: bool = False
+    source_type: str = "text"
+    source_metadata: dict | None = None
+    structured_context: dict | None = None
+    quality_warnings: list[str] = []
+    threats: list[ThreatResponse] = []
+    risk_summary: AnalysisRiskSummary | None = None
+    version_comparison: VersionComparisonResponse | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("source_metadata", "structured_context", mode="before")
+    @classmethod
+    def default_dict_fields(cls, value):
+        return value or {}
+
+    @field_validator("quality_warnings", mode="before")
+    @classmethod
+    def default_quality_warnings(cls, value):
+        return value or []
 
 
 class DocumentAnalysisResponse(BaseModel):
@@ -175,19 +190,6 @@ class AnalysisListResponse(BaseModel):
     skip: int
     limit: int
     has_more: bool
-
-
-class AnalysisRiskSummary(BaseModel):
-    analysis_id: int
-    title: str
-    total_threats: int
-    critical_count: int
-    high_count: int
-    medium_count: int
-    low_count: int
-    average_risk_score: float
-    max_risk_score: float
-    stride_distribution: dict[str, int]
 
 
 # LLM Response Schema (for parsing)

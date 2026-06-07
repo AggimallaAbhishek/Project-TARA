@@ -216,6 +216,24 @@ class DocumentApiTest(unittest.TestCase):
         self.assertEqual(get_report["unresolved_issues_count"], 1)
         self.assertEqual(get_report["new_issues_count"], 1)
 
+        detail_response = self.client.get(f"/api/analyses/{analysis_id}")
+        self.assertEqual(detail_response.status_code, 200)
+        detail_payload = detail_response.json()
+        self.assertIn("risk_summary", detail_payload)
+        self.assertIn("version_comparison", detail_payload)
+        self.assertEqual(detail_payload["version_comparison"], get_report)
+
+        risk_summary = detail_payload["risk_summary"]
+        self.assertEqual(risk_summary["analysis_id"], analysis_id)
+        self.assertEqual(risk_summary["title"], "Release Notes")
+        self.assertEqual(risk_summary["total_threats"], 2)
+        self.assertEqual(risk_summary["critical_count"], 0)
+        self.assertEqual(risk_summary["high_count"], 1)
+        self.assertEqual(risk_summary["medium_count"], 1)
+        self.assertEqual(risk_summary["low_count"], 0)
+        self.assertEqual(risk_summary["stride_distribution"]["Spoofing"], 1)
+        self.assertEqual(risk_summary["stride_distribution"]["Elevation of Privilege"], 1)
+
     def test_rejects_oversized_upload(self):
         oversized_payload = b"x" * ((10 * 1024 * 1024) + 1)
         response = self._post_document(

@@ -10,8 +10,6 @@ import {
   downloadAnalysisPdf,
   getAnalysis,
   getAnalysisDiagramSvg,
-  getAnalysisSummary,
-  getAnalysisVersionComparison,
 } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -41,11 +39,6 @@ export default function AnalysisPage() {
   const [error, setError] = useState(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState(null);
-  const [versionComparison, setVersionComparison] = useState(null);
-  const [versionComparisonLoading, setVersionComparisonLoading] = useState(true);
-  const [versionComparisonError, setVersionComparisonError] = useState(null);
-  const [analysisSummary, setAnalysisSummary] = useState(null);
-  const [summaryWarning, setSummaryWarning] = useState('');
   const [diagramSvgDataUrl, setDiagramSvgDataUrl] = useState('');
   const [diagramLoading, setDiagramLoading] = useState(false);
   const [diagramError, setDiagramError] = useState(null);
@@ -54,21 +47,29 @@ export default function AnalysisPage() {
   const [isDiagramCodeExpanded, setIsDiagramCodeExpanded] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchAnalysis = async () => {
       try {
         const data = await getAnalysis(id);
+        if (!isMounted) return;
         setAnalysis(data);
       } catch (err) {
+        if (!isMounted) return;
         setError(getApiErrorMessage(err, {
           fallbackMessage: 'Failed to load analysis',
           operation: 'analysis.fetch',
         }));
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchAnalysis();
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -110,74 +111,6 @@ export default function AnalysisPage() {
       isMounted = false;
     };
   }, [analysis?.has_diagram, id]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAnalysisSummary = async () => {
-      try {
-        const data = await getAnalysisSummary(id);
-        if (!isMounted) return;
-        setAnalysisSummary(data);
-        setSummaryWarning('');
-        if (import.meta.env.DEV) {
-          console.debug('analysis.summary.fetch.success', {
-            analysisId: id,
-            totalThreats: data?.total_threats,
-          });
-        }
-      } catch (summaryError) {
-        if (!isMounted) return;
-        setAnalysisSummary(null);
-        setSummaryWarning(getApiErrorMessage(summaryError, {
-          fallbackMessage: 'Could not load server summary metrics. Showing locally computed metrics.',
-          operation: 'analysis.summary',
-        }));
-        if (import.meta.env.DEV) {
-          console.debug('analysis.summary.fetch.failed', {
-            analysisId: id,
-            message: summaryError?.message || 'unknown',
-          });
-          console.debug('analysis.summary.fallback.active', { analysisId: id });
-        }
-      }
-    };
-
-    fetchAnalysisSummary();
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchVersionComparison = async () => {
-      setVersionComparisonLoading(true);
-      setVersionComparisonError(null);
-      try {
-        const data = await getAnalysisVersionComparison(id);
-        if (isMounted) {
-          setVersionComparison(data);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setVersionComparisonError(getApiErrorMessage(err, {
-            fallbackMessage: 'Failed to load version comparison',
-            operation: 'analysis.version_comparison',
-          }));
-          setVersionComparison(null);
-        }
-      } finally {
-        if (isMounted) {
-          setVersionComparisonLoading(false);
-        }
-      }
-    };
-
-    fetchVersionComparison();
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
 
   const parseFilenameFromHeader = (contentDisposition) => {
     if (!contentDisposition) return null;
@@ -250,19 +183,22 @@ export default function AnalysisPage() {
     );
   }
 
+  const analysisSummary = analysis.risk_summary || null;
+  const versionComparison = analysis.version_comparison || null;
+  const threats = analysis.threats || [];
   const riskDistribution = analysisSummary
     ? buildRiskDistributionFromSummary(analysisSummary)
-    : buildRiskDistribution(analysis.threats);
+    : buildRiskDistribution(threats);
   const strideDistribution = analysisSummary
     ? buildStrideDistributionFromSummary(analysisSummary)
-    : buildStrideDistribution(analysis.threats);
+    : buildStrideDistribution(threats);
   const highRiskCount = analysisSummary
     ? Number(analysisSummary.high_count || 0) + Number(analysisSummary.critical_count || 0)
-    : getHighRiskCount(analysis.threats);
+    : getHighRiskCount(threats);
   const totalThreatCount = analysisSummary
     ? Number(analysisSummary.total_threats || 0)
-    : analysis.threats.length;
-  const sortedThreats = sortThreatsByRisk(analysis.threats);
+    : threats.length;
+  const sortedThreats = sortThreatsByRisk(threats);
 
   const handleRetryDiagramRender = async () => {
     setDiagramLoading(true);
@@ -382,15 +318,9 @@ export default function AnalysisPage() {
         onRefreshDiagramCache={handleRefreshDiagramCache}
       />
 
-      {summaryWarning && (
-        <div className="mb-6 p-3 bg-risk-medium/10 border border-risk-medium/30 rounded-lg text-sm text-risk-medium">
-          {summaryWarning}
-        </div>
-      )}
-
       <VersionComparisonPanel
-        loading={versionComparisonLoading}
-        error={versionComparisonError}
+        loading={false}
+        error={null}
         versionComparison={versionComparison}
       />
 

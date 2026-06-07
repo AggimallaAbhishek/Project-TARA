@@ -72,6 +72,55 @@ def _build_analysis_summary(analysis: Analysis) -> AnalysisSummary:
     )
 
 
+def _build_analysis_risk_summary(analysis: Analysis) -> AnalysisRiskSummary:
+    threats = [
+        {
+            "risk_level": threat.risk_level,
+            "risk_score": threat.risk_score,
+            "stride_category": threat.stride_category,
+        }
+        for threat in analysis.threats
+    ]
+    summary = risk_service.get_risk_summary(threats)
+    return AnalysisRiskSummary(
+        analysis_id=analysis.id,
+        title=analysis.title,
+        **summary,
+    )
+
+
+def _build_analysis_detail_response(db: Session, *, analysis: Analysis, user_id: int) -> AnalysisResponse:
+    risk_summary = _build_analysis_risk_summary(analysis)
+    version_comparison: VersionComparisonResponse | None = None
+    try:
+        version_comparison = VersionComparisonResponse.model_validate(
+            analysis_version_comparison_service.build_version_comparison(
+                db,
+                current_analysis=analysis,
+            )
+        )
+    except Exception:
+        logger.exception(
+            "Version comparison failed during consolidated analysis detail load user_id=%s analysis_id=%s",
+            user_id,
+            analysis.id,
+        )
+
+    logger.debug(
+        "Analysis detail loaded user_id=%s analysis_id=%s threats=%s version_comparison_included=%s",
+        user_id,
+        analysis.id,
+        len(analysis.threats or []),
+        version_comparison is not None,
+    )
+    return AnalysisResponse.model_validate(analysis).model_copy(
+        update={
+            "risk_summary": risk_summary,
+            "version_comparison": version_comparison,
+        }
+    )
+
+
 def _apply_risk_level_filter(query, risk_level: RiskLevel):
     if risk_level == RiskLevel.CRITICAL:
         return query.filter(Analysis.total_risk_score >= 16)
@@ -268,7 +317,7 @@ async def get_analysis(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Analysis with id {analysis_id} not found",
         )
-    return analysis
+    return _build_analysis_detail_response(db, analysis=analysis, user_id=current_user.id)
 
 
 @router.get(
@@ -420,19 +469,7 @@ async def get_analysis_summary(
             detail=f"Analysis with id {analysis_id} not found",
         )
 
-    threats = [
-        {
-            "risk_level": threat.risk_level,
-            "risk_score": threat.risk_score,
-            "stride_category": threat.stride_category,
-        }
-        for threat in analysis.threats
-    ]
-
-    summary = risk_service.get_risk_summary(threats)
-    summary["analysis_id"] = analysis_id
-    summary["title"] = analysis.title
-    return summary
+    return _build_analysis_risk_summary(analysis)
 
 
 @router.get(
