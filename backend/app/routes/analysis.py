@@ -192,6 +192,134 @@ async def create_analysis(
 
 
 @router.post(
+    "/analyze/stream",
+    status_code=status.HTTP_200_OK,
+    summary="Create threat analysis and stream results",
+    response_description="Server-Sent Events streaming the analysis progress and results",
+)
+async def analyze_stream(
+    request: AnalysisCreate,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(enforce_analyze_rate_limit),
+):
+    """Stream threat analysis using Server-Sent Events (SSE)."""
+    async def event_generator():
+        try:
+            source_context = build_source_context(
+                source_type="text",
+                raw_or_extracted_text=request.system_description,
+                source_metadata={"input_type": "text"},
+            )
+
+            project = await project_service.resolve_project_for_analysis(
+                db,
+                current_user=current_user,
+                title=request.title,
+                project_id=request.project_id,
+                project_name=request.project_name,
+            )
+
+            threats = []
+            analysis_time = 0.0
+
+            from app.services.llm_service import llm_service
+            async for event in llm_service.analyze_system_streaming(
+                request.system_description, source_context=source_context
+            ):
+                if event["event"] == "threat":
+                    threats.append(event["data"])
+                elif event["event"] == "complete":
+                    analysis_time = event["data"].get("analysis_time", 0.0)
+
+                yield f"data: {json.dumps(event)}\n\n"
+
+            if threats:
+                analysis = Analysis(
+                    user_id=current_user.id,
+                    project_id=project.id,
+                    title=request.title,
+                    system_description=request.system_description,
+                    analysis_time=analysis_time,
+                    source_type="text",
+                    source_metadata=source_context.get("source_metadata", {}),
+                    structured_context=source_context.get("structured_context", {}),
+                    quality_warnings=source_context.get("quality_warnings", []),
+                )
+                db.add(analysis)
+                await db.flush()
+
+                saved_threats = []
+                for threat_item in threats:
+                    required_keys = {
+                        "name",
+                        "description",
+                        "stride_category",
+                        "affected_component",
+                        "likelihood",
+                        "impact",
+                        "mitigation",
+                    }
+                    if not required_keys.issubset(threat_item):
+                        continue
+
+                    risk_score = risk_service.calculate_risk_score(
+                        threat_item["likelihood"],
+                        threat_item["impact"],
+                    )
+                    calculated_risk_level = risk_service.get_risk_level_from_score(risk_score)
+
+                    threat = Threat(
+                        analysis_id=analysis.id,
+                        name=threat_item["name"],
+                        description=threat_item["description"],
+                        stride_category=threat_item["stride_category"],
+                        affected_component=threat_item["affected_component"],
+                        risk_level=calculated_risk_level,
+                        likelihood=threat_item["likelihood"],
+                        impact=threat_item["impact"],
+                        risk_score=risk_score,
+                        mitigation=threat_item["mitigation"],
+                        evidence=threat_item.get("evidence") or [],
+                        assumptions=threat_item.get("assumptions") or [],
+                        confidence=threat_item.get("confidence"),
+                        owasp_tags=threat_item.get("owasp_tags") or [],
+                        cwe_tags=threat_item.get("cwe_tags") or [],
+                    )
+                    db.add(threat)
+                    saved_threats.append(threat)
+
+                threat_dicts = [{"risk_score": t.risk_score} for t in saved_threats]
+                analysis.total_risk_score = risk_service.calculate_total_risk_score(threat_dicts)
+
+                await audit_service.record_event(
+                    db,
+                    user_id=current_user.id,
+                    action="analysis_created",
+                    analysis_id=analysis.id,
+                    project_id=project.id,
+                    event_metadata={
+                        "project_id": project.id,
+                        "project_name": project.name,
+                        "source": "text_stream",
+                        "source_type": analysis.source_type,
+                        "title": analysis.title,
+                        "threat_count": len(saved_threats),
+                        "total_risk_score": analysis.total_risk_score,
+                    },
+                )
+                await db.commit()
+
+                yield f"data: {json.dumps({'event': 'saved', 'data': {'analysis_id': analysis.id}})}\n\n"
+
+        except Exception as e:
+            logger.exception("Error in stream")
+            yield f"data: {json.dumps({'event': 'error', 'data': {'message': str(e)}})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post(
     "/analyze/jobs",
     response_model=AnalysisJobResponse,
     status_code=status.HTTP_202_ACCEPTED,
