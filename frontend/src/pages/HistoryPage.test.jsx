@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
 import HistoryPage from './HistoryPage'
@@ -12,10 +13,20 @@ vi.mock('../services/api', () => ({
 }))
 
 function renderHistoryPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
   return render(
-    <MemoryRouter>
-      <HistoryPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <HistoryPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -50,12 +61,12 @@ describe('HistoryPage', () => {
     await screen.findByLabelText('Risk Level')
 
     fireEvent.change(screen.getByLabelText('Risk Level'), { target: { value: 'High' } })
-    fireEvent.change(screen.getByLabelText('STRIDE Category'), { target: { value: 'Tampering' } })
-    fireEvent.change(screen.getByLabelText('Project'), { target: { value: '7' } })
-    fireEvent.change(screen.getByLabelText('Date From'), { target: { value: '2026-01-01' } })
-    fireEvent.change(screen.getByLabelText('Date To'), { target: { value: '2026-01-31' } })
-    fireEvent.change(screen.getByLabelText('Search analyses'), { target: { value: 'Payment' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Search' }))
+    fireEvent.change(await screen.findByLabelText('STRIDE Category'), { target: { value: 'Tampering' } })
+    fireEvent.change(await screen.findByLabelText('Project'), { target: { value: '7' } })
+    fireEvent.change(await screen.findByLabelText('Date From'), { target: { value: '2026-01-01' } })
+    fireEvent.change(await screen.findByLabelText('Date To'), { target: { value: '2026-01-31' } })
+    fireEvent.change(await screen.findByLabelText('Search analyses'), { target: { value: 'Payment' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply Search' }))
 
     await waitFor(() => {
       expect(getAnalyses).toHaveBeenLastCalledWith({
@@ -107,7 +118,7 @@ describe('HistoryPage', () => {
       })
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Next/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Next/i }))
 
     await waitFor(() => {
       expect(getAnalyses).toHaveBeenLastCalledWith({

@@ -32,7 +32,7 @@ export function useStreamingAnalysis() {
             try {
               const data = await response.json();
               errorMsg = data.detail || errorMsg;
-            } catch (e) {
+            } catch {
               // ignore
             }
             throw new Error(errorMsg);

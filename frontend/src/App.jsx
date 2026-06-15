@@ -68,7 +68,6 @@ function App() {
     };
 
     if (runtimeConfig.startupConfigErrors.length > 0) {
-      setAuthConfigLoading(false);
       return () => {
         isMounted = false;
       };

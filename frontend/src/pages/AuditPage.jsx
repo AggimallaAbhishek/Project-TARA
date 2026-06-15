@@ -25,6 +25,7 @@ const ACTION_LABELS = {
   project_created: 'Project created',
   project_updated: 'Project updated',
 };
+const PageHeaderMotion = motion.div;
 
 function formatMetadata(value) {
   if (!value || typeof value !== 'object') {
@@ -42,10 +43,6 @@ function formatMetadata(value) {
 }
 
 export default function AuditPage() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
   const [actionInput, setActionInput] = useState('all');
   const [analysisIdInput, setAnalysisIdInput] = useState('');
   const [projectIdInput, setProjectIdInput] = useState('');
@@ -57,11 +54,6 @@ export default function AuditPage() {
   });
   const [skip, setSkip] = useState(0);
   const [limit, setLimit] = useState(50);
-  const [hasMore, setHasMore] = useState(false);
-
-  const pageStart = logs.length === 0 ? 0 : skip + 1;
-  const pageEnd = skip + logs.length;
-  const currentPage = Math.floor(skip / limit) + 1;
 
   const hasFiltersApplied = useMemo(
     () =>
@@ -73,7 +65,8 @@ export default function AuditPage() {
 
   const {
     data: logsData,
-    isLoading: loading,
+    isLoading,
+    isFetching,
     error: loadError,
   } = useQuery({
     queryKey: ['auditLogs', { ...appliedFilters, skip, limit }],
@@ -82,6 +75,11 @@ export default function AuditPage() {
   });
 
   const logs = logsData || [];
+  const loading = isLoading || isFetching;
+  const hasMore = logs.length >= limit;
+  const pageStart = logs.length === 0 ? 0 : skip + 1;
+  const pageEnd = skip + logs.length;
+  const currentPage = Math.floor(skip / limit) + 1;
   const error = loadError
     ? getApiErrorMessage(loadError, {
         fallbackMessage: 'Failed to load audit logs',
@@ -90,8 +88,15 @@ export default function AuditPage() {
     : '';
 
   useEffect(() => {
-    setHasMore((logsData || []).length >= limit);
-  }, [logsData, limit]);
+    if (loadError) {
+      console.error('Audit logs load failed', {
+        filters: appliedFilters,
+        skip,
+        limit,
+        error: loadError,
+      });
+    }
+  }, [appliedFilters, limit, loadError, skip]);
 
   const handleApplyFilters = (event) => {
     event.preventDefault();
@@ -133,7 +138,7 @@ export default function AuditPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <motion.div
+      <PageHeaderMotion
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         className="ui-page-header"
@@ -145,7 +150,7 @@ export default function AuditPage() {
             Review immutable security and activity events across your workspace.
           </p>
         </div>
-      </motion.div>
+      </PageHeaderMotion>
 
       <form onSubmit={handleApplyFilters} className="ui-filter-bar mb-6">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">

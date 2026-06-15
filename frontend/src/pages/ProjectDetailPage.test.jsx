@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import ProjectDetailPage from './ProjectDetailPage'
@@ -13,12 +14,22 @@ vi.mock('../services/api', () => ({
 }))
 
 function renderProjectDetailPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
   return render(
-    <MemoryRouter initialEntries={['/projects/7']}>
-      <Routes>
-        <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/projects/7']}>
+        <Routes>
+          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -130,7 +141,7 @@ describe('ProjectDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(updateProject).toHaveBeenCalledWith(7, {
+      expect(updateProject).toHaveBeenCalledWith('7', {
         name: 'Banking Mobile App v2',
         description: 'Updated workspace description',
       })

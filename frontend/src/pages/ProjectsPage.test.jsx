@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
 import ProjectsPage from './ProjectsPage'
@@ -11,10 +12,20 @@ vi.mock('../services/api', () => ({
 }))
 
 function renderProjectsPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
   return render(
-    <MemoryRouter>
-      <ProjectsPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <ProjectsPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 

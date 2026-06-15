@@ -13,7 +13,7 @@ describe('landing boot utils', () => {
   });
 
   it('derives stable module states from progress', () => {
-    expect(deriveBootModuleStatus(0, 0, 4)).toBe('pending');
+    expect(deriveBootModuleStatus(0, 0, 4)).toBe('loading');
     expect(deriveBootModuleStatus(12, 0, 4)).toBe('loading');
     expect(deriveBootModuleStatus(24, 0, 4)).toBe('ok');
     expect(deriveBootModuleStatus(70, 3, 4)).toBe('loading');

@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
 import AuditPage from './AuditPage';
@@ -10,10 +11,20 @@ vi.mock('../services/api', () => ({
 }));
 
 function renderAuditPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
   return render(
-    <MemoryRouter>
-      <AuditPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AuditPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

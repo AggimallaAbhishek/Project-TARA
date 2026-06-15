@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
@@ -77,12 +77,6 @@ export default function ProjectDetailPage() {
         operation: 'projects.detail',
       })
     : null;
-
-  useEffect(() => {
-    if (!project) return;
-    setProjectNameDraft(project.name || '');
-    setProjectDescriptionDraft(project.description || '');
-  }, [project]);
 
   const updateMutation = useMutation({
     mutationFn: (payload) => updateProject(projectId, payload),
