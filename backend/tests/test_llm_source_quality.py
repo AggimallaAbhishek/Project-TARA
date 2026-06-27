@@ -61,7 +61,7 @@ def test_parse_llm_response_rejects_explicit_generic_threat_without_component():
                 "affected_component": "",
                 "likelihood": 3,
                 "impact": 3,
-                "mitigation": "Fix it.",
+                "mitigation": "Fix it.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9
             }
         ]),
         logging.getLogger(__name__),

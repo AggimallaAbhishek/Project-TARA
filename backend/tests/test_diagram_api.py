@@ -69,7 +69,7 @@ class DiagramApiTest(unittest.TestCase):
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
 
-        async def fake_analyze_system(_system_description: str):
+        async def fake_analyze_system(_system_description: str, **kwargs):
             return (
                 [
                     {
@@ -79,7 +79,7 @@ class DiagramApiTest(unittest.TestCase):
                         "affected_component": "Auth Gateway",
                         "likelihood": 3,
                         "impact": 4,
-                        "mitigation": "Rotate tokens and enforce short expiry.",
+                        "mitigation": "Rotate tokens and enforce short expiry.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9
                     }
                 ],
                 0.02,

@@ -22,7 +22,7 @@ def make_threat(index: int) -> dict:
         "risk_level": "High",
         "likelihood": 4,
         "impact": 4,
-        "mitigation": "Apply stronger controls",
+        "mitigation": "Apply stronger controls", "evidence": ["Point 1", "Point 2"], "confidence": 0.9
     }
 
 

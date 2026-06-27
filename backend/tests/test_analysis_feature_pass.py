@@ -81,7 +81,7 @@ class AnalysisFeaturePassTest(unittest.TestCase):
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
 
-        async def fake_analyze_system(_system_description: str):
+        async def fake_analyze_system(_system_description: str, **kwargs):
             return (
                 [
                     {
@@ -91,7 +91,7 @@ class AnalysisFeaturePassTest(unittest.TestCase):
                         "affected_component": "Auth Gateway",
                         "likelihood": 4,
                         "impact": 4,
-                        "mitigation": "Rotate tokens and enforce short TTL.",
+                        "mitigation": "Rotate tokens and enforce short TTL.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9
                     }
                 ],
                 0.15,
