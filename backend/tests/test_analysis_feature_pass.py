@@ -91,7 +91,7 @@ class AnalysisFeaturePassTest(unittest.TestCase):
                         "affected_component": "Auth Gateway",
                         "likelihood": 4,
                         "impact": 4,
-                        "mitigation": "Rotate tokens and enforce short TTL.",
+                        "mitigation": "Rotate tokens and enforce short TTL.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
                     }
                 ],
                 0.15,

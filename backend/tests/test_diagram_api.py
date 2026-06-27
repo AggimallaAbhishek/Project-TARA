@@ -79,7 +79,7 @@ class DiagramApiTest(unittest.TestCase):
                         "affected_component": "Auth Gateway",
                         "likelihood": 3,
                         "impact": 4,
-                        "mitigation": "Rotate tokens and enforce short expiry.",
+                        "mitigation": "Rotate tokens and enforce short expiry.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
                     }
                 ],
                 0.02,

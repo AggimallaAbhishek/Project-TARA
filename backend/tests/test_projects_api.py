@@ -77,6 +77,10 @@ def project_client():
             google_id="projects-google-id",
         )
 
+    from unittest.mock import patch
+    redis_patcher = patch("app.services.redis_service.redis_service.is_available", new_callable=lambda: False)
+    redis_patcher.start()
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_async_db] = override_get_async_db
     app.dependency_overrides[get_current_user] = override_get_current_user
@@ -85,6 +89,7 @@ def project_client():
     try:
         yield client, session_local, user_id, other_user_id
     finally:
+        redis_patcher.stop()
         analyze_rate_limiter.clear()
         app.dependency_overrides.clear()
         client.close()
@@ -177,6 +182,7 @@ def test_project_ownership_returns_404(project_client):
 
 
 def test_analysis_creation_with_project_and_fallback_grouping(project_client):
+    analyze_rate_limiter.clear()
     client, session_local, user_id, _other_user_id = project_client
 
     async def fake_analyze_system(
@@ -193,7 +199,7 @@ def test_analysis_creation_with_project_and_fallback_grouping(project_client):
                     "affected_component": "Auth Gateway",
                     "likelihood": 4,
                     "impact": 4,
-                    "mitigation": "Rotate tokens and enforce short TTL.",
+                    "mitigation": "Rotate tokens and enforce short TTL.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
                 }
             ],
             0.1,

@@ -66,7 +66,7 @@ class AnalysisJobsApiTest(unittest.TestCase):
                         "affected_component": "API Gateway",
                         "likelihood": 3,
                         "impact": 4,
-                        "mitigation": "Bind tokens to sessions; rotate tokens.",
+                        "mitigation": "Bind tokens to sessions; rotate tokens.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
                         "evidence": ["API Gateway uses bearer tokens"],
                         "confidence": 0.8,
                     }

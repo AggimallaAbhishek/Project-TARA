@@ -4,6 +4,8 @@ from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.models.analysis import Analysis, Threat
 from app.models.user import User

@@ -17,10 +17,10 @@ def minimal_threat(name="Threat"):
         "name": name,
         "description": "desc",
         "stride_category": "spoofing",  # lower-case to test normalization
-        "affected_component": "component",
+        "affected_component": "Database",
         "likelihood": 4,
         "impact": 4,
-        "mitigation": "fix",
+        "mitigation": "fix", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
     }
 
 
