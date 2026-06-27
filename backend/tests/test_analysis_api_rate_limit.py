@@ -65,7 +65,11 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
 
-        async def fake_analyze_system(_system_description: str):
+        async def fake_analyze_system(
+            _system_description: str,
+            *,
+            source_context: dict | None = None,
+        ):
             return (
                 [
                     {

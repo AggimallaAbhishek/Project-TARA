@@ -35,6 +35,7 @@ class _FakeAsyncSession:
         self.added = []
         self.commits = 0
         self.refreshed = []
+        self.flushes = 0
 
     async def execute(self, _statement):
         return _FakeExecuteResult(self.user)
@@ -49,6 +50,13 @@ class _FakeAsyncSession:
         self.refreshed.append(value)
         if getattr(value, "id", None) is None:
             value.id = 1
+
+    async def flush(self):
+        self.flushes += 1
+        # Simulate id assignment for new objects that don't yet have one.
+        for obj in self.added:
+            if getattr(obj, "id", None) is None:
+                obj.id = 1
 
 
 def test_verify_google_token_hides_internal_validation_detail():
@@ -122,5 +130,7 @@ def test_get_or_create_user_existing_user_sets_db_safe_last_login():
     assert user.name == "Renamed User"
     assert user.picture == "https://example.com/avatar.png"
     assert user.last_login.tzinfo is None
-    assert db.commits == 1
-    assert db.refreshed == [user]
+    # B-07: service now flushes instead of committing; caller owns the commit.
+    assert db.flushes == 1
+    assert db.commits == 0
+    assert db.refreshed == []
