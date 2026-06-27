@@ -11,7 +11,7 @@ from app.services.llm_internal.parsing import normalize_mitigation_steps, parse_
 
 class LLMInternalParsingTest(unittest.TestCase):
     def test_parse_llm_response_normalizes_stride_and_mitigation(self):
-        payload = '[{"name":"SQLi","description":"desc","stride_category":"spoofing","affected_component":"DB","likelihood":4,"impact":4,"mitigation":"use parameterized queries; rotate credentials", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,"evidence":["Found DB access", "Weak queries"],"confidence":0.9}]'
+        payload = '[{"name":"SQLi","description":"desc","stride_category":"spoofing","affected_component":"DB","likelihood":4,"impact":4,"mitigation":"use parameterized queries; rotate credentials","evidence":["Found DB access", "Weak queries"],"confidence":0.9}]'
 
         threats = parse_llm_response(payload, logger=__import__('logging').getLogger(__name__))
 

@@ -78,8 +78,11 @@ def project_client():
         )
 
     from unittest.mock import patch
-    redis_patcher = patch("app.services.redis_service.redis_service.is_available", new_callable=lambda: False)
-    redis_patcher.start()
+    rate_limiter_patcher = patch(
+        "app.services.rate_limit_service.HybridRateLimiter.is_allowed",
+        return_value=(True, 0),
+    )
+    rate_limiter_patcher.start()
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_async_db] = override_get_async_db
@@ -89,7 +92,7 @@ def project_client():
     try:
         yield client, session_local, user_id, other_user_id
     finally:
-        redis_patcher.stop()
+        rate_limiter_patcher.stop()
         analyze_rate_limiter.clear()
         app.dependency_overrides.clear()
         client.close()
@@ -199,7 +202,7 @@ def test_analysis_creation_with_project_and_fallback_grouping(project_client):
                     "affected_component": "Auth Gateway",
                     "likelihood": 4,
                     "impact": 4,
-                    "mitigation": "Rotate tokens and enforce short TTL.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
+                    "mitigation": "Rotate tokens and enforce short TTL.",
                 }
             ],
             0.1,

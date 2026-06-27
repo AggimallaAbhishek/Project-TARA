@@ -20,7 +20,7 @@ def minimal_threat(name="Threat"):
         "affected_component": "Database",
         "likelihood": 4,
         "impact": 4,
-        "mitigation": "fix", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
+        "mitigation": "fix",
     }
 
 

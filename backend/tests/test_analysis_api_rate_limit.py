@@ -79,7 +79,7 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
                         "affected_component": "Authentication service",
                         "likelihood": 3,
                         "impact": 4,
-                        "mitigation": "Use strong session controls and MFA.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
+                        "mitigation": "Use strong session controls and MFA.",
                     }
                 ],
                 0.01,

@@ -34,7 +34,7 @@ def test_parse_llm_response_deduplicates_and_keeps_quality_fields():
         "affected_component": "API Gateway",
         "likelihood": 3,
         "impact": 4,
-        "mitigation": "Bind tokens to sessions; rotate tokens", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
+        "mitigation": "Bind tokens to sessions; rotate tokens",
         "evidence": ["API Gateway accepts bearer tokens"],
         "assumptions": ["Tokens are bearer credentials"],
         "confidence": 0.8,
@@ -61,7 +61,7 @@ def test_parse_llm_response_rejects_explicit_generic_threat_without_component():
                 "affected_component": "",
                 "likelihood": 3,
                 "impact": 3,
-                "mitigation": "Fix it.", "evidence": ["Point 1", "Point 2"], "confidence": 0.9,
+                "mitigation": "Fix it.",
             }
         ]),
         logging.getLogger(__name__),

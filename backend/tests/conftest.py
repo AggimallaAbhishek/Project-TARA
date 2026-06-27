@@ -19,3 +19,13 @@ def db_session():
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
+
+@pytest.fixture(autouse=True)
+def disable_rate_limits():
+    """Globally disable rate limiters in tests to prevent 429 errors."""
+    from unittest.mock import patch
+    with patch(
+        "app.services.rate_limit_service.HybridRateLimiter.is_allowed",
+        return_value=(True, 0)
+    ):
+        yield
