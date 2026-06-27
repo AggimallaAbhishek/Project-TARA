@@ -24,7 +24,6 @@ import { useEffect } from 'react';
  * );
  */
 export function useAbortableEffect(fn, deps) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let mounted = true;
     const isMounted = () => mounted;
