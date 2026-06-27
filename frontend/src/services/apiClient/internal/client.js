@@ -115,8 +115,27 @@ api.interceptors.response.use(
       console.error(`API Error: ${status} ${url}`, error.response?.data);
     }
 
+    // ── 401 Unauthorized ──────────────────────────────────────────────────────
+    // Fires on any non-auth endpoint so that expired JWT cookies force logout.
+    // We dispatch a DOM event so AuthContext can clear its state reactively
+    // instead of relying solely on the hard redirect.
     if (status === 401 && !url.includes('/auth/')) {
+      window.dispatchEvent(new CustomEvent('tara:auth:expired'));
       window.location.replace('/login');
+    }
+
+    // ── 5xx Server Error ──────────────────────────────────────────────────────
+    // Dispatch a global event that a banner component can subscribe to.
+    if (status >= 500) {
+      window.dispatchEvent(
+        new CustomEvent('tara:api:server-error', {
+          detail: {
+            status,
+            url,
+            message: error.response?.data?.detail || 'An unexpected server error occurred.',
+          },
+        }),
+      );
     }
 
     return Promise.reject(error);

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
 import { motion } from 'framer-motion';
@@ -6,10 +6,8 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import {
-  downloadAnalysisDiagramPng,
   downloadAnalysisPdf,
   getAnalysis,
-  getAnalysisDiagramSvg,
 } from '../services/api';
 import { getApiErrorMessage } from '../services/apiError';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -24,13 +22,10 @@ import {
   getHighRiskCount,
   sortThreatsByRisk,
 } from '../components/analysis/analysisMetrics';
+import { useAbortableEffect } from '../hooks/useAbortableEffect';
+import { useDiagramActions } from '../hooks/useDiagramActions';
 
 const AnalysisCharts = lazy(() => import('../components/analysis/AnalysisCharts'));
-
-function svgToDataUrl(svgText) {
-  const encoded = window.btoa(unescape(encodeURIComponent(svgText)));
-  return `data:image/svg+xml;base64,${encoded}`;
-}
 
 export default function AnalysisPage() {
   const { id } = useParams();
@@ -39,108 +34,42 @@ export default function AnalysisPage() {
   const [error, setError] = useState(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState(null);
-  const [diagramSvgDataUrl, setDiagramSvgDataUrl] = useState('');
-  const [diagramLoading, setDiagramLoading] = useState(false);
-  const [diagramError, setDiagramError] = useState(null);
-  const [diagramActionError, setDiagramActionError] = useState(null);
-  const [activeDiagramAction, setActiveDiagramAction] = useState(null);
-  const [isDiagramCodeExpanded, setIsDiagramCodeExpanded] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAnalysis = async () => {
-      try {
-        const data = await getAnalysis(id);
-        if (!isMounted) return;
-        setAnalysis(data);
-      } catch (err) {
-        if (!isMounted) return;
-        setError(getApiErrorMessage(err, {
-          fallbackMessage: 'Failed to load analysis',
-          operation: 'analysis.fetch',
-        }));
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+  // F-06: useAbortableEffect replaces the verbose isMounted + cleanup pattern.
+  useAbortableEffect(
+    (isMounted) => {
+      const fetchAnalysis = async () => {
+        try {
+          const data = await getAnalysis(id);
+          if (!isMounted()) return;
+          setAnalysis(data);
+        } catch (err) {
+          if (!isMounted()) return;
+          setError(
+            getApiErrorMessage(err, {
+              fallbackMessage: 'Failed to load analysis',
+              operation: 'analysis.fetch',
+            }),
+          );
+        } finally {
+          if (isMounted()) setLoading(false);
         }
-      }
-    };
-
-    fetchAnalysis();
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    let isMounted = true;
-    if (!analysis?.has_diagram) {
-      setDiagramSvgDataUrl('');
-      setDiagramError(null);
-      setDiagramActionError(null);
-      setActiveDiagramAction(null);
-      setDiagramLoading(false);
-      return () => {
-        isMounted = false;
       };
-    }
+      fetchAnalysis();
+    },
+    [id],
+  );
 
-    const fetchDiagramSvg = async () => {
-      setDiagramLoading(true);
-      setDiagramError(null);
-      try {
-        const svgContent = await getAnalysisDiagramSvg(id);
-        if (!isMounted) return;
-        setDiagramSvgDataUrl(svgToDataUrl(svgContent));
-      } catch (err) {
-        if (!isMounted) return;
-        setDiagramSvgDataUrl('');
-        setDiagramError(getApiErrorMessage(err, {
-          fallbackMessage: 'Failed to render UML diagram',
-          operation: 'analysis.diagram_render',
-        }));
-      } finally {
-        if (isMounted) {
-          setDiagramLoading(false);
-        }
-      }
-    };
-
-    fetchDiagramSvg();
-    return () => {
-      isMounted = false;
-    };
-  }, [analysis?.has_diagram, id]);
+  // F-02: All diagram state + handlers live in this hook.
+  // F-08: svgToDataUrl uses TextEncoder (no deprecated unescape).
+  const diagram = useDiagramActions(id, analysis?.has_diagram ?? false);
 
   const parseFilenameFromHeader = (contentDisposition) => {
     if (!contentDisposition) return null;
     const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-    if (utf8Match) {
-      return decodeURIComponent(utf8Match[1]);
-    }
+    if (utf8Match) return decodeURIComponent(utf8Match[1]);
     const standardMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
     return standardMatch ? standardMatch[1] : null;
-  };
-
-  const buildSafeDownloadName = (extension) => {
-    const normalizedTitle = (analysis?.title || `analysis-${id}`)
-      .trim()
-      .replace(/[^a-z0-9-_]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase();
-    const baseName = normalizedTitle || `analysis-${id}`;
-    return `${baseName}-${id}.${extension}`;
-  };
-
-  const downloadBlob = (blob, filename) => {
-    const blobUrl = window.URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = blobUrl;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.URL.revokeObjectURL(blobUrl);
   };
 
   const handleDownloadPdf = async () => {
@@ -150,14 +79,24 @@ export default function AnalysisPage() {
     try {
       const response = await downloadAnalysisPdf(id);
       const filename =
-        parseFilenameFromHeader(response.headers?.['content-disposition']) || `analysis-${id}.pdf`;
-      downloadBlob(response.data, filename);
+        parseFilenameFromHeader(response.headers?.['content-disposition']) ||
+        `analysis-${id}.pdf`;
+      const blobUrl = window.URL.createObjectURL(response.data);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(blobUrl);
     } catch (downloadError) {
       console.error('Failed to download PDF report:', downloadError);
-      setPdfError(getApiErrorMessage(downloadError, {
-        fallbackMessage: 'Failed to download PDF report',
-        operation: 'analysis.pdf_export',
-      }));
+      setPdfError(
+        getApiErrorMessage(downloadError, {
+          fallbackMessage: 'Failed to download PDF report',
+          operation: 'analysis.pdf_export',
+        }),
+      );
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -200,87 +139,6 @@ export default function AnalysisPage() {
     : threats.length;
   const sortedThreats = sortThreatsByRisk(threats);
 
-  const handleRetryDiagramRender = async () => {
-    setDiagramLoading(true);
-    setDiagramError(null);
-    try {
-      const svgContent = await getAnalysisDiagramSvg(id);
-      setDiagramSvgDataUrl(svgToDataUrl(svgContent));
-    } catch (retryError) {
-      setDiagramError(getApiErrorMessage(retryError, {
-        fallbackMessage: 'Failed to render UML diagram',
-        operation: 'analysis.diagram_render_retry',
-      }));
-    } finally {
-      setDiagramLoading(false);
-    }
-  };
-
-  const beginDiagramAction = (actionType) => {
-    setDiagramActionError(null);
-    setActiveDiagramAction(actionType);
-  };
-
-  const endDiagramAction = () => {
-    setActiveDiagramAction(null);
-  };
-
-  const handleDownloadDiagramSvg = async () => {
-    if (activeDiagramAction || !analysis?.has_diagram) return;
-    beginDiagramAction('downloadSvg');
-    try {
-      const svgContent = await getAnalysisDiagramSvg(id);
-      const fileName = buildSafeDownloadName('svg');
-      downloadBlob(new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' }), fileName);
-    } catch (actionError) {
-      setDiagramActionError(getApiErrorMessage(actionError, {
-        fallbackMessage: 'Failed to download SVG diagram',
-        operation: 'analysis.diagram_svg_download',
-      }));
-    } finally {
-      endDiagramAction();
-    }
-  };
-
-  const handleDownloadDiagramPng = async () => {
-    if (activeDiagramAction || !analysis?.has_diagram) return;
-    beginDiagramAction('downloadPng');
-    try {
-      const response = await downloadAnalysisDiagramPng(id);
-      const fileName =
-        parseFilenameFromHeader(response.headers?.['content-disposition']) || buildSafeDownloadName('png');
-      downloadBlob(response.data, fileName);
-    } catch (actionError) {
-      setDiagramActionError(getApiErrorMessage(actionError, {
-        fallbackMessage: 'Failed to download PNG diagram',
-        operation: 'analysis.diagram_png_download',
-      }));
-    } finally {
-      endDiagramAction();
-    }
-  };
-
-  const handleRefreshDiagramCache = async () => {
-    if (activeDiagramAction || !analysis?.has_diagram) return;
-    beginDiagramAction('refreshCache');
-    setDiagramLoading(true);
-    setDiagramError(null);
-    try {
-      const svgContent = await getAnalysisDiagramSvg(id, { refresh: true });
-      setDiagramSvgDataUrl(svgToDataUrl(svgContent));
-    } catch (actionError) {
-      const normalizedMessage = getApiErrorMessage(actionError, {
-        fallbackMessage: 'Failed to refresh diagram render cache',
-        operation: 'analysis.diagram_refresh',
-      });
-      setDiagramError(normalizedMessage);
-      setDiagramActionError(normalizedMessage);
-    } finally {
-      setDiagramLoading(false);
-      endDiagramAction();
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto">
       {/* Breadcrumb */}
@@ -298,6 +156,7 @@ export default function AnalysisPage() {
         </Link>
       </motion.div>
 
+      {/* F-02: diagram prop is a single object instead of 14 individual props */}
       <AnalysisHeaderCard
         analysis={analysis}
         totalThreatCount={totalThreatCount}
@@ -305,17 +164,7 @@ export default function AnalysisPage() {
         isDownloadingPdf={isDownloadingPdf}
         pdfError={pdfError}
         onDownloadPdf={handleDownloadPdf}
-        diagramLoading={diagramLoading}
-        diagramError={diagramError}
-        diagramSvgDataUrl={diagramSvgDataUrl}
-        isDiagramCodeExpanded={isDiagramCodeExpanded}
-        diagramActionError={diagramActionError}
-        activeDiagramAction={activeDiagramAction}
-        onToggleDiagramCode={() => setIsDiagramCodeExpanded((value) => !value)}
-        onRetryDiagramRender={handleRetryDiagramRender}
-        onDownloadDiagramSvg={handleDownloadDiagramSvg}
-        onDownloadDiagramPng={handleDownloadDiagramPng}
-        onRefreshDiagramCache={handleRefreshDiagramCache}
+        diagram={diagram}
       />
 
       <VersionComparisonPanel

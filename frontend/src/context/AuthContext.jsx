@@ -25,6 +25,19 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
+  // Listen for the global 401 event dispatched by the Axios response interceptor.
+  // This clears auth state immediately before the hard redirect fires so that
+  // no component briefly renders with stale authenticated state.
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUser(null);
+    };
+    window.addEventListener('tara:auth:expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('tara:auth:expired', handleAuthExpired);
+    };
+  }, []);
+
   const login = async (googleCredential) => {
     const response = await googleAuth(googleCredential);
     setUser(response.user);

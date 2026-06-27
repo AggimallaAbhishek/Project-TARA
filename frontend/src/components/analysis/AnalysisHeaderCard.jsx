@@ -17,17 +17,9 @@ export default function AnalysisHeaderCard({
   isDownloadingPdf,
   pdfError,
   onDownloadPdf,
-  diagramLoading,
-  diagramError,
-  diagramSvgDataUrl,
-  isDiagramCodeExpanded,
-  diagramActionError,
-  activeDiagramAction,
-  onToggleDiagramCode,
-  onRetryDiagramRender,
-  onDownloadDiagramSvg,
-  onDownloadDiagramPng,
-  onRefreshDiagramCache,
+  /** diagram: { svgDataUrl, loading, error, actionError, activeAction,
+   *             isCodeExpanded, handlers } — from useDiagramActions() */
+  diagram,
 }) {
   return (
     <motion.div
@@ -103,22 +95,22 @@ export default function AnalysisHeaderCard({
         </div>
       </div>
 
-      {analysis.has_diagram && (
+      {analysis.has_diagram && diagram && (
         <DiagramPanel
           title={analysis.title}
           diagramFormat={analysis.diagram_format}
           diagramCode={analysis.diagram_code}
-          diagramLoading={diagramLoading}
-          diagramError={diagramError}
-          diagramSvgDataUrl={diagramSvgDataUrl}
-          isDiagramCodeExpanded={isDiagramCodeExpanded}
-          diagramActionError={diagramActionError}
-          activeDiagramAction={activeDiagramAction}
-          onToggleCode={onToggleDiagramCode}
-          onRetryRender={onRetryDiagramRender}
-          onDownloadSvg={onDownloadDiagramSvg}
-          onDownloadPng={onDownloadDiagramPng}
-          onRefreshCache={onRefreshDiagramCache}
+          diagramLoading={diagram.loading}
+          diagramError={diagram.error}
+          diagramSvgDataUrl={diagram.svgDataUrl}
+          isDiagramCodeExpanded={diagram.isCodeExpanded}
+          diagramActionError={diagram.actionError}
+          activeDiagramAction={diagram.activeAction}
+          onToggleCode={diagram.handlers.onToggleCode}
+          onRetryRender={diagram.handlers.onRetryRender}
+          onDownloadSvg={() => diagram.handlers.onDownloadSvg(analysis.title)}
+          onDownloadPng={() => diagram.handlers.onDownloadPng(analysis.title)}
+          onRefreshCache={diagram.handlers.onRefreshCache}
         />
       )}
 
