@@ -152,7 +152,16 @@ class AnalysisWorkflowService:
             )
 
             await db.commit()
-            await db.refresh(analysis)
+
+            # Re-fetch with relationships to avoid MissingGreenlet during serialization
+            stmt = (
+                select(Analysis)
+                .options(selectinload(Analysis.project), selectinload(Analysis.threats))
+                .where(Analysis.id == analysis.id)
+            )
+            result = await db.execute(stmt)
+            analysis_with_rels = result.scalars().first()
+
             total_elapsed = perf_counter() - request_start
             logger.info(
                 "Analysis created user_id=%s project_id=%s analysis_id=%s source=%s threats=%s llm_time=%.2fs total=%.2fs",
@@ -186,7 +195,7 @@ class AnalysisWorkflowService:
                     low_count=risk_counts["Low"],
                 )
 
-            return analysis
+            return analysis_with_rels
         except HTTPException:
             await db.rollback()
             raise
