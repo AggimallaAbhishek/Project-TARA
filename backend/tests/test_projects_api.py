@@ -4,9 +4,10 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, get_db
+from app.database import Base, get_async_db, get_db
 from app.main import app
 from app.models.analysis import Analysis
 from app.models.audit import AuditLog
@@ -21,12 +22,21 @@ from app.services.rate_limit_service import analyze_rate_limiter
 def project_client():
     temp_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     temp_db_file.close()
-    engine = create_engine(
-        f"sqlite:///{temp_db_file.name}",
-        connect_args={"check_same_thread": False},
-    )
+    db_url = f"sqlite:///{temp_db_file.name}"
+    async_db_url = f"sqlite+aiosqlite:///{temp_db_file.name}"
+
+    # Sync engine (for direct DB access in tests)
+    engine = create_engine(db_url, connect_args={"check_same_thread": False})
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+
+    # Async engine (used by all FastAPI route handlers via get_async_db)
+    async_engine = create_async_engine(async_db_url, connect_args={"check_same_thread": False})
+    async_session_local = async_sessionmaker(
+        bind=async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
     db = session_local()
     user = User(
@@ -54,6 +64,11 @@ def project_client():
         finally:
             db_session.close()
 
+    async def override_get_async_db():
+        """Override the async DB dependency to use the isolated SQLite test DB."""
+        async with async_session_local() as session:
+            yield session
+
     def override_get_current_user():
         return User(
             id=user_id,
@@ -63,6 +78,7 @@ def project_client():
         )
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_async_db] = override_get_async_db
     app.dependency_overrides[get_current_user] = override_get_current_user
 
     client = TestClient(app)
@@ -73,6 +89,8 @@ def project_client():
         app.dependency_overrides.clear()
         client.close()
         engine.dispose()
+        import asyncio
+        asyncio.run(async_engine.dispose())
         os.unlink(temp_db_file.name)
 
 
@@ -161,7 +179,11 @@ def test_project_ownership_returns_404(project_client):
 def test_analysis_creation_with_project_and_fallback_grouping(project_client):
     client, session_local, user_id, _other_user_id = project_client
 
-    async def fake_analyze_system(_system_description: str):
+    async def fake_analyze_system(
+        _system_description: str,
+        *,
+        source_context: dict | None = None,
+    ):
         return (
             [
                 {

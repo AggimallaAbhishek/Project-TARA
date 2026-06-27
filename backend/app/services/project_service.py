@@ -217,7 +217,12 @@ class ProjectService:
 
     @staticmethod
     def build_project_response(project: Project) -> dict:
-        analyses = list(project.analyses or [])
+        from sqlalchemy import inspect
+        insp = inspect(project)
+        if "analyses" not in insp.unloaded:
+            analyses = list(project.analyses or [])
+        else:
+            analyses = []
         latest_analysis = max(analyses, key=lambda analysis: (analysis.created_at, analysis.id), default=None)
         total_threat_count = 0
         high_risk_count = 0
