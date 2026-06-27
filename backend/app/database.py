@@ -5,19 +5,27 @@ from app.config import get_settings
 
 settings = get_settings()
 
+
+def _build_engine_pool_kwargs(url: str) -> dict:
+    """Return SQLAlchemy engine kwargs for pooling based on the DB URL scheme.
+
+    SQLite does not support connection pooling options — only check_same_thread
+    is required.  All other backends (PostgreSQL) get the configured pool
+    settings from :class:`~app.config.Settings`.
+    """
+    if url.startswith("sqlite"):
+        return {"connect_args": {"check_same_thread": False}}
+    return {
+        "pool_size": settings.database_pool_size,
+        "max_overflow": settings.database_max_overflow,
+        "pool_pre_ping": True,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Synchronous engine & session (used by Alembic migrations and startup checks)
 # ---------------------------------------------------------------------------
-engine_kwargs = {}
-if settings.database_url.startswith("sqlite"):
-    engine_kwargs["connect_args"] = {"check_same_thread": False}
-else:
-    # PostgreSQL connection pooling
-    engine_kwargs["pool_size"] = settings.database_pool_size
-    engine_kwargs["max_overflow"] = settings.database_max_overflow
-    engine_kwargs["pool_pre_ping"] = True
-
-engine = create_engine(settings.database_url, **engine_kwargs)
+engine = create_engine(settings.database_url, **_build_engine_pool_kwargs(settings.database_url))
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -54,13 +62,12 @@ def _build_async_database_url(url: str) -> str:
 
 async_database_url = _build_async_database_url(settings.database_url)
 
-async_engine_kwargs: dict = {}
-if not async_database_url.startswith("sqlite"):
-    async_engine_kwargs["pool_size"] = settings.database_pool_size
-    async_engine_kwargs["max_overflow"] = settings.database_max_overflow
-    async_engine_kwargs["pool_pre_ping"] = True
-
-async_engine = create_async_engine(async_database_url, **async_engine_kwargs)
+# Re-use the same pool kwargs helper; aiosqlite has the same restriction as
+# the sync SQLite driver so the helper returns the right dict for both.
+async_engine = create_async_engine(
+    async_database_url,
+    **_build_engine_pool_kwargs(async_database_url),
+)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,

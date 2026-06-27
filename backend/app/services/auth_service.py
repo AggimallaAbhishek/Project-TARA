@@ -125,20 +125,24 @@ async def get_current_user(
 
 
 async def get_or_create_user(db: AsyncSession, google_data: dict) -> User:
-    """Get existing user or create new one from Google data."""
+    """Get existing user or create new one from Google data.
+
+    This function does **not** commit the transaction — callers are responsible
+    for calling ``await db.commit()`` after this returns, so that the operation
+    can be composed into a larger unit of work if needed.
+    """
     result = await db.execute(select(User).where(User.google_id == google_data['google_id']))
     user = result.scalars().first()
-    
+
     if user:
-        # Update last login and any changed info
+        # Update last login and any changed profile info.
         logger.debug("Updating Google auth profile user_id=%s", user.id)
         user.last_login = utc_now_for_db()
         user.name = google_data['name']
         user.picture = google_data.get('picture')
-        await db.commit()
-        await db.refresh(user)
+        await db.flush()
     else:
-        # Create new user
+        # Create new user — the commit is deferred to the caller.
         logger.debug("Creating user from verified Google auth token")
         user = User(
             email=google_data['email'],
@@ -147,8 +151,7 @@ async def get_or_create_user(db: AsyncSession, google_data: dict) -> User:
             google_id=google_data['google_id']
         )
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
-        logger.debug("Created Google auth user_id=%s", user.id)
-    
+        await db.flush()
+        logger.debug("Flushed new Google auth user (pre-commit)")
+
     return user

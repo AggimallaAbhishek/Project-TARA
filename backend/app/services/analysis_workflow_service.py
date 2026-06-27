@@ -1,5 +1,4 @@
 import logging
-import inspect
 from time import perf_counter
 from typing import Any
 
@@ -16,18 +15,55 @@ from app.services.risk_service import risk_service
 
 logger = logging.getLogger(__name__)
 
+# Required keys that every threat dict from the LLM must contain.
+_REQUIRED_THREAT_KEYS = {
+    "name",
+    "description",
+    "stride_category",
+    "affected_component",
+    "likelihood",
+    "impact",
+    "mitigation",
+}
+
+
+def _build_threat_orm(analysis_id: int, threat_item: dict[str, Any]) -> Threat | None:
+    """Construct a :class:`~app.models.analysis.Threat` ORM instance from a
+    raw LLM-produced threat dict.
+
+    Returns ``None`` if the dict is missing required keys so callers can skip
+    invalid entries without raising.
+    """
+    if not _REQUIRED_THREAT_KEYS.issubset(threat_item):
+        return None
+
+    risk_score = risk_service.calculate_risk_score(
+        threat_item["likelihood"],
+        threat_item["impact"],
+    )
+    calculated_risk_level = risk_service.get_risk_level_from_score(risk_score)
+
+    return Threat(
+        analysis_id=analysis_id,
+        name=threat_item["name"],
+        description=threat_item["description"],
+        stride_category=threat_item["stride_category"],
+        affected_component=threat_item["affected_component"],
+        risk_level=calculated_risk_level,
+        likelihood=threat_item["likelihood"],
+        impact=threat_item["impact"],
+        risk_score=risk_score,
+        mitigation=threat_item["mitigation"],
+        evidence=threat_item.get("evidence") or [],
+        assumptions=threat_item.get("assumptions") or [],
+        confidence=threat_item.get("confidence"),
+        owasp_tags=threat_item.get("owasp_tags") or [],
+        cwe_tags=threat_item.get("cwe_tags") or [],
+    )
+
+
 
 class AnalysisWorkflowService:
-    async def _analyze_with_optional_context(
-        self,
-        system_description: str,
-        source_context: dict[str, Any] | None,
-    ) -> tuple[list[dict[str, Any]], float]:
-        analyze_signature = inspect.signature(llm_service.analyze_system)
-        if "source_context" in analyze_signature.parameters:
-            return await llm_service.analyze_system(system_description, source_context=source_context)
-        return await llm_service.analyze_system(system_description)
-
     async def create_analysis(
         self,
         *,
@@ -52,7 +88,9 @@ class AnalysisWorkflowService:
                 project_id=project_id,
                 project_name=project_name,
             )
-            threat_data, analysis_time = await self._analyze_with_optional_context(system_description, source_context)
+            threat_data, analysis_time = await llm_service.analyze_system(
+                system_description, source_context=source_context
+            )
             source_context = source_context or {
                 "source_type": source,
                 "source_metadata": {},
@@ -78,41 +116,9 @@ class AnalysisWorkflowService:
 
             threats: list[Threat] = []
             for threat_item in threat_data:
-                required_keys = {
-                    "name",
-                    "description",
-                    "stride_category",
-                    "affected_component",
-                    "likelihood",
-                    "impact",
-                    "mitigation",
-                }
-                if not required_keys.issubset(threat_item):
+                threat = _build_threat_orm(analysis.id, threat_item)
+                if threat is None:
                     continue
-
-                risk_score = risk_service.calculate_risk_score(
-                    threat_item["likelihood"],
-                    threat_item["impact"],
-                )
-                calculated_risk_level = risk_service.get_risk_level_from_score(risk_score)
-
-                threat = Threat(
-                    analysis_id=analysis.id,
-                    name=threat_item["name"],
-                    description=threat_item["description"],
-                    stride_category=threat_item["stride_category"],
-                    affected_component=threat_item["affected_component"],
-                    risk_level=calculated_risk_level,
-                    likelihood=threat_item["likelihood"],
-                    impact=threat_item["impact"],
-                    risk_score=risk_score,
-                    mitigation=threat_item["mitigation"],
-                    evidence=threat_item.get("evidence") or [],
-                    assumptions=threat_item.get("assumptions") or [],
-                    confidence=threat_item.get("confidence"),
-                    owasp_tags=threat_item.get("owasp_tags") or [],
-                    cwe_tags=threat_item.get("cwe_tags") or [],
-                )
                 db.add(threat)
                 threats.append(threat)
 

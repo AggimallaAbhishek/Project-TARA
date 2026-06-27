@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Any
 
 import redis
@@ -9,6 +10,9 @@ from app.config import get_settings
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+# Seconds between live Redis PING checks when determining availability.
+_AVAILABILITY_CACHE_TTL = 5.0
+
 
 class RedisService:
     """Singleton Redis client with connection pooling and graceful fallback."""
@@ -16,6 +20,8 @@ class RedisService:
     def __init__(self):
         self._client: redis.Redis | None = None
         self._available: bool = False
+        # Monotonic timestamp after which we re-check availability.
+        self._available_until: float = 0.0
         self._connect()
 
     def _connect(self) -> None:
@@ -39,13 +45,29 @@ class RedisService:
 
     @property
     def is_available(self) -> bool:
+        """Return True if Redis is reachable.
+
+        The result is cached for :data:`_AVAILABILITY_CACHE_TTL` seconds so
+        that repeated calls (e.g. from rate-limit and cache checks on the same
+        request) do not each issue a synchronous network PING.
+        """
+        now = time.monotonic()
+        if now < self._available_until:
+            # Return cached result — no network call needed.
+            return self._available
+
         if not self._client:
+            self._available = False
+            self._available_until = now + _AVAILABILITY_CACHE_TTL
             return False
+
         try:
             self._client.ping()
             self._available = True
         except Exception:
             self._available = False
+
+        self._available_until = now + _AVAILABILITY_CACHE_TTL
         return self._available
 
     @property

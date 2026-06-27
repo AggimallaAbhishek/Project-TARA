@@ -44,14 +44,24 @@ class RiskScoringService:
     @staticmethod
     def calculate_total_risk_score(threats: list[dict[str, Any]]) -> float:
         """
-        Calculate aggregate risk score for all threats.
-        Uses weighted average based on individual risk scores.
+        Calculate aggregate risk score for an analysis.
+
+        Despite the name (kept for backwards compatibility), this returns the
+        **average** individual risk score across all threats — not their sum.
+        The result is stored in ``Analysis.total_risk_score`` and used for
+        risk-bucket filtering in the list endpoint.
+
+        Thresholds (matching :meth:`get_risk_level_from_score`):
+          - \u22644  → Low
+          - \u22649  → Medium
+          - \u226415 → High
+          - >15  → Critical
         """
         if not threats:
             return 0.0
-        
-        total_score = sum(t.get('risk_score', 0) for t in threats)
-        return round(total_score / len(threats), 2)
+
+        sum_score = sum(t.get('risk_score', 0) for t in threats)
+        return round(sum_score / len(threats), 2)
     
     @staticmethod
     def prioritize_threats(threats: list[dict[str, Any]]) -> list[dict[str, Any]]:

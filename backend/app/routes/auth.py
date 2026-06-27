@@ -43,9 +43,11 @@ async def google_auth(
     # Verify Google token and get user info
     google_data = verify_google_token(request.credential)
     
-    # Get or create user
+    # Get or create user (service flushes but does not commit — we own the boundary)
     user = await get_or_create_user(db, google_data)
-    
+    await db.commit()
+    await db.refresh(user)
+
     # Create JWT token - sub must be a string per JWT spec
     access_token = create_access_token(data={"sub": str(user.id)})
     csrf_token = create_csrf_token()

@@ -25,7 +25,7 @@ from app.schemas.analysis import (
 )
 from app.services.analysis_version_comparison_service import analysis_version_comparison_service
 from app.services.audit_service import audit_service
-from app.services.analysis_workflow_service import analysis_workflow_service
+from app.services.analysis_workflow_service import analysis_workflow_service, _build_threat_orm
 from app.services.auth_service import get_current_user
 from app.services.analysis_job_service import analysis_job_service
 from app.services.model_readiness_service import model_readiness_service
@@ -55,7 +55,10 @@ def enforce_analyze_rate_limit(current_user: User = Depends(get_current_user)) -
         )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded. Maximum 5 analyze requests per minute.",
+            detail=(
+                f"Rate limit exceeded. Maximum {analyze_rate_limiter.max_requests} analyze "
+                f"requests per {analyze_rate_limiter.window_seconds} seconds."
+            ),
             headers={"Retry-After": str(retry_after)},
         )
     return current_user
@@ -251,41 +254,9 @@ async def analyze_stream(
 
                 saved_threats = []
                 for threat_item in threats:
-                    required_keys = {
-                        "name",
-                        "description",
-                        "stride_category",
-                        "affected_component",
-                        "likelihood",
-                        "impact",
-                        "mitigation",
-                    }
-                    if not required_keys.issubset(threat_item):
+                    threat = _build_threat_orm(analysis.id, threat_item)
+                    if threat is None:
                         continue
-
-                    risk_score = risk_service.calculate_risk_score(
-                        threat_item["likelihood"],
-                        threat_item["impact"],
-                    )
-                    calculated_risk_level = risk_service.get_risk_level_from_score(risk_score)
-
-                    threat = Threat(
-                        analysis_id=analysis.id,
-                        name=threat_item["name"],
-                        description=threat_item["description"],
-                        stride_category=threat_item["stride_category"],
-                        affected_component=threat_item["affected_component"],
-                        risk_level=calculated_risk_level,
-                        likelihood=threat_item["likelihood"],
-                        impact=threat_item["impact"],
-                        risk_score=risk_score,
-                        mitigation=threat_item["mitigation"],
-                        evidence=threat_item.get("evidence") or [],
-                        assumptions=threat_item.get("assumptions") or [],
-                        confidence=threat_item.get("confidence"),
-                        owasp_tags=threat_item.get("owasp_tags") or [],
-                        cwe_tags=threat_item.get("cwe_tags") or [],
-                    )
                     db.add(threat)
                     saved_threats.append(threat)
 
