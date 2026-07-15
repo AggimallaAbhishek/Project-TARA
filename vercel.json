@@ -1,0 +1,10 @@
+{
+  "services": {
+    "frontend": {
+      "framework": "vite"
+    },
+    "backend": {
+      "framework": "fastapi"
+    }
+  }
+}
