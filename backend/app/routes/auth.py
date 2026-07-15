@@ -57,7 +57,7 @@ async def google_auth(
         value=access_token,
         httponly=True,
         secure=settings.is_production,
-        samesite="lax",
+        samesite="none",
         max_age=settings.access_token_expire_minutes * 60,
         path="/",
     )
@@ -66,7 +66,7 @@ async def google_auth(
         value=csrf_token,
         httponly=False,
         secure=settings.is_production,
-        samesite="lax",
+        samesite="none",
         max_age=settings.access_token_expire_minutes * 60,
         path="/",
     )
