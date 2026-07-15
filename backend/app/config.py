@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     diagram_render_max_chars: int = 250000
     db_startup_strict: bool | None = None
 
-    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH)
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, extra="ignore")
 
     @property
     def cors_origins(self) -> list[str]:
