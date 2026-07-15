@@ -31,3 +31,5 @@ dist/
 .env.docker
 pgdata/
 redisdata/
+
+/generated/prisma
