@@ -338,7 +338,7 @@ async def get_analysis_job(
 )
 async def get_model_readiness(current_user: User = Depends(get_current_user)):
     _ = current_user
-    return model_readiness_service.check()
+    return await model_readiness_service.check()
 
 
 @router.get(

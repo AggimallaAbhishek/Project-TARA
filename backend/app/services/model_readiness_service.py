@@ -51,7 +51,7 @@ class ModelReadinessService:
             "error": f"Model '{model}' is not installed in Ollama.",
         }
 
-    def check(self, *, force_refresh: bool = False) -> dict[str, Any]:
+    async def check(self, *, force_refresh: bool = False) -> dict[str, Any]:
         now = time.time()
         settings = get_settings()
         if self._cached and not force_refresh and now < self._cached_until:
@@ -60,8 +60,10 @@ class ModelReadinessService:
         provider_error: str | None = None
         available_models: set[str] = set()
         try:
+            import asyncio
             client = ollama.Client(host=settings.ollama_host)
-            available_models = self._model_names(client.list())
+            models_payload = await asyncio.to_thread(client.list)
+            available_models = self._model_names(models_payload)
         except Exception as exc:
             provider_error = "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST."
             logger.warning("Model readiness check failed host=%s error=%s", settings.ollama_host, exc)
