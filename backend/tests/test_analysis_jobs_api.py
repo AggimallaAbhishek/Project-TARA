@@ -91,14 +91,17 @@ class AnalysisJobsApiTest(unittest.TestCase):
             )
 
         cls._original_analyze_system = llm_service.analyze_system
+        cls._original_async_job_session_local = analysis_job_service_module.AsyncSessionLocal
         cls._original_job_session_local = analysis_job_service_module.SessionLocal
         llm_service.analyze_system = fake_analyze_system
+        analysis_job_service_module.AsyncSessionLocal = cls.AsyncSessionLocal
         analysis_job_service_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
 
     @classmethod
     def tearDownClass(cls):
         llm_service.analyze_system = cls._original_analyze_system
+        analysis_job_service_module.AsyncSessionLocal = cls._original_async_job_session_local
         analysis_job_service_module.SessionLocal = cls._original_job_session_local
         analyze_rate_limiter.clear()
         app.dependency_overrides.clear()

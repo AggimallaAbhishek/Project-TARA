@@ -152,7 +152,7 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
         self.assertEqual(blocked_response.status_code, 429)
         self.assertEqual(
             blocked_response.json()["detail"],
-            "Rate limit exceeded. Maximum 5 analyze requests per minute.",
+            "Rate limit exceeded. Maximum 5 analyze requests per 60 seconds.",
         )
         self.assertIn("Retry-After", blocked_response.headers)
 
