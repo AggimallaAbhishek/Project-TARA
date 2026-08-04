@@ -52,12 +52,17 @@ async def google_auth(
     access_token = create_access_token(data={"sub": str(user.id)})
     csrf_token = create_csrf_token()
 
+    # SameSite=None requires Secure=True (HTTPS).  In local development the
+    # backend runs over plain HTTP so the browser silently drops cookies that
+    # carry SameSite=None without the Secure flag.  Use "lax" for dev.
+    cookie_samesite = "none" if settings.is_production else "lax"
+
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE_NAME,
         value=access_token,
         httponly=True,
         secure=settings.is_production,
-        samesite="none",
+        samesite=cookie_samesite,
         max_age=settings.access_token_expire_minutes * 60,
         path="/",
     )
@@ -66,7 +71,7 @@ async def google_auth(
         value=csrf_token,
         httponly=False,
         secure=settings.is_production,
-        samesite="none",
+        samesite=cookie_samesite,
         max_age=settings.access_token_expire_minutes * 60,
         path="/",
     )
