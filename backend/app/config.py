@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://tara:tara@localhost:5432/tara"
     database_pool_size: int = 5
     database_max_overflow: int = 10
+    # Optional reference URLs retained for deployments that use Supabase.
+    # DATABASE_URL remains the only active application connection setting.
+    supabase_pooler_url: str = ""
+    direct_url: str = ""
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     allowed_origin_regex: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
@@ -69,7 +73,7 @@ class Settings(BaseSettings):
     diagram_render_max_chars: int = 250000
     db_startup_strict: bool | None = None
 
-    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE_PATH, extra="forbid")
 
     @property
     def cors_origins(self) -> list[str]:

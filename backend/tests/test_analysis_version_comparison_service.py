@@ -3,8 +3,7 @@ import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -18,11 +17,16 @@ from app.models.user import User
 from app.services.analysis_version_comparison_service import analysis_version_comparison_service
 
 
-class AnalysisVersionComparisonServiceTest(unittest.TestCase):
-    def setUp(self):
-        self.engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-        Base.metadata.create_all(bind=self.engine)
+class AnalysisVersionComparisonServiceTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with self.engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        self.SessionLocal = async_sessionmaker(
+            bind=self.engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
         self.db = self.SessionLocal()
 
         self.user = User(
@@ -31,23 +35,24 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             google_id="comparison-google-id",
         )
         self.db.add(self.user)
-        self.db.commit()
-        self.db.refresh(self.user)
+        await self.db.commit()
+        await self.db.refresh(self.user)
         self.project = Project(
             user_id=self.user.id,
             name="Mobile Banking",
             normalized_name="mobile banking",
         )
         self.db.add(self.project)
-        self.db.commit()
-        self.db.refresh(self.project)
+        await self.db.commit()
+        await self.db.refresh(self.project)
 
-    def tearDown(self):
-        self.db.close()
-        Base.metadata.drop_all(bind=self.engine)
-        self.engine.dispose()
+    async def asyncTearDown(self):
+        await self.db.close()
+        async with self.engine.begin() as connection:
+            await connection.run_sync(Base.metadata.drop_all)
+        await self.engine.dispose()
 
-    def _create_analysis(
+    async def _create_analysis(
         self,
         *,
         title: str,
@@ -65,7 +70,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             analysis_time=0.1,
         )
         self.db.add(analysis)
-        self.db.flush()
+        await self.db.flush()
 
         total_score = 0.0
         for threat in threats:
@@ -87,13 +92,13 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             )
 
         analysis.total_risk_score = round(total_score, 2)
-        self.db.commit()
-        self.db.refresh(analysis)
+        await self.db.commit()
+        await self.db.refresh(analysis)
         return analysis
 
-    def test_baseline_comparison_when_no_previous_version(self):
+    async def test_baseline_comparison_when_no_previous_version(self):
         now = datetime.now(timezone.utc)
-        analysis = self._create_analysis(
+        analysis = await self._create_analysis(
             title="Mobile Banking",
             created_at=now,
             threats=[
@@ -107,7 +112,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             ],
         )
 
-        report = analysis_version_comparison_service.get_version_comparison(
+        report = await analysis_version_comparison_service.get_version_comparison(
             self.db,
             analysis_id=analysis.id,
             user_id=self.user.id,
@@ -118,9 +123,9 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
         self.assertEqual(report["unresolved_issues_count"], 0)
         self.assertEqual(report["new_issues_count"], 1)
 
-    def test_resolved_unresolved_and_new_issue_counts(self):
+    async def test_resolved_unresolved_and_new_issue_counts(self):
         now = datetime.now(timezone.utc)
-        self._create_analysis(
+        await self._create_analysis(
             title="Payments Platform",
             created_at=now - timedelta(minutes=5),
             threats=[
@@ -140,7 +145,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
                 },
             ],
         )
-        current = self._create_analysis(
+        current = await self._create_analysis(
             title="Payments Platform",
             created_at=now,
             threats=[
@@ -161,7 +166,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             ],
         )
 
-        report = analysis_version_comparison_service.get_version_comparison(
+        report = await analysis_version_comparison_service.get_version_comparison(
             self.db,
             analysis_id=current.id,
             user_id=self.user.id,
@@ -180,9 +185,9 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
         self.assertIn("Token Replay", unresolved_names)
         self.assertIn("Privilege Escalation", new_names)
 
-    def test_title_matching_is_case_insensitive_and_trimmed(self):
+    async def test_title_matching_is_case_insensitive_and_trimmed(self):
         now = datetime.now(timezone.utc)
-        self._create_analysis(
+        await self._create_analysis(
             title="  Customer Portal  ",
             created_at=now - timedelta(minutes=10),
             threats=[
@@ -195,7 +200,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
                 }
             ],
         )
-        current = self._create_analysis(
+        current = await self._create_analysis(
             title="customer portal",
             created_at=now,
             threats=[
@@ -209,7 +214,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             ],
         )
 
-        report = analysis_version_comparison_service.get_version_comparison(
+        report = await analysis_version_comparison_service.get_version_comparison(
             self.db,
             analysis_id=current.id,
             user_id=self.user.id,
@@ -217,7 +222,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
         self.assertTrue(report["has_previous_version"])
         self.assertEqual(report["unresolved_issues_count"], 1)
 
-    def test_previous_version_is_project_scoped(self):
+    async def test_previous_version_is_project_scoped(self):
         now = datetime.now(timezone.utc)
         other_project = Project(
             user_id=self.user.id,
@@ -225,10 +230,10 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             normalized_name="other portal",
         )
         self.db.add(other_project)
-        self.db.commit()
-        self.db.refresh(other_project)
+        await self.db.commit()
+        await self.db.refresh(other_project)
 
-        self._create_analysis(
+        await self._create_analysis(
             title="Shared Title",
             project_id=other_project.id,
             created_at=now - timedelta(minutes=10),
@@ -242,7 +247,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
                 }
             ],
         )
-        current = self._create_analysis(
+        current = await self._create_analysis(
             title="Shared Title",
             project_id=self.project.id,
             created_at=now,
@@ -257,7 +262,7 @@ class AnalysisVersionComparisonServiceTest(unittest.TestCase):
             ],
         )
 
-        report = analysis_version_comparison_service.get_version_comparison(
+        report = await analysis_version_comparison_service.get_version_comparison(
             self.db,
             analysis_id=current.id,
             user_id=self.user.id,

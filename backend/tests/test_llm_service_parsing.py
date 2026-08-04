@@ -60,6 +60,8 @@ class LLMServiceParsingTest(unittest.IsolatedAsyncioTestCase):
             "likelihood": "5",
             "impact": 2,
             "mitigation": "",
+            "evidence": ["Authentication endpoint accepts requests", "Credentials are processed by the API"],
+            "confidence": 0.8,
         }
         payload = json.dumps([minimal])
         with patch("app.services.llm_service.ollama.chat", return_value={"message": {"content": payload}}):

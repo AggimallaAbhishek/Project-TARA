@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pathlib
 import sys
@@ -6,6 +7,7 @@ import unittest
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 
@@ -13,7 +15,7 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.database import Base, get_db
+from app.database import Base, get_async_db, get_db
 from app.main import app
 from app.models.user import User
 from app.services.auth_service import get_current_user
@@ -34,6 +36,15 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=cls.engine)
         Base.metadata.create_all(bind=cls.engine)
+        cls.async_engine = create_async_engine(
+            f"sqlite+aiosqlite:///{cls.temp_db_path}",
+            connect_args={"check_same_thread": False},
+        )
+        cls.AsyncSessionLocal = async_sessionmaker(
+            bind=cls.async_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
 
         db = cls.SessionLocal()
         test_user = User(
@@ -54,6 +65,10 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
             finally:
                 db_session.close()
 
+        async def override_get_async_db():
+            async with cls.AsyncSessionLocal() as db_session:
+                yield db_session
+
         def override_get_current_user():
             return User(
                 id=cls.user_id,
@@ -63,6 +78,7 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
             )
 
         app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_async_db] = override_get_async_db
         app.dependency_overrides[get_current_user] = override_get_current_user
 
         async def fake_analyze_system(
@@ -80,6 +96,8 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
                         "likelihood": 3,
                         "impact": 4,
                         "mitigation": "Use strong session controls and MFA.",
+                        "evidence": ["The API accepts session tokens", "Authentication controls are required"],
+                        "confidence": 0.8,
                     }
                 ],
                 0.01,
@@ -106,6 +124,7 @@ class AnalysisApiRateLimitTest(unittest.TestCase):
         app.dependency_overrides.clear()
         cls.client.close()
         cls.engine.dispose()
+        asyncio.run(cls.async_engine.dispose())
         os.unlink(cls.temp_db_path)
 
     def setUp(self):

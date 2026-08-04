@@ -302,8 +302,8 @@ def validate_threat(threat: dict[str, Any], logger) -> dict[str, Any] | None:
 
     # ===== NEW VALIDATION: Generic Component Rejection =====
     generic_components = {"system", "data", "component", "service", "unspecified", "unspecified component"}
-    component_lower = normalized["affected_component"].lower().strip()
-    if component_lower in generic_components:
+    raw_component = str(threat.get("affected_component") or "").lower().strip()
+    if raw_component in generic_components:
         logger.warning(
             "Rejected threat with generic component: name=%s component=%s",
             normalized["name"],

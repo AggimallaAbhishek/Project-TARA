@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pathlib
 import sys
@@ -6,6 +7,7 @@ import unittest
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 
@@ -13,7 +15,7 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.database import Base, get_db
+from app.database import Base, get_async_db, get_db
 from app.main import app
 from app.models.user import User
 import app.services.analysis_job_service as analysis_job_service_module
@@ -31,6 +33,15 @@ class AnalysisJobsApiTest(unittest.TestCase):
         cls.engine = create_engine(f"sqlite:///{cls.temp_db_path}", connect_args={"check_same_thread": False})
         cls.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=cls.engine)
         Base.metadata.create_all(bind=cls.engine)
+        cls.async_engine = create_async_engine(
+            f"sqlite+aiosqlite:///{cls.temp_db_path}",
+            connect_args={"check_same_thread": False},
+        )
+        cls.AsyncSessionLocal = async_sessionmaker(
+            bind=cls.async_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
 
         db = cls.SessionLocal()
         user = User(email="jobs@example.com", name="Jobs User", google_id="jobs-google")
@@ -50,10 +61,15 @@ class AnalysisJobsApiTest(unittest.TestCase):
             finally:
                 db_session.close()
 
+        async def override_get_async_db():
+            async with cls.AsyncSessionLocal() as db_session:
+                yield db_session
+
         def override_get_current_user():
             return User(id=cls.user_id, email="jobs@example.com", name="Jobs User", google_id="jobs-google")
 
         app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_async_db] = override_get_async_db
         app.dependency_overrides[get_current_user] = override_get_current_user
 
         async def fake_analyze_system(system_description: str, source_context=None):  # noqa: ARG001
@@ -67,7 +83,7 @@ class AnalysisJobsApiTest(unittest.TestCase):
                         "likelihood": 3,
                         "impact": 4,
                         "mitigation": "Bind tokens to sessions; rotate tokens.",
-                        "evidence": ["API Gateway uses bearer tokens"],
+                        "evidence": ["API Gateway uses bearer tokens", "Requests reach the gateway before authorization"],
                         "confidence": 0.8,
                     }
                 ],
@@ -88,6 +104,7 @@ class AnalysisJobsApiTest(unittest.TestCase):
         app.dependency_overrides.clear()
         cls.client.close()
         cls.engine.dispose()
+        asyncio.run(cls.async_engine.dispose())
         os.unlink(cls.temp_db_path)
 
     def setUp(self):
