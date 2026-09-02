@@ -4,7 +4,9 @@
 # Environment files
 .env
 .env.*
-!.env.example
+# Re-include every template. `!.env.example` alone did NOT cover
+# `.env.docker.example`, so that template was silently unstageable.
+!.env*.example
 
 # OS files
 .DS_Store
