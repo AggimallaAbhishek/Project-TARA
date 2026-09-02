@@ -22,13 +22,13 @@ export default function OrbitalTopNav({ heroTelemetry }) {
       data-testid="orbital-telemetry-header"
       aria-label="Home telemetry header"
     >
+      {/* Telemetry only. The centre previously carried an "ORBITAL COMMAND
+          GRID" title, which duplicated the global navbar's role and named the
+          design system rather than anything the user works with. The "REAL API
+          DATA" chip was a developer note, not a user-facing label. */}
       <div className="orbital-topbar-left">
-        <span className="orbital-chip">HOME TELEMETRY</span>
-        <span className="orbital-topbar-separator" aria-hidden="true" />
-        <span className="orbital-topbar-context">REAL API DATA</span>
+        <span className="orbital-chip">Live</span>
       </div>
-
-      <div className="orbital-topbar-title">ORBITAL COMMAND GRID</div>
 
       <div className="orbital-topbar-right">
         <span className="orbital-topbar-stat">OPS <b>{heroTelemetry.operationCount}</b></span>

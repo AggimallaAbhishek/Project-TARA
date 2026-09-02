@@ -569,7 +569,7 @@ test('runs text analysis from the protected home page', async ({ page }) => {
 
   await page.goto('/');
   await expect(page.getByTestId('orbital-telemetry-header')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'ORBITAL' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Threat analysis', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'MISSION INPUT' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
   await expect(page.getByLabel('New project name')).toHaveCount(0);
@@ -599,7 +599,7 @@ test('keeps home layout responsive without horizontal overflow across breakpoint
 
     await expect(page.getByTestId('orbital-dashboard')).toBeVisible();
     await expect(page.getByTestId('orbital-telemetry-header')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'ORBITAL' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Threat analysis', level: 1 })).toBeVisible();
 
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 2,

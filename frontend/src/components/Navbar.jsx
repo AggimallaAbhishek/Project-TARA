@@ -47,17 +47,10 @@ export default function Navbar() {
       <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-secondary/92 backdrop-blur-xl">
         <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-14 flex items-center justify-between gap-3">
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 border border-cyber-cyan/35 text-cyber-cyan bg-cyber-cyan/10">
-                TARA
-              </span>
-              <span className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 border border-risk-medium/35 text-risk-medium bg-risk-medium/10">
-                STRIDE
-              </span>
-              <span className="text-[10px] tracking-[0.2em] uppercase px-2 py-1 border border-cyber-blue/35 text-cyber-blue bg-cyber-blue/10">
-                RISK OPS
-              </span>
-            </div>
+            {/* The TARA / STRIDE / RISK OPS pill cluster was removed: at 10px
+                it was decorative chrome duplicating the wordmark beside it,
+                and "RISK OPS" named nothing in the product. */}
+            <div className="hidden md:block" />
 
             <Link to="/" className="flex items-center gap-2">
               <motion.img
@@ -66,13 +59,13 @@ export default function Navbar() {
                 alt="TARA logo"
                 className="w-8 h-8 rounded-md object-cover border border-dark-border-strong bg-dark-tertiary"
               />
-              <span className="text-sm sm:text-base font-display tracking-[0.35em] text-text-primary">
-                ORBITAL
+              <span className="text-lead font-display font-semibold tracking-tight text-text-primary">
+                TARA
               </span>
             </Link>
 
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline font-mono text-[11px] text-text-muted tracking-wide">
+              <span className="hidden sm:inline font-mono text-meta text-text-muted">
                 UTC {publicClock.utc} · {publicClock.localZoneLabel} {publicClock.local} ({publicClock.localUtcOffset})
               </span>
               <Link

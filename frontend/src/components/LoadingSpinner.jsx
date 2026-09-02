@@ -75,9 +75,6 @@ export default function LoadingSpinner({ text = 'Loading...', size = 'default' }
 export function FullPageLoader({ text = 'Analyzing threats...' }) {
   return (
     <div className="fixed inset-0 bg-dark-primary/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-      {/* Animated background grid */}
-      <div className="absolute inset-0 bg-cyber-pattern opacity-50" />
-      
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

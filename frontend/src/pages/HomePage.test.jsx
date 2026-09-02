@@ -128,7 +128,8 @@ describe('HomePage', () => {
 
     expect(await screen.findByTestId('orbital-dashboard')).toBeInTheDocument()
     expect(screen.getByTestId('orbital-telemetry-header')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'ORBITAL' })).toBeInTheDocument()
+    // The h1 names the page's job, not the internal design-system name.
+    expect(screen.getByRole('heading', { name: 'Threat analysis', level: 1 })).toBeInTheDocument()
 
     await screen.findByLabelText('Project')
 

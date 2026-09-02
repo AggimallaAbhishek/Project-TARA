@@ -9,16 +9,23 @@
     <!-- DNS Prefetch for external services (no-op if not used, saves 100-300ms if used) -->
     <link rel="dns-prefetch" href="https://accounts.google.com" />
     <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
-    
+
     <!-- Preconnect to speed up connections -->
     <link rel="preconnect" href="https://accounts.google.com" crossorigin />
-    
-    <!-- Preload critical chunks (optional: only if vendor chunk is large) -->
-    <!-- Uncomment if vendor.js is larger than 100KB
-    <link rel="preload" as="script" href="/dist/vendor.js" />
-    -->
-    
-    <title>Project TARA</title>
+
+    <!-- Typography. Loaded here rather than via `@import` in styles.css: a CSS
+         @import cannot start until the stylesheet itself has downloaded and
+         parsed, which serialises the font request behind it. These links are
+         discoverable in the initial HTML, so the fetch starts immediately.
+         Space Grotesk = display, IBM Plex Sans = UI/body, IBM Plex Mono = data. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+    />
+
+    <title>TARA — Threat Analysis &amp; Risk Assessment</title>
   </head>
   <body>
     <div id="root"></div>

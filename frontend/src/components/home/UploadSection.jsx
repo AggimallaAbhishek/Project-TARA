@@ -130,7 +130,7 @@ function UploadStep({ label, state }) {
         <Icon className={`h-4 w-4 flex-shrink-0 ${state === 'active' ? 'animate-spin' : ''}`} />
         <span className="min-w-0">
           <span className="block text-xs font-semibold">{label}</span>
-          <span className="block text-[11px]">{stateLabel}</span>
+          <span className="block text-meta">{stateLabel}</span>
         </span>
       </span>
     </li>

@@ -1,36 +1,54 @@
-/* ORBITAL-inspired font stack */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+/* Typefaces are loaded from index.html, not with @import — see the comment
+   there. Roles: Space Grotesk (display), IBM Plex Sans (UI/body), IBM Plex
+   Mono (data and measurement only, never as decoration). */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-primary: #040709;
-  --bg-secondary: #080e14;
-  --bg-tertiary: #0d1620;
-  --bg-elevated: #131e28;
-  --bg-border: #1a4f48;
-  --bg-border-strong: #24766b;
+  --bg-primary: #05080b;
+  --bg-secondary: #0b141a;
+  --bg-tertiary: #0f1a22;
+  --bg-elevated: #132029;
+  --bg-border: #1d3d38;
+  --bg-border-strong: #2a6b60;
 
-  --accent-cyan: #00c8a0;
-  --accent-cyan-dim: #00ae8d;
-  --accent-blue: #3898f0;
-  --accent-success: #4cc38a;
+  --accent-cyan: #2dd4a7;
+  --accent-cyan-dim: #1fae88;
+  --accent-blue: #5aa9f5;
+  --accent-success: #6fd8a8;
 
-  --risk-critical: #e84040;
-  --risk-high: #f08c35;
-  --risk-medium: #e8a030;
-  --risk-low: #66cfa4;
+  --risk-critical: #ff5a5a;
+  --risk-high: #f7913f;
+  --risk-medium: #f0a83c;
+  --risk-low: #6fd8a8;
 
-  --text-primary: #d2e0d9;
-  --text-secondary: #9bb6ab;
-  --text-muted: #6f9184;
+  --text-primary: #e2ece7;
+  --text-secondary: #a8c0b6;
+  /* Dimmest value permitted to carry text: 5.24:1 on the lightest surface.
+     The previous --orb-text-dim (#3a5248) sat at 1.96:1 and has been removed
+     everywhere rather than re-tuned. */
+  --text-muted: #7b978b;
+
+  --font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
 }
 
 body {
   @apply bg-dark-primary text-text-primary min-h-screen antialiased;
-  font-family: 'Rajdhani', system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Tabular data must not jitter as digits change. The live clocks and every
+   count in the app re-render on an interval; proportional numerals make the
+   surrounding layout twitch on each tick. */
+.font-mono,
+[class*='tabular'] {
+  font-variant-numeric: tabular-nums;
 }
 
 ::-webkit-scrollbar {
@@ -44,15 +62,15 @@ body {
 
 ::-webkit-scrollbar-thumb {
   @apply rounded-full;
-  background: rgba(0, 200, 160, 0.25);
+  background: rgba(45, 212, 167, 0.25);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 200, 160, 0.38);
+  background: rgba(45, 212, 167, 0.38);
 }
 
 ::selection {
-  background: rgba(0, 200, 160, 0.24);
+  background: rgba(45, 212, 167, 0.24);
   color: #e8f8f2;
 }
 
@@ -64,7 +82,7 @@ body {
   .ui-app-shell {
     @apply min-h-screen relative;
     background:
-      radial-gradient(circle at 16% 10%, rgba(0, 200, 160, 0.12), transparent 34%),
+      radial-gradient(circle at 16% 10%, rgba(45, 212, 167, 0.12), transparent 34%),
       radial-gradient(circle at 86% 88%, rgba(56, 152, 240, 0.08), transparent 26%),
       var(--bg-primary);
   }
@@ -77,48 +95,51 @@ body {
     @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6;
   }
 
+  /* Retained for compatibility with pages that still render a kicker, but it
+     no longer shouts: the heading below it carries the weight. Prefer deleting
+     the kicker element outright over styling it. */
   .page-kicker {
-    @apply inline-flex items-center gap-2 text-xs uppercase font-semibold mb-2;
-    font-family: 'Share Tech Mono', ui-monospace, monospace;
-    letter-spacing: 0.15em;
-    color: var(--accent-cyan);
+    @apply inline-flex items-center gap-2 text-meta uppercase font-medium mb-1.5;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
   }
 
   .page-title {
-    @apply text-3xl md:text-4xl font-bold leading-tight;
-    font-family: 'Orbitron', 'Rajdhani', sans-serif;
-    letter-spacing: 0.02em;
+    @apply text-h2 md:text-h1 font-semibold;
+    font-family: var(--font-display);
     color: var(--text-primary);
   }
 
   .page-subtitle {
-    @apply mt-1 text-sm md:text-base max-w-3xl;
+    /* 65ch keeps the measure inside the readable band rather than letting it
+       run the full width of a 96rem container. */
+    @apply mt-2 text-base max-w-[65ch];
     color: var(--text-secondary);
   }
 
   .stat-tile {
     @apply rounded-lg border p-4;
-    border-color: rgba(0, 200, 160, 0.2);
-    background: rgba(13, 22, 32, 0.82);
+    border-color: rgba(45, 212, 167, 0.2);
+    background: var(--bg-tertiary);
   }
 
   .section-title {
-    @apply text-lg font-semibold;
+    @apply text-h4 font-semibold;
     color: var(--text-primary);
-    font-family: 'Rajdhani', system-ui, sans-serif;
+    font-family: var(--font-display);
   }
 
   .btn-cyber {
     @apply px-5 py-2.5 rounded-lg font-semibold border transition-all duration-200;
-    background: rgba(0, 200, 160, 0.92);
-    border-color: rgba(0, 200, 160, 0.45);
+    background: rgba(45, 212, 167, 0.92);
+    border-color: rgba(45, 212, 167, 0.45);
     color: #04231d;
   }
 
   .btn-cyber:hover {
-    background: rgba(0, 200, 160, 1);
-    border-color: rgba(0, 200, 160, 0.7);
-    box-shadow: 0 0 12px rgba(0, 200, 160, 0.22);
+    background: rgba(45, 212, 167, 1);
+    border-color: rgba(45, 212, 167, 0.7);
+    box-shadow: 0 4px 14px -3px rgba(45, 212, 167, 0.35);
   }
 
   .btn-cyber:active {
@@ -127,86 +148,77 @@ body {
 
   .btn-secondary {
     @apply px-5 py-2.5 rounded-lg border font-medium transition-all duration-200;
-    background: rgba(13, 22, 32, 0.85);
-    border-color: rgba(0, 200, 160, 0.26);
+    background: var(--bg-tertiary);
+    border-color: rgba(45, 212, 167, 0.26);
     color: var(--text-secondary);
   }
 
   .btn-secondary:hover {
-    background: rgba(19, 30, 40, 0.95);
-    border-color: rgba(0, 200, 160, 0.42);
+    background: var(--bg-elevated);
+    border-color: rgba(45, 212, 167, 0.42);
     color: var(--text-primary);
   }
 
   .input-dark {
     @apply w-full px-4 py-2.5 rounded-lg border transition-all duration-200;
-    background: rgba(13, 22, 32, 0.88);
-    border-color: rgba(0, 200, 160, 0.25);
+    background: var(--bg-tertiary);
+    border-color: rgba(45, 212, 167, 0.25);
     color: var(--text-primary);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   .input-dark::placeholder {
-    color: #7f9f93;
+    color: var(--text-muted);
   }
 
   .input-dark:focus {
-    border-color: rgba(0, 200, 160, 0.46);
-    box-shadow: 0 0 0 2px rgba(0, 200, 160, 0.15);
+    border-color: rgba(45, 212, 167, 0.46);
+    box-shadow: 0 0 0 2px rgba(45, 212, 167, 0.15);
   }
 
   .textarea-dark {
     @apply w-full px-4 py-2.5 rounded-lg border resize-none transition-all duration-200;
-    background: rgba(13, 22, 32, 0.88);
-    border-color: rgba(0, 200, 160, 0.25);
+    background: var(--bg-tertiary);
+    border-color: rgba(45, 212, 167, 0.25);
     color: var(--text-primary);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   .textarea-dark::placeholder {
-    color: #7f9f93;
+    color: var(--text-muted);
   }
 
   .textarea-dark:focus {
-    border-color: rgba(0, 200, 160, 0.46);
-    box-shadow: 0 0 0 2px rgba(0, 200, 160, 0.15);
+    border-color: rgba(45, 212, 167, 0.46);
+    box-shadow: 0 0 0 2px rgba(45, 212, 167, 0.15);
   }
 
-  .text-gradient {
-    background: linear-gradient(90deg, #00c8a0, #3898f0);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
+  /* `.text-gradient` was removed: emphasis here comes from weight and size,
+     and it had no call sites. */
 
-  .bg-cyber-pattern {
-    background-image:
-      linear-gradient(rgba(0, 200, 160, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 200, 160, 0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
+  /* `.bg-cyber-pattern` was removed with its only call site: a two-axis grid
+     overlay with no canvas or blueprint beneath it is decoration, not texture. */
 
-  /* Shared ORBITAL primitives */
+  /* Shared surface primitives. "ORBITAL" is the internal name for this system
+     and must not appear in any user-facing string - the product is TARA. */
   .ui-panel {
-    @apply rounded-xl border p-6;
-    border-color: rgba(0, 200, 160, 0.23);
-    background:
-      linear-gradient(180deg, rgba(8, 14, 20, 0.95), rgba(8, 14, 20, 0.9));
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+    @apply rounded-xl border p-6 shadow-panel;
+    border-color: rgba(45, 212, 167, 0.18);
+    background: var(--bg-secondary);
   }
 
   .ui-panel-header {
     @apply flex items-center justify-between gap-3 mb-4 pb-2 border-b;
-    border-color: rgba(0, 200, 160, 0.2);
+    border-color: rgba(45, 212, 167, 0.2);
   }
 
+  /* Mono is right here: a status badge is a state readout, not prose. */
   .ui-status-badge {
-    @apply inline-flex items-center rounded border px-2 py-0.5 text-xs uppercase;
-    font-family: 'Share Tech Mono', ui-monospace, monospace;
-    letter-spacing: 0.1em;
+    @apply inline-flex items-center rounded border px-2 py-0.5 text-meta uppercase;
+    font-family: var(--font-mono);
     color: var(--accent-cyan);
-    border-color: rgba(0, 200, 160, 0.38);
-    background: rgba(0, 200, 160, 0.08);
+    border-color: rgba(45, 212, 167, 0.38);
+    background: rgba(45, 212, 167, 0.08);
   }
 
   .ui-filter-bar {
@@ -227,14 +239,14 @@ body {
 
   .ui-alert {
     @apply rounded-lg border px-3 py-2 text-sm;
-    border-color: rgba(232, 160, 48, 0.38);
-    background: rgba(232, 160, 48, 0.12);
+    border-color: rgba(240, 168, 60, 0.38);
+    background: rgba(240, 168, 60, 0.12);
     color: #f0cb8f;
   }
 
   .ui-alert.error {
-    border-color: rgba(232, 64, 64, 0.45);
-    background: rgba(232, 64, 64, 0.12);
+    border-color: rgba(255, 90, 90, 0.45);
+    background: rgba(255, 90, 90, 0.12);
     color: #ff8b8b;
   }
 }
