@@ -8,7 +8,7 @@ ollama
 defusedxml
 pillow>=12.3.0
 python-dotenv
-python-jose[cryptography]
+PyJWT
 google-auth
 reportlab
 pymupdf
@@ -30,9 +30,6 @@ cryptography>=50.0.0
 pyasn1>=0.6.4
 click>=8.3.3
 
-# Accepted residual risk: ecdsa 0.19.2 / PYSEC-2026-1325 (Minerva timing attack
-# on ECDSA signing). No fix version exists - upstream considers side-channel
-# resistance out of scope. Reached only via python-jose, and this app signs JWTs
-# with HS256 (see Settings.algorithm), so no ECDSA signing or key generation
-# runs. Revisit by migrating python-jose -> PyJWT, which does not pull ecdsa.
+# python-jose was replaced by PyJWT: it pulled in ecdsa, whose Minerva timing
+# advisory (PYSEC-2026-1325) has no upstream fix. PyJWT has no such dependency.
 

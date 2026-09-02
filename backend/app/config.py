@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     ollama_readiness_cache_ttl_seconds: int = 30
     ollama_vision_model: str = ""
     analysis_job_worker_concurrency: int = 1
-    analysis_job_stage_dir: str = "/tmp/tara-analysis-jobs"
+    # Under the app root, not /tmp: a world-writable parent lets another local
+    # user pre-create or replace the directory and read uploaded documents.
+    analysis_job_stage_dir: str = str(Path(__file__).resolve().parents[1] / "var" / "analysis-jobs")
     database_url: str = "postgresql+psycopg2://tara:tara@localhost:5432/tara"
     database_pool_size: int = 5
     database_max_overflow: int = 10

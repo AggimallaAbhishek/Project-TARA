@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import re
+import stat
 import time
 import uuid
 from contextlib import suppress
@@ -53,9 +54,25 @@ def _source_type_from_metadata(prefix: str, metadata: dict[str, Any]) -> str:
 
 
 class AnalysisJobService:
+    # Owner-only: staged files are user-uploaded documents awaiting analysis.
+    _STAGE_DIR_MODE = 0o700
+
     def _stage_root(self) -> Path:
         stage_root = Path(get_settings().analysis_job_stage_dir)
-        stage_root.mkdir(parents=True, exist_ok=True)
+        stage_root.mkdir(parents=True, exist_ok=True, mode=self._STAGE_DIR_MODE)
+        # mkdir's mode applies only on creation, and is masked by umask; enforce
+        # it explicitly so a pre-existing loose directory is tightened too.
+        current = stat.S_IMODE(stage_root.stat().st_mode)
+        if current != self._STAGE_DIR_MODE:
+            try:
+                stage_root.chmod(self._STAGE_DIR_MODE)
+            except OSError as exc:
+                # Fail closed: proceeding would stage user documents in exactly
+                # the world-readable directory this guard exists to prevent.
+                raise RuntimeError(
+                    f"Refusing to stage uploads in {stage_root}: could not restrict "
+                    f"permissions from {oct(current)} to {oct(self._STAGE_DIR_MODE)}."
+                ) from exc
         return stage_root
 
     @staticmethod

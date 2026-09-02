@@ -77,8 +77,9 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 async def get_async_db():
+    # `async with` closes the session on exit, and AsyncSession.close() rolls
+    # back any open transaction - verified against a single-connection pool:
+    # uncommitted rows from a handler that raised are invisible to the next
+    # request. No explicit rollback or second close() is needed here.
     async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+        yield session

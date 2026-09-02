@@ -11,12 +11,7 @@ except ImportError:
 
 from app.config import get_settings
 from app.services.llm_internal.parsing import (
-    extract_json_payload,
-    format_step_text,
-    normalize_mitigation_steps,
     parse_llm_response,
-    parse_serialized_mitigation_list,
-    validate_threat,
 )
 from app.services.llm_internal.prompting import (
     build_cache_key,
@@ -114,9 +109,6 @@ class LLMService:
             asyncio.to_thread(ollama.chat, **request_kwargs),
             timeout=self.request_timeout_seconds,
         )
-
-    def _extract_json_payload(self, response_text: str) -> Any:
-        return extract_json_payload(response_text)
 
     async def analyze_system(
         self,
@@ -318,21 +310,5 @@ class LLMService:
 
     def _parse_response(self, response_text: str) -> list[dict[str, Any]]:
         return parse_llm_response(response_text, logger)
-
-    @staticmethod
-    def _format_step_text(step: str) -> str:
-        return format_step_text(step)
-
-    @classmethod
-    def _parse_serialized_mitigation_list(cls, mitigation_text: str) -> list[str] | None:
-        return parse_serialized_mitigation_list(mitigation_text)
-
-    @classmethod
-    def _normalize_mitigation_steps(cls, mitigation_text: str) -> str:
-        return normalize_mitigation_steps(mitigation_text)
-
-    def _validate_threat(self, threat: dict[str, Any]) -> dict[str, Any] | None:
-        return validate_threat(threat, logger)
-
 
 llm_service = LLMService()

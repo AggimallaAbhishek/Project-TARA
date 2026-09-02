@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 import logging
 import secrets
 from typing import Optional
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
@@ -135,7 +136,7 @@ async def get_current_user(
             user_id = int(user_id)
         except (ValueError, TypeError):
             raise credentials_exception
-    except JWTError:
+    except PyJWTError:
         raise credentials_exception
     
     result = await db.execute(select(User).where(User.id == user_id))

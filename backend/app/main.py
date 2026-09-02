@@ -43,8 +43,19 @@ CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_EXEMPT_PATHS = {"/api/auth/google"}
 JOB_DRAIN_SHUTDOWN_TIMEOUT = 10.0
 
-if settings.is_production and settings.secret_key == DEFAULT_SECRET_KEY:
-    raise RuntimeError("SECRET_KEY must be configured in production")
+# RFC 7518 3.2: an HMAC key must be at least the hash output length.
+MIN_SECRET_KEY_BYTES = {"HS256": 32, "HS384": 48, "HS512": 64}
+
+if settings.is_production:
+    if settings.secret_key == DEFAULT_SECRET_KEY:
+        raise RuntimeError("SECRET_KEY must be configured in production")
+    required = MIN_SECRET_KEY_BYTES[settings.algorithm]
+    actual = len(settings.secret_key.encode("utf-8"))
+    if actual < required:
+        raise RuntimeError(
+            f"SECRET_KEY must be at least {required} bytes for "
+            f"{settings.algorithm} (RFC 7518 3.2); got {actual}."
+        )
 
 
 def _build_alembic_config() -> Config:
