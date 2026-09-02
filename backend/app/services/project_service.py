@@ -12,6 +12,7 @@ from app.models.project import Project
 from app.models.user import User
 from app.services.audit_service import audit_service
 from app.utils.time import utc_now_for_db
+from app.utils.errors import UserFacingValueError
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class ProjectService:
     async def get_project_or_raise(self, db: AsyncSession, *, project_id: int, user_id: int) -> Project:
         project = await self.get_project_for_user(db, project_id=project_id, user_id=user_id)
         if not project:
-            raise ValueError(f"Project with id {project_id} not found")
+            raise UserFacingValueError(f"Project with id {project_id} not found")
         return project
 
     async def find_by_normalized_name(self, db: AsyncSession, *, user_id: int, name: str) -> Project | None:
@@ -62,7 +63,7 @@ class ProjectService:
             name=display_name,
         )
         if existing:
-            raise ValueError("A project with this name already exists")
+            raise UserFacingValueError("A project with this name already exists")
 
         project = Project(
             user_id=current_user.id,
@@ -79,7 +80,7 @@ class ProjectService:
                 current_user.id,
                 normalized_name,
             )
-            raise ValueError("A project with this name already exists") from exc
+            raise UserFacingValueError("A project with this name already exists") from exc
 
         if record_audit:
             await audit_service.record_event(
@@ -119,7 +120,7 @@ class ProjectService:
                     name=display_name,
                 )
                 if existing and existing.id != project.id:
-                    raise ValueError("A project with this name already exists")
+                    raise UserFacingValueError("A project with this name already exists")
             if display_name != project.name:
                 project.name = display_name
                 project.normalized_name = normalized_name

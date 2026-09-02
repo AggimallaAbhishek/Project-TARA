@@ -45,3 +45,50 @@ def test_user_facing_error_is_still_a_runtime_error():
         raise UserFacingError("curated")
     except RuntimeError as exc:
         assert str(exc) == "curated"
+
+
+def test_user_facing_value_error_keeps_the_404_409_status_mapping():
+    """Handlers map ValueError to 404/409; the marker must not break that."""
+    from app.utils.errors import UserFacingValueError
+
+    assert issubclass(UserFacingValueError, ValueError)
+    try:
+        raise UserFacingValueError("A project with this name already exists")
+    except ValueError as exc:
+        assert safe_detail(exc) == "A project with this name already exists"
+
+
+def test_an_incidental_value_error_is_not_echoed():
+    """A stray ValueError inside the same try block must not reach the client."""
+    exc = ValueError("invalid literal for int() with base 10: '/srv/secret.key'")
+    assert safe_detail(exc, "Project not found.") == "Project not found."
+
+
+def test_every_broad_handler_routes_through_safe_detail():
+    """Guard against a future handler re-introducing a raw echo."""
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[1] / "app"
+    domain_types = {
+        "DiagramRenderError",
+        "DiagramRendererUnavailableError",
+        "DiagramExtractionError",
+        "DocumentExtractionError",
+    }
+
+    offenders = []
+    for path in list(root.rglob("routes/*.py")) + list(root.rglob("services/*.py")):
+        caught = None
+        for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+            match = re.search(r"except\s+([\w.]+)\s+as\s+exc:", line)
+            if match:
+                caught = match.group(1)
+            if re.search(r"detail=(f?\"[^\"]*\{)?str\(exc\)", line):
+                if caught not in domain_types:
+                    offenders.append(f"{path.name}:{lineno} catches {caught}")
+
+    assert offenders == [], (
+        "broad exception handlers echo raw text; route them through safe_detail: "
+        + ", ".join(offenders)
+    )

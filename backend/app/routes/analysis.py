@@ -37,6 +37,7 @@ from app.services.project_service import project_service
 from app.services.rate_limit_service import analyze_rate_limiter
 from app.services.risk_service import risk_service
 from app.services.source_context_service import build_source_context
+from app.utils.errors import safe_detail
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -269,7 +270,10 @@ async def list_analyses(
         try:
             await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=safe_detail(exc, "Analysis not found."),
+            )
         filters.append(Analysis.project_id == project_id)
 
     if q and q.strip():
@@ -510,7 +514,7 @@ async def get_analysis_version_comparison(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail=safe_detail(exc, "Analysis not found."),
         )
 
 
@@ -543,7 +547,7 @@ async def export_analysis_pdf(
         logger.exception("PDF generation failed for analysis_id=%s", analysis_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail=safe_detail(exc, "PDF export failed."),
         ) from exc
 
     await audit_service.record_event(

@@ -19,6 +19,7 @@ from app.schemas.project import (
 from app.services.auth_service import get_current_user
 from app.services.project_service import project_service
 from app.routes.analysis import _build_analysis_summary
+from app.utils.errors import safe_detail
 
 router = APIRouter()
 
@@ -82,7 +83,10 @@ async def create_project(
         return project_service.build_project_response(project)
     except ValueError as exc:
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=safe_detail(exc, "That project name is already in use."),
+        )
 
 
 @router.get(
@@ -163,7 +167,10 @@ async def list_project_analyses(
     try:
         await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_detail(exc, "Project not found."),
+        )
 
     filters = [Analysis.user_id == current_user.id, Analysis.project_id == project_id]
 
@@ -207,7 +214,10 @@ async def list_project_activity(
     try:
         await project_service.get_project_or_raise(db, project_id=project_id, user_id=current_user.id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_detail(exc, "Project not found."),
+        )
 
     result = await db.execute(
         select(AuditLog)

@@ -9,6 +9,7 @@ from app.schemas.comparison import ComparisonRequest, ComparisonResponse
 from app.services.audit_service import audit_service
 from app.services.auth_service import get_current_user
 from app.services.comparison_service import comparison_service
+from app.utils.errors import safe_detail
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ async def compare_analyses(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail=safe_detail(exc, "One or more analyses were not found."),
         )
     except Exception:
         logger.exception("Comparison failed for analysis_ids=%s", request.analysis_ids)

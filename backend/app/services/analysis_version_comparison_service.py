@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.analysis import Analysis, Threat
+from app.utils.errors import UserFacingValueError
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class AnalysisVersionComparisonService:
         )
         current_analysis = result.scalars().first()
         if not current_analysis:
-            raise ValueError(f"Analysis with id {analysis_id} not found")
+            raise UserFacingValueError(f"Analysis with id {analysis_id} not found")
         return await self.build_version_comparison(db, current_analysis=current_analysis)
 
     async def build_version_comparison(self, db: AsyncSession, *, current_analysis: Analysis) -> dict:

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.analysis import Analysis, Threat
+from app.utils.errors import UserFacingValueError
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class ComparisonService:
         found_ids = {a.id for a in analyses}
         missing = [aid for aid in analysis_ids if aid not in found_ids]
         if missing:
-            raise ValueError(f"Analyses not found or not owned by user: {missing}")
+            raise UserFacingValueError(f"Analyses not found or not owned by user: {missing}")
 
         stride_categories = [
             "Spoofing",

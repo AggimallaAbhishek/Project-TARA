@@ -211,7 +211,7 @@ class AnalysisWorkflowService:
                 status_code,
                 str(exc),
             )
-            raise HTTPException(status_code=status_code, detail=str(exc))
+            raise HTTPException(status_code=status_code, detail=safe_detail(exc, "Could not resolve the project for this analysis."))
         except RuntimeError as exc:
             await db.rollback()
             logger.warning(
