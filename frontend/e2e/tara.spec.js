@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
 
+// Requests that reached no mock route, reset per test. The catch-all still
+// answers 500 so the app's own error handling is exercised, but the test that
+// triggered it now fails with the exact method and path.
+let unhandledRoutes = [];
+
+test.beforeEach(() => {
+  unhandledRoutes = [];
+});
+
+test.afterEach(() => {
+  expect(
+    unhandledRoutes,
+    'requests reached no mock route - the mocks have drifted from the API',
+  ).toEqual([]);
+});
+
 const user = {
   id: 1,
   email: 'e2e@example.com',
@@ -234,6 +250,32 @@ async function mockApi(
     onDiagramRefresh = () => {},
   } = {},
 ) {
+  // The app submits analyses as async jobs and polls until they finish, so the
+  // mock has to model both halves: POST returns a queued job, and the first poll
+  // reports success with the analysis id the test then navigates to.
+  const jobAnalysisIds = {
+    'job-text': 101,
+    'job-diagram': 202,
+    'job-document': 303,
+    'job-uml': 404,
+  };
+  const queuedJob = (jobId) => ({
+    job_id: jobId,
+    status: 'queued',
+    stage: 'queued',
+    progress_percent: 0,
+    analysis_id: null,
+    error: null,
+  });
+  const succeededJob = (jobId) => ({
+    job_id: jobId,
+    status: 'succeeded',
+    stage: 'completed',
+    progress_percent: 100,
+    analysis_id: jobAnalysisIds[jobId] ?? null,
+    error: null,
+  });
+
   await page.route('**/health', (route) => fulfillJson(route, { status: 'healthy' }));
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -292,6 +334,33 @@ async function mockApi(
           created_at: '2026-01-01T10:00:00Z',
         },
       ]);
+    }
+    if (path === '/api/model-readiness' && method === 'GET') {
+      return fulfillJson(route, {
+        status: 'ready',
+        text: { configured: true, available: true, model: 'gpt-oss:120b-cloud', error: null },
+        vision: { configured: false, available: false, model: null, error: null },
+        checked_at: '2026-01-01T00:00:00Z',
+      });
+    }
+    if (path === '/api/analyze/jobs' && method === 'POST') {
+      return fulfillJson(route, queuedJob('job-text'), 202);
+    }
+    if (path === '/api/diagram/analyze/jobs' && method === 'POST') {
+      return fulfillJson(route, queuedJob('job-diagram'), 202);
+    }
+    if (path === '/api/diagram/analyze-code/jobs' && method === 'POST') {
+      return fulfillJson(route, queuedJob('job-uml'), 202);
+    }
+    if (path === '/api/document/analyze/jobs' && method === 'POST') {
+      return fulfillJson(route, queuedJob('job-document'), 202);
+    }
+    if (path.startsWith('/api/analysis-jobs/') && method === 'GET') {
+      const jobId = path.split('/').pop();
+      if (!(jobId in jobAnalysisIds)) {
+        return fulfillJson(route, { detail: 'Analysis job not found.' }, 404);
+      }
+      return fulfillJson(route, succeededJob(jobId));
     }
     if (path === '/api/analyze' && method === 'POST') {
       return fulfillJson(route, { ...analysis, id: 101, title: 'E2E Text Analysis' }, 201);
@@ -465,6 +534,7 @@ async function mockApi(
         has_more: false,
       });
     }
+    unhandledRoutes.push(`${method} ${path}`);
     return fulfillJson(route, { detail: `Unhandled mock route: ${method} ${path}` }, 500);
   });
 }
@@ -686,8 +756,11 @@ test('compares selected analyses side-by-side', async ({ page }) => {
 
   await page.goto('/compare');
   await page.getByRole('button', { name: /Click to select analyses/i }).click();
-  await page.getByRole('button', { name: /Payment Service/i }).click();
-  await page.getByRole('button', { name: /Inventory Core/i }).click();
+  // Each option's accessible name is "<analysis title> <project name> ...", and
+  // the "Payment Service" analysis lives in the "Payment Service" project, so an
+  // unanchored match hits both rows. Anchor on the leading title.
+  await page.getByRole('button', { name: /^Payment Service\b/ }).click();
+  await page.getByRole('button', { name: /^Inventory Core\b/ }).click();
   await page.getByRole('button', { name: 'Compare' }).click();
 
   await expect(page.getByText('Risk Score Comparison')).toBeVisible();

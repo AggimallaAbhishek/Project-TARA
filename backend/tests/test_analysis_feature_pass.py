@@ -27,6 +27,7 @@ from app.services.auth_service import get_current_user
 from app.services.llm_service import llm_service
 from app.services.pdf_service import pdf_report_service
 from app.services.rate_limit_service import analyze_rate_limiter
+from app.utils.errors import UserFacingError
 
 
 def risk_level_for_score(score: float) -> str:
@@ -330,7 +331,7 @@ class AnalysisFeaturePassTest(unittest.TestCase):
             llm_service,
             "analyze_system",
             new=AsyncMock(
-                side_effect=RuntimeError(
+                side_effect=UserFacingError(
                     "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
                 )
             ),

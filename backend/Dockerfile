@@ -34,9 +34,20 @@ RUN adduser --disabled-password --gecos '' appuser
 # Copy application code
 COPY . .
 
+# Staged uploads are written at runtime by appuser, but /app is root-owned after
+# COPY, so create the directory with the right owner and mode up front.
+RUN mkdir -p /app/var/analysis-jobs \
+    && chown -R appuser:appuser /app/var \
+    && chmod 700 /app/var/analysis-jobs
+
 # Switch to non-root user
 USER appuser
 
 EXPOSE 8000
 
+# Deliberately NOT --proxy-headers: uvicorn's implementation overwrites
+# scope["client"] with the leftmost X-Forwarded-For entry, which the client
+# controls, so a caller could forge an address and evade the per-IP login limit.
+# app/utils/client_ip.py resolves the originating address from the true socket
+# peer instead, trusting the header only when the peer is a private-range proxy.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

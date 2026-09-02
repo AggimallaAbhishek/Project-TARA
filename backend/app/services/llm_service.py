@@ -11,12 +11,7 @@ except ImportError:
 
 from app.config import get_settings
 from app.services.llm_internal.parsing import (
-    extract_json_payload,
-    format_step_text,
-    normalize_mitigation_steps,
     parse_llm_response,
-    parse_serialized_mitigation_list,
-    validate_threat,
 )
 from app.services.llm_internal.prompting import (
     build_cache_key,
@@ -27,6 +22,7 @@ from app.services.llm_internal.prompting import (
 )
 from app.services.llm_internal.transport import build_chat_request_kwargs
 from app.services.threat_cache_service import HybridThreatCache
+from app.utils.errors import UserFacingError
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -113,9 +109,6 @@ class LLMService:
             asyncio.to_thread(ollama.chat, **request_kwargs),
             timeout=self.request_timeout_seconds,
         )
-
-    def _extract_json_payload(self, response_text: str) -> Any:
-        return extract_json_payload(response_text)
 
     async def analyze_system(
         self,
@@ -267,7 +260,7 @@ class LLMService:
                 len(system_description),
                 elapsed,
             )
-            raise RuntimeError(
+            raise UserFacingError(
                 f"Threat analysis timed out after {self.request_timeout_seconds}s. "
                 "Try a smaller model or reduce prompt complexity."
             ) from exc
@@ -281,7 +274,7 @@ class LLMService:
                 elapsed,
                 str(exc),
             )
-            raise RuntimeError(
+            raise UserFacingError(
                 "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
             ) from exc
         except ollama.ResponseError as exc:
@@ -297,14 +290,14 @@ class LLMService:
                 error_text,
             )
             if status_code == 404:
-                raise RuntimeError(
+                raise UserFacingError(
                     f"Ollama model '{self.model}' is unavailable. Pull the model or set OLLAMA_MODEL to an installed model."
                 ) from exc
-            raise RuntimeError("Threat analysis provider error from Ollama") from exc
+            raise UserFacingError("Threat analysis provider error from Ollama") from exc
         except ValueError as exc:
             elapsed = time.perf_counter() - overall_start
             logger.warning("LLM response parsing error after %.2fs: %s", elapsed, str(exc))
-            raise RuntimeError("Threat analysis response was invalid") from exc
+            raise UserFacingError("Threat analysis response was invalid") from exc
         except Exception as exc:
             elapsed = time.perf_counter() - overall_start
             logger.exception(
@@ -313,111 +306,9 @@ class LLMService:
                 len(system_description),
                 elapsed,
             )
-            raise RuntimeError("Threat analysis request failed unexpectedly") from exc
+            raise UserFacingError("Threat analysis request failed unexpectedly") from exc
 
     def _parse_response(self, response_text: str) -> list[dict[str, Any]]:
         return parse_llm_response(response_text, logger)
-
-    @staticmethod
-    def _format_step_text(step: str) -> str:
-        return format_step_text(step)
-
-    @classmethod
-    def _parse_serialized_mitigation_list(cls, mitigation_text: str) -> list[str] | None:
-        return parse_serialized_mitigation_list(mitigation_text)
-
-    @classmethod
-    def _normalize_mitigation_steps(cls, mitigation_text: str) -> str:
-        return normalize_mitigation_steps(mitigation_text)
-
-    def _validate_threat(self, threat: dict[str, Any]) -> dict[str, Any] | None:
-        return validate_threat(threat, logger)
-
-    async def analyze_system_streaming(
-        self,
-        system_description: str,
-        source_context: dict[str, Any] | None = None,
-    ):
-        """
-        Stream threat analysis results using ollama.AsyncClient.
-        Yields JSON-serializable dicts suitable for Server-Sent Events:
-          {"event": "status", "data": {"message": "..."}}
-          {"event": "threat", "data": {<threat dict>}}
-          {"event": "complete", "data": {"threats_count": N, "analysis_time": T}}
-          {"event": "error", "data": {"message": "..."}}
-        """
-        import json as _json
-        overall_start = time.perf_counter()
-        normalized_context = normalize_source_context(source_context)
-        normalized_description = self._normalize_description(
-            f"{normalized_context['source_type']} "
-            f"{normalized_context['source_metadata']} "
-            f"{normalized_context['structured_context']} "
-            f"{system_description}"
-        )
-
-        yield {"event": "status", "data": {"message": "Building analysis prompt..."}}
-
-        prompt = build_stride_prompt(system_description, normalized_context)
-
-        yield {"event": "status", "data": {"message": f"Sending to {self.model}..."}}
-
-        try:
-            client = ollama.AsyncClient(host=settings.ollama_host)
-            response_chunks: list[str] = []
-
-            async for chunk in await client.chat(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a security expert. Output valid JSON only, no explanations.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                options={
-                    "temperature": self.temperature,
-                    "num_predict": self.num_predict,
-                    "num_ctx": self.num_ctx,
-                },
-                keep_alive=self.keep_alive,
-                stream=True,
-            ):
-                content = chunk.get("message", {}).get("content", "")
-                if content:
-                    response_chunks.append(content)
-
-            yield {"event": "status", "data": {"message": "Parsing threats..."}}
-
-            full_response = "".join(response_chunks)
-            threats = self._parse_response(full_response)
-
-            for threat in threats:
-                yield {"event": "threat", "data": threat}
-
-            elapsed = round(time.perf_counter() - overall_start, 2)
-            yield {
-                "event": "complete",
-                "data": {
-                    "threats_count": len(threats),
-                    "analysis_time": elapsed,
-                },
-            }
-            logger.info(
-                "Streaming analysis completed model=%s chars=%d threats=%d elapsed=%.2fs",
-                self.model,
-                len(system_description),
-                len(threats),
-                elapsed,
-            )
-
-        except asyncio.TimeoutError:
-            yield {"event": "error", "data": {"message": f"Analysis timed out after {self.request_timeout_seconds}s"}}
-        except ConnectionError:
-            yield {"event": "error", "data": {"message": "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST."}}
-        except Exception as exc:
-            logger.exception("Streaming analysis failed")
-            yield {"event": "error", "data": {"message": f"Analysis failed: {str(exc)}"}}
-
 
 llm_service = LLMService()

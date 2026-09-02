@@ -1,4 +1,10 @@
 -r requirements.in
 pytest
 pip-audit
-pip-tools
+# 7.5.1 is incompatible with pip >= 26 (AttributeError: use_pep517 during
+# pip-compile); without this floor, installing from the lockfile silently
+# reinstalls the broken version.
+pip-tools>=7.6.1
+# starlette>=1.6 uses httpx2 for its TestClient; without it every API test
+# emits a StarletteDeprecationWarning and a future major will break.
+httpx2

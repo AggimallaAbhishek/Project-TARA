@@ -10,9 +10,15 @@
 .DS_Store
 Thumbs.db
 
+# Staged uploads awaiting analysis (runtime data)
+backend/var/
+
 # Exported source snapshots
 source_code/
 source_code.zip
+
+# Installed agent skills (tooling, not project code)
+.agents/
 
 # IDE
 .vscode/

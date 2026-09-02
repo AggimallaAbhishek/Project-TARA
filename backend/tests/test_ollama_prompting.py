@@ -240,9 +240,15 @@ class TestTargetThreatCount:
 
     def test_large_system(self):
         """Large description should estimate 14+ threats."""
+        text = "Microservices architecture with API Gateway, Auth Service, User Service, Product Service, Order Service, Payment Service, all using PostgreSQL, Redis cache, RabbitMQ, deployed on Kubernetes" * 5
+        count = estimate_target_threat_count(text)
+        assert count == 14
+
+    def test_very_large_system(self):
+        """Descriptions past the top threshold should estimate 18 threats."""
         text = "Microservices architecture with API Gateway, Auth Service, User Service, Product Service, Order Service, Payment Service, all using PostgreSQL, Redis cache, RabbitMQ, deployed on Kubernetes" * 8
         count = estimate_target_threat_count(text)
-        assert count >= 14
+        assert count == 18
 
 
 class TestDeduplication:

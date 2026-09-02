@@ -4,6 +4,7 @@ from typing import Iterable
 from xml.sax.saxutils import escape as xml_escape
 
 from app.models.analysis import Analysis, Threat
+from app.utils.errors import UserFacingError
 
 
 class PDFReportService:
@@ -66,7 +67,7 @@ class PDFReportService:
                 TableStyle,
             )
         except ImportError as exc:
-            raise RuntimeError("PDF export dependency is missing. Install reportlab.") from exc
+            raise UserFacingError("PDF export dependency is missing. Install reportlab.") from exc
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(
