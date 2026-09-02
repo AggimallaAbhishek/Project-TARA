@@ -739,8 +739,11 @@ test('compares selected analyses side-by-side', async ({ page }) => {
 
   await page.goto('/compare');
   await page.getByRole('button', { name: /Click to select analyses/i }).click();
-  await page.getByRole('button', { name: /Payment Service/i }).click();
-  await page.getByRole('button', { name: /Inventory Core/i }).click();
+  // Each option's accessible name is "<analysis title> <project name> ...", and
+  // the "Payment Service" analysis lives in the "Payment Service" project, so an
+  // unanchored match hits both rows. Anchor on the leading title.
+  await page.getByRole('button', { name: /^Payment Service\b/ }).click();
+  await page.getByRole('button', { name: /^Inventory Core\b/ }).click();
   await page.getByRole('button', { name: 'Compare' }).click();
 
   await expect(page.getByText('Risk Score Comparison')).toBeVisible();
