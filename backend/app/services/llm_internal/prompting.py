@@ -152,23 +152,6 @@ def estimate_target_threat_count(system_description: str) -> int:
     return 18
 
 
-def _compact_json(value: Any) -> str:
-    try:
-        return json.dumps(value or {}, ensure_ascii=False, sort_keys=True)
-    except TypeError:
-        return json.dumps(str(value), ensure_ascii=False)
-
-
-def normalize_source_context(source_context: dict[str, Any] | None) -> dict[str, Any]:
-    source_context = source_context or {}
-    return {
-        "source_type": source_context.get("source_type") or "text",
-        "source_metadata": source_context.get("source_metadata") or {},
-        "structured_context": source_context.get("structured_context") or {},
-        "editable_summary": source_context.get("editable_summary") or "",
-    }
-
-
 _FENCE_TAG_PATTERN = re.compile(r"</?\s*untrusted_source\b[^>]*>", re.IGNORECASE)
 
 
@@ -182,6 +165,31 @@ def neutralize_fence_markers(text: str) -> str:
     output is a security assessment, poisoned findings are the payload.
     """
     return _FENCE_TAG_PATTERN.sub("[redacted-fence-marker]", text or "")
+
+
+def _compact_json(value: Any) -> str:
+    """Serialize context for the prompt, with fence markers neutralized.
+
+    These values are derived from the same uploaded document as the fenced text
+    (component names, file names, extracted summaries) but are rendered *above*
+    the fence, so they are covered by neither the sanitizer nor the "ignore
+    instructions inside the source text" guard unless cleaned here too.
+    """
+    try:
+        serialized = json.dumps(value or {}, ensure_ascii=False, sort_keys=True)
+    except TypeError:
+        serialized = json.dumps(str(value), ensure_ascii=False)
+    return neutralize_fence_markers(serialized)
+
+
+def normalize_source_context(source_context: dict[str, Any] | None) -> dict[str, Any]:
+    source_context = source_context or {}
+    return {
+        "source_type": source_context.get("source_type") or "text",
+        "source_metadata": source_context.get("source_metadata") or {},
+        "structured_context": source_context.get("structured_context") or {},
+        "editable_summary": source_context.get("editable_summary") or "",
+    }
 
 
 def build_stride_prompt(system_description: str, source_context: dict[str, Any] | None = None) -> str:

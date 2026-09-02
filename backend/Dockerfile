@@ -39,8 +39,9 @@ USER appuser
 
 EXPOSE 8000
 
-# --proxy-headers so request.client reflects the real peer behind a load
-# balancer; --forwarded-allow-ips limits which peer may assert it. Widen this to
-# the actual proxy address when deploying behind one outside the compose network.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips", "*"]
+# Deliberately NOT --proxy-headers: uvicorn's implementation overwrites
+# scope["client"] with the leftmost X-Forwarded-For entry, which the client
+# controls, so a caller could forge an address and evade the per-IP login limit.
+# app/utils/client_ip.py resolves the originating address from the true socket
+# peer instead, trusting the header only when the peer is a private-range proxy.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

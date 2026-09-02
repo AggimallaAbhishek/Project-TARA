@@ -4,6 +4,7 @@ import os
 import re
 import time
 import uuid
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ from app.services.diagram_extract_service import DiagramExtractionError, diagram
 from app.services.document_extract_service import DocumentExtractionError, document_extract_service
 from app.services.extract_session_service import extract_session_service
 from app.services.source_context_service import build_source_context
+from app.utils.errors import safe_detail
 from app.utils.uploads import stream_upload_to_path
 
 logger = logging.getLogger(__name__)
@@ -366,12 +368,35 @@ class AnalysisJobService:
                 job.progress_percent = 100.0
                 await db.commit()
                 logger.info("Analysis job completed job_id=%s analysis_id=%s", job.job_id, analysis.id)
-            except (DocumentExtractionError, DiagramExtractionError, ValueError, RuntimeError) as exc:
+            except (DocumentExtractionError, DiagramExtractionError) as exc:
+                # Extraction errors are written for the user by design.
                 await self._mark_failed(db, job_id, str(exc))
+            except (ValueError, RuntimeError) as exc:
+                # job.error is served by GET /api/analysis-jobs/{id}, so only
+                # curated messages may be persisted here.
+                logger.warning("Analysis job failed job_id=%s", job_id, exc_info=True)
+                await self._mark_failed(db, job_id, safe_detail(exc, "Analysis failed."))
             except Exception:
                 logger.exception("Unexpected analysis job failure job_id=%s", job_id)
                 await self._mark_failed(db, job_id, "Analysis job failed due to an internal server error.")
+            except asyncio.CancelledError:
+                # Shutdown cancelled us mid-job. Hand the job back so the next
+                # boot can retry it, and keep the staged file it will need.
+                logger.info("Analysis job cancelled, requeueing job_id=%s", job_id)
+                staged_file_path = None
+                with suppress(Exception):
+                    await db.rollback()
+                    await db.execute(
+                        update(AnalysisJob)
+                        .where(AnalysisJob.job_id == job_id)
+                        .values(status=JOB_STATUS_QUEUED, stage="queued", progress_percent=0.0)
+                    )
+                    await db.commit()
+                raise
             finally:
+                # Only reached with staged_file_path set when the job actually
+                # finished (or failed terminally) - a cancelled job clears it
+                # above so its upload survives for the retry.
                 if staged_file_path:
                     try:
                         os.unlink(staged_file_path)

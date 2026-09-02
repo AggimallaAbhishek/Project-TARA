@@ -189,11 +189,15 @@ app = FastAPI(
 )
 
 # Reject oversized uploads before the multipart parser spools them to disk.
-# add_middleware inserts at index 0, so this is the *innermost* layer - i.e. the
-# last one before routing, and still ahead of any body parsing. It is kept inside
-# CORS deliberately: a 413 emitted outside CORS would reach the browser as an
-# opaque CORS failure instead of the real status. Any middleware added later that
-# reads the body must go inside this one.
+#
+# Ordering (verified, not assumed): the LAST middleware added is the outermost,
+# so this one - added before CORS below - runs *inside* CORS and immediately
+# before routing. That is deliberate: a 413 emitted outside CORS would reach the
+# browser as an opaque CORS failure rather than the real status. It still sees
+# the body first, because nothing between here and the endpoint reads it.
+#
+# If you add another middleware that consumes the request body, add it BEFORE
+# this line so it ends up inside this cap rather than outside it.
 app.add_middleware(
     MaxUploadSizeMiddleware,
     path_limits={

@@ -15,6 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.database import Base
 from app.models.analysis import AnalysisJob
 from app.models.user import User
+from app.utils.errors import UserFacingError
 from app.services import analysis_job_service as job_module
 from app.services.analysis_job_service import (
     JOB_STATUS_QUEUED,
@@ -206,7 +207,28 @@ class JobDrainTest(unittest.IsolatedAsyncioTestCase):
             result = await db.execute(select(AnalysisJob).where(AnalysisJob.job_id == "poisoned"))
             job = result.scalars().first()
             self.assertEqual(job.status, "failed")
-            self.assertIn("workflow blew up", job.error)
+            # job.error is served by GET /api/analysis-jobs/{id}: the raw
+            # exception text must not survive into it.
+            self.assertNotIn("workflow blew up", job.error)
+            self.assertEqual(job.error, "Analysis failed.")
+
+    async def test_curated_failure_messages_are_preserved(self):
+        """Operator guidance is still worth showing; only uncurated text is dropped."""
+        await self._add_job("curated")
+        guidance = "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST."
+
+        async def fail_with_guidance(**kwargs):
+            raise UserFacingError(guidance)
+
+        with patch.object(job_module.analysis_workflow_service, "create_analysis",
+                          side_effect=fail_with_guidance):
+            await analysis_job_service.process_job("curated")
+
+        async with self.SessionLocal() as db:
+            result = await db.execute(select(AnalysisJob).where(AnalysisJob.job_id == "curated"))
+            job = result.scalars().first()
+            self.assertEqual(job.status, "failed")
+            self.assertEqual(job.error, guidance)
 
     async def test_unreachable_database_does_not_raise(self):
         """The drain runs from lifespan; raising there would break app shutdown."""
