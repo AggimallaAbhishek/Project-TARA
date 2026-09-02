@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -45,7 +46,11 @@ class Settings(BaseSettings):
 
     # JWT
     secret_key: str = "change-me-in-production"
-    algorithm: str = "HS256"
+    # HMAC only: tokens are signed with the symmetric `secret_key`, so an
+    # asymmetric algorithm here could never verify. Constraining the type also
+    # keeps the ecdsa/PYSEC-2026-1325 risk acceptance in requirements.in true -
+    # an ES* value would otherwise re-activate the ECDSA signing path.
+    algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     access_token_expire_minutes: int = 60 * 24  # 24 hours
 
     # SMTP Email Notifications

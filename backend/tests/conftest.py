@@ -29,7 +29,17 @@ def disable_rate_limits(request):
     would guarantee they can never observe a 429.
     """
     if request.node.get_closest_marker("real_rate_limits"):
-        yield
+        # Exercise the real sliding-window limiter, but pin it to the in-memory
+        # backend. HybridRateLimiter prefers Redis when it is reachable, and the
+        # Redis path ignores both clear() and the injected now_fn - so with a
+        # local Redis running these tests would leak state and fail.
+        from unittest.mock import PropertyMock, patch
+        with patch(
+            "app.services.redis_service.RedisService.is_available",
+            new_callable=PropertyMock,
+            return_value=False,
+        ):
+            yield
         return
 
     from unittest.mock import patch
