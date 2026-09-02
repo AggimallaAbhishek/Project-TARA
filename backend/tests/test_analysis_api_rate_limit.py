@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -23,6 +24,7 @@ from app.services.llm_service import llm_service
 from app.services.rate_limit_service import analyze_rate_limiter
 
 
+@pytest.mark.real_rate_limits
 class AnalysisApiRateLimitTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

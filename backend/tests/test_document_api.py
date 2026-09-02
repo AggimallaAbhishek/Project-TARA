@@ -4,6 +4,8 @@ import pathlib
 import sys
 import tempfile
 import unittest
+
+import pytest
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -276,6 +278,7 @@ class DocumentApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Unsupported file type", response.json()["detail"])
 
+    @pytest.mark.real_rate_limits
     def test_enforces_document_analyze_rate_limit(self):
         for index in range(5):
             response = self._post_document(

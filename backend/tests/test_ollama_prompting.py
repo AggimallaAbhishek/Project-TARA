@@ -49,9 +49,9 @@ class TestPromptGeneration:
         assert "EXAMPLE GOOD THREAT" in prompt
         assert "EVIDENCE REQUIREMENT" in prompt
         assert "CONFIDENCE SCORING" in prompt
-        assert "confidence=0.9" in prompt
-        assert "confidence=0.7" in prompt
-        assert "confidence<0.5: Reject" in prompt
+        assert "0.9: High certainty" in prompt
+        assert "0.7-0.8: Moderate" in prompt
+        assert "<0.5: Too speculative - REJECT THESE THREATS" in prompt
 
     def test_prompt_includes_rules(self):
         """Verify prompt includes explicit threat quality rules."""
@@ -233,13 +233,14 @@ class TestTargetThreatCount:
 
     def test_medium_system(self):
         """Medium description should estimate 10 threats."""
-        text = "A web application with React frontend, Node.js backend, PostgreSQL database" * 3
+        # 375 chars -> the 250-699 bucket
+        text = "A web application with React frontend, Node.js backend, PostgreSQL database" * 5
         count = estimate_target_threat_count(text)
         assert count == 10
 
     def test_large_system(self):
         """Large description should estimate 14+ threats."""
-        text = "Microservices architecture with API Gateway, Auth Service, User Service, Product Service, Order Service, Payment Service, all using PostgreSQL, Redis cache, RabbitMQ, deployed on Kubernetes" * 3
+        text = "Microservices architecture with API Gateway, Auth Service, User Service, Product Service, Order Service, Payment Service, all using PostgreSQL, Redis cache, RabbitMQ, deployed on Kubernetes" * 8
         count = estimate_target_threat_count(text)
         assert count >= 14
 
