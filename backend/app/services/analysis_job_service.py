@@ -1,12 +1,14 @@
+import asyncio
 import logging
 import os
 import re
+import time
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import select
+from fastapi import UploadFile
+from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +23,7 @@ from app.services.diagram_extract_service import DiagramExtractionError, diagram
 from app.services.document_extract_service import DocumentExtractionError, document_extract_service
 from app.services.extract_session_service import extract_session_service
 from app.services.source_context_service import build_source_context
+from app.utils.uploads import stream_upload_to_path
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,10 @@ JOB_STATUS_QUEUED = "queued"
 JOB_STATUS_RUNNING = "running"
 JOB_STATUS_SUCCEEDED = "succeeded"
 JOB_STATUS_FAILED = "failed"
+
+# How long to wait for a cold Ollama before abandoning the startup drain.
+PROVIDER_READY_TIMEOUT_SECONDS = 120.0
+PROVIDER_READY_POLL_SECONDS = 5.0
 
 
 def _source_type_from_metadata(prefix: str, metadata: dict[str, Any]) -> str:
@@ -55,16 +62,16 @@ class AnalysisJobService:
         return re.sub(r"[^a-z0-9.]", "", suffix)[:16] or ".bin"
 
     async def stage_upload(self, file: UploadFile, max_bytes: int) -> tuple[str, int]:
-        file_bytes = await file.read()
-        if len(file_bytes) > max_bytes:
-            raise HTTPException(
-                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=f"File is too large. Maximum allowed size is {max_bytes // (1024 * 1024)} MB.",
-            )
+        """Stream an upload to the staging directory, aborting past ``max_bytes``.
+
+        Streaming straight to disk keeps a large upload from being buffered in
+        memory before the size check, and leaves nothing behind if it is
+        rejected mid-write.
+        """
         stage_path = self._stage_root() / f"{uuid.uuid4().hex}{self._safe_suffix(file.filename or '')}"
-        stage_path.write_bytes(file_bytes)
-        logger.debug("analysis_job.file_staged path=%s size=%s", stage_path, len(file_bytes))
-        return str(stage_path), len(file_bytes)
+        file_size = await stream_upload_to_path(file, stage_path, max_bytes)
+        logger.debug("analysis_job.file_staged path=%s size=%s", stage_path, file_size)
+        return str(stage_path), file_size
 
     async def create_job(
         self,
@@ -118,6 +125,73 @@ class AnalysisJobService:
             db.close()
 
     @staticmethod
+    async def list_queued_job_ids() -> list[str]:
+        """Return queued job ids, oldest first; empty if the database is unreachable."""
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(AnalysisJob.job_id)
+                    .where(AnalysisJob.status == JOB_STATUS_QUEUED)
+                    .order_by(AnalysisJob.created_at.asc())
+                )
+                return list(result.scalars().all())
+        except Exception as exc:
+            logger.warning("Could not list queued analysis jobs to drain: %s", exc)
+            return []
+
+    async def drain_queued_jobs(self) -> int:
+        """Run every queued job, bounded by ``analysis_job_worker_concurrency``.
+
+        Jobs are normally dispatched by BackgroundTasks at request time, so a
+        job requeued by :meth:`mark_interrupted_jobs_queued` after a restart had
+        nothing to pick it up and sat at "queued" forever while the client
+        polled. This drains that backlog on startup.
+
+        Draining is best-effort: it runs as a background task off the startup
+        path, so a failure here must never take down the application. Anything
+        left queued is picked up by the next restart.
+        """
+        job_ids = await self.list_queued_job_ids()
+        if not job_ids:
+            return 0
+
+        if not await self._await_provider_ready():
+            logger.warning(
+                "Abandoning queued job drain: LLM provider never became ready count=%s. "
+                "Jobs stay queued for the next restart.",
+                len(job_ids),
+            )
+            return 0
+
+        # Re-read: the wait above is long enough for request-time dispatch to
+        # have claimed some of these already. The atomic claim in process_job is
+        # what actually prevents double execution; this just avoids the noise.
+        job_ids = await self.list_queued_job_ids()
+        if not job_ids:
+            return 0
+
+        concurrency = max(1, get_settings().analysis_job_worker_concurrency)
+        semaphore = asyncio.Semaphore(concurrency)
+        logger.info(
+            "Draining queued analysis jobs count=%s concurrency=%s", len(job_ids), concurrency
+        )
+
+        async def run(job_id: str) -> None:
+            async with semaphore:
+                try:
+                    await self.process_job(job_id)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    # process_job already records failures; never let one job
+                    # abort the rest of the drain.
+                    logger.exception("Queued job drain failed job_id=%s", job_id)
+
+        await asyncio.gather(*(run(job_id) for job_id in job_ids))
+        logger.info("Drained queued analysis jobs count=%s", len(job_ids))
+        return len(job_ids)
+
+    @staticmethod
     async def _set_progress(db: AsyncSession, job: AnalysisJob, *, stage: str, progress: float) -> None:
         job.status = JOB_STATUS_RUNNING
         job.stage = stage
@@ -141,7 +215,29 @@ class AnalysisJobService:
 
                 payload = job.payload or {}
                 staged_file_path = job.staged_file_path
-                await self._set_progress(db, job, stage="preparing_input", progress=10)
+
+                # Claim the job atomically. The startup drain and the request-time
+                # BackgroundTasks dispatcher can both reach the same job, as can
+                # two uvicorn workers; only the writer that flips queued->running
+                # proceeds.
+                claim = await db.execute(
+                    update(AnalysisJob)
+                    .where(
+                        AnalysisJob.job_id == job_id,
+                        AnalysisJob.status == JOB_STATUS_QUEUED,
+                    )
+                    .values(
+                        status=JOB_STATUS_RUNNING,
+                        stage="preparing_input",
+                        progress_percent=10.0,
+                    )
+                )
+                await db.commit()
+                if claim.rowcount != 1:
+                    logger.info("Analysis job already claimed elsewhere job_id=%s", job_id)
+                    staged_file_path = None  # the claiming worker owns the file
+                    return
+                await db.refresh(job)
 
                 if job.source_type == "text":
                     request = AnalysisCreate(**payload)
@@ -284,6 +380,42 @@ class AnalysisJobService:
                         pass
                     except Exception:
                         logger.debug("Failed to delete staged upload path=%s", staged_file_path, exc_info=True)
+
+    async def _await_provider_ready(self) -> bool:
+        """Poll for LLM readiness before draining, instead of giving up at once.
+
+        Nothing orders Ollama ahead of the backend, so the provider is routinely
+        cold for the first seconds after a restart. Skipping on the first miss
+        would strand the backlog for the whole process lifetime.
+        """
+        deadline = time.monotonic() + PROVIDER_READY_TIMEOUT_SECONDS
+        while True:
+            if await self._provider_is_ready():
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            logger.info(
+                "LLM provider not ready yet; retrying job drain in %ss",
+                PROVIDER_READY_POLL_SECONDS,
+            )
+            await asyncio.sleep(PROVIDER_READY_POLL_SECONDS)
+
+    @staticmethod
+    async def _provider_is_ready() -> bool:
+        """Is the LLM provider reachable enough to be worth draining into?
+
+        Nothing orders Ollama ahead of the backend, so a drain that fired during
+        startup could mark every requeued job terminally failed. Skipping leaves
+        them queued instead.
+        """
+        try:
+            from app.services.model_readiness_service import model_readiness_service
+
+            readiness = await model_readiness_service.check(force_refresh=True)
+            return bool(readiness.get("text", {}).get("available"))
+        except Exception:
+            logger.warning("Could not determine LLM readiness before draining", exc_info=True)
+            return False
 
     @staticmethod
     async def _mark_failed(db: AsyncSession, job_id: str, error: str) -> None:

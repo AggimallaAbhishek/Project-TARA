@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import secrets
 from contextlib import asynccontextmanager
@@ -18,6 +19,7 @@ from app.database import engine
 from app.routes import analysis, audit, auth, comparison, diagram, document, projects
 from app.services.auth_service import ACCESS_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME
 from app.services.analysis_job_service import analysis_job_service
+from app.utils.uploads import MaxUploadSizeMiddleware
 
 # Configure logging before anything else
 logging.basicConfig(
@@ -33,6 +35,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_INI_PATH = BACKEND_ROOT / "alembic.ini"
 CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_EXEMPT_PATHS = {"/api/auth/google"}
+JOB_DRAIN_SHUTDOWN_TIMEOUT = 10.0
 
 if settings.is_production and settings.secret_key == DEFAULT_SECRET_KEY:
     raise RuntimeError("SECRET_KEY must be configured in production")
@@ -148,7 +151,28 @@ def initialize_database_for_startup() -> bool:
 async def lifespan(application: FastAPI):
     application.state.db_startup_ready = initialize_database_for_startup()
     analysis_job_service.mark_interrupted_jobs_queued()
-    yield
+
+    # Requeued jobs have no dispatcher of their own — BackgroundTasks only runs
+    # jobs created by a live request — so drain the backlog here. Kept off the
+    # startup path so a slow LLM cannot hold up readiness.
+    drain_task = asyncio.create_task(analysis_job_service.drain_queued_jobs())
+    application.state.job_drain_task = drain_task
+    try:
+        yield
+    finally:
+        if not drain_task.done():
+            drain_task.cancel()
+        # asyncio.wait (not wait_for) so the drain task's own cancellation never
+        # propagates here and cannot be confused with the lifespan task being
+        # cancelled. process_job can be blocked in asyncio.to_thread(ollama.chat),
+        # which cancellation cannot interrupt, so the wait is bounded: past the
+        # timeout the thread is left to finish and shutdown proceeds.
+        done, pending = await asyncio.wait({drain_task}, timeout=JOB_DRAIN_SHUTDOWN_TIMEOUT)
+        if pending:
+            logger.warning(
+                "Analysis job drain did not stop within %ss; continuing shutdown",
+                JOB_DRAIN_SHUTDOWN_TIMEOUT,
+            )
 
 
 app = FastAPI(
@@ -156,6 +180,20 @@ app = FastAPI(
     description="AI-powered Threat Analysis and Risk Assessment using STRIDE methodology",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# Reject oversized uploads before the multipart parser spools them to disk.
+# add_middleware inserts at index 0, so this is the *innermost* layer - i.e. the
+# last one before routing, and still ahead of any body parsing. It is kept inside
+# CORS deliberately: a 413 emitted outside CORS would reach the browser as an
+# opaque CORS failure instead of the real status. Any middleware added later that
+# reads the body must go inside this one.
+app.add_middleware(
+    MaxUploadSizeMiddleware,
+    path_limits={
+        "/api/diagram/extract": settings.diagram_max_upload_mb * 1024 * 1024,
+        "/api/document/analyze": settings.document_max_upload_mb * 1024 * 1024,
+    },
 )
 
 # CSRF protection strategy:

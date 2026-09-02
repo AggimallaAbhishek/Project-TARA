@@ -1,7 +1,16 @@
 import logging
 from time import perf_counter
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +24,7 @@ from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
 from app.services.document_extract_service import DocumentExtractionError, document_extract_service
 from app.services.rate_limit_service import document_analyze_rate_limiter
+from app.utils.uploads import read_upload_capped
 
 router = APIRouter()
 settings = get_settings()
@@ -67,13 +77,8 @@ async def analyze_document(
             detail="A filename is required for document analysis.",
         )
 
-    file_bytes = await file.read()
     max_bytes = settings.document_max_upload_mb * 1024 * 1024
-    if len(file_bytes) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"File is too large. Maximum allowed size is {settings.document_max_upload_mb} MB.",
-        )
+    file_bytes = await read_upload_capped(file, max_bytes)
 
     try:
         extracted_description, source_metadata = await document_extract_service.extract_from_upload(

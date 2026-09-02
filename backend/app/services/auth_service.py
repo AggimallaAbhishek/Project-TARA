@@ -20,6 +20,28 @@ logger = logging.getLogger(__name__)
 ACCESS_TOKEN_COOKIE_NAME = "tara_access_token"
 CSRF_COOKIE_NAME = "tara_csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
+COOKIE_PATH = "/"
+
+
+def auth_cookie_attrs(*, httponly: bool) -> dict:
+    """Cookie attributes shared by set_cookie and delete_cookie.
+
+    A browser only discards a cookie when the expiry is sent with the *same*
+    attributes it was stored under. Starlette's ``delete_cookie`` defaults to
+    ``secure=False, samesite="lax"``, so hard-coding the delete call would leave
+    production cookies (``secure=True, samesite="none"``) in place. Both call
+    sites read from here so the two can never drift apart again.
+
+    SameSite=None requires Secure=True (HTTPS). Local development serves plain
+    HTTP, where browsers silently drop such cookies, so dev uses "lax".
+    """
+    is_production = get_settings().is_production
+    return {
+        "httponly": httponly,
+        "secure": is_production,
+        "samesite": "none" if is_production else "lax",
+        "path": COOKIE_PATH,
+    }
 
 
 def verify_google_token(token: str) -> dict:

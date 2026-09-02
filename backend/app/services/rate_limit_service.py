@@ -22,6 +22,7 @@ class InMemoryRateLimiter:
         self.now_fn = now_fn or time.time
         self._buckets: dict[str, deque[float]] = {}
         self._lock = Lock()
+        self._last_sweep = 0.0
 
     def is_allowed(self, key: str) -> tuple[bool, int]:
         now = self.now_fn()
@@ -37,11 +38,34 @@ class InMemoryRateLimiter:
                 return False, retry_after
 
             bucket.append(now)
+            self._maybe_evict_drained_buckets(now, window_start)
             return True, 0
+
+    def _maybe_evict_drained_buckets(self, now: float, window_start: float) -> None:
+        """Drop keys whose window has fully drained.
+
+        setdefault() creates a deque per key and nothing removed it again, so a
+        long-lived process leaked one entry per distinct key seen - unbounded,
+        since keys include per-IP login attempts.
+
+        The scan is O(number of tracked keys), so it runs at most once per
+        window rather than on every request. Callers hold ``self._lock``.
+        """
+        if now - self._last_sweep < self.window_seconds:
+            return
+        self._last_sweep = now
+        drained = [
+            key
+            for key, bucket in self._buckets.items()
+            if not bucket or bucket[-1] <= window_start
+        ]
+        for key in drained:
+            del self._buckets[key]
 
     def clear(self) -> None:
         with self._lock:
             self._buckets.clear()
+            self._last_sweep = 0.0
 
 
 class HybridRateLimiter:

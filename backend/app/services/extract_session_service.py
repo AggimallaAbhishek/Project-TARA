@@ -22,8 +22,21 @@ class InMemoryExtractSessionStore:
         extract_id = uuid.uuid4().hex
         expires_at = self.now_fn() + self.ttl_seconds
         with self._lock:
+            self._purge_expired()
             self._entries[extract_id] = (expires_at, payload)
         return extract_id
+
+    def _purge_expired(self) -> None:
+        """Drop every entry past its TTL.
+
+        Expiry was previously only enforced on a read of that exact id, so an
+        abandoned extraction - each holding full diagram text - was retained for
+        the lifetime of the process. Callers hold ``self._lock``.
+        """
+        now = self.now_fn()
+        expired = [key for key, (expires_at, _) in self._entries.items() if expires_at <= now]
+        for key in expired:
+            del self._entries[key]
 
     def get(self, extract_id: str) -> dict[str, Any] | None:
         with self._lock:

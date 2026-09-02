@@ -2,7 +2,15 @@ import asyncio
 import logging
 from time import perf_counter
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -22,6 +30,7 @@ from app.services.diagram_extract_service import DiagramExtractionError, diagram
 from app.services.extract_session_service import extract_session_service
 from app.services.rate_limit_service import diagram_analyze_rate_limiter, diagram_extract_rate_limiter
 from app.services.source_context_service import build_source_context
+from app.utils.uploads import read_upload_capped
 
 router = APIRouter()
 settings = get_settings()
@@ -90,13 +99,8 @@ async def extract_diagram(
             detail="A filename is required for diagram extraction.",
         )
 
-    raw_bytes = await file.read()
     max_bytes = settings.diagram_max_upload_mb * 1024 * 1024
-    if len(raw_bytes) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"File is too large. Maximum allowed size is {settings.diagram_max_upload_mb} MB.",
-        )
+    raw_bytes = await read_upload_capped(file, max_bytes)
 
     try:
         extracted_description, source_metadata = await diagram_extract_service.extract_from_upload(
