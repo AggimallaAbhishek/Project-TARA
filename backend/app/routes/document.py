@@ -24,6 +24,7 @@ from app.services.analysis_workflow_service import analysis_workflow_service
 from app.services.auth_service import get_current_user
 from app.services.document_extract_service import DocumentExtractionError, document_extract_service
 from app.services.rate_limit_service import document_analyze_rate_limiter
+from app.utils.errors import safe_detail
 from app.utils.uploads import read_upload_capped
 
 router = APIRouter()
@@ -153,7 +154,7 @@ async def analyze_document(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=safe_detail(exc, "Document analysis is temporarily unavailable."),
         )
     except HTTPException:
         raise

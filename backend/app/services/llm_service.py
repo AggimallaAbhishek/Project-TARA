@@ -27,6 +27,7 @@ from app.services.llm_internal.prompting import (
 )
 from app.services.llm_internal.transport import build_chat_request_kwargs
 from app.services.threat_cache_service import HybridThreatCache
+from app.utils.errors import UserFacingError
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -267,7 +268,7 @@ class LLMService:
                 len(system_description),
                 elapsed,
             )
-            raise RuntimeError(
+            raise UserFacingError(
                 f"Threat analysis timed out after {self.request_timeout_seconds}s. "
                 "Try a smaller model or reduce prompt complexity."
             ) from exc
@@ -281,7 +282,7 @@ class LLMService:
                 elapsed,
                 str(exc),
             )
-            raise RuntimeError(
+            raise UserFacingError(
                 "Ollama is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
             ) from exc
         except ollama.ResponseError as exc:
@@ -297,14 +298,14 @@ class LLMService:
                 error_text,
             )
             if status_code == 404:
-                raise RuntimeError(
+                raise UserFacingError(
                     f"Ollama model '{self.model}' is unavailable. Pull the model or set OLLAMA_MODEL to an installed model."
                 ) from exc
-            raise RuntimeError("Threat analysis provider error from Ollama") from exc
+            raise UserFacingError("Threat analysis provider error from Ollama") from exc
         except ValueError as exc:
             elapsed = time.perf_counter() - overall_start
             logger.warning("LLM response parsing error after %.2fs: %s", elapsed, str(exc))
-            raise RuntimeError("Threat analysis response was invalid") from exc
+            raise UserFacingError("Threat analysis response was invalid") from exc
         except Exception as exc:
             elapsed = time.perf_counter() - overall_start
             logger.exception(
@@ -313,7 +314,7 @@ class LLMService:
                 len(system_description),
                 elapsed,
             )
-            raise RuntimeError("Threat analysis request failed unexpectedly") from exc
+            raise UserFacingError("Threat analysis request failed unexpectedly") from exc
 
     def _parse_response(self, response_text: str) -> list[dict[str, Any]]:
         return parse_llm_response(response_text, logger)

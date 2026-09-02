@@ -184,6 +184,30 @@ class JobDrainTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(runs), 1, "the job was processed more than once")
 
+    async def test_failure_is_recorded_even_after_a_poisoned_flush(self):
+        """A job whose flush failed must still be marked failed, not left running."""
+        await self._add_job("poisoned")
+
+        async def poison_then_fail(**kwargs):
+            # dirty the session the way a real mid-transaction failure does
+            db = kwargs["db"]
+            db.add(AnalysisJob(job_id=None, user_id=None, source_type="text"))
+            try:
+                await db.flush()
+            except Exception:
+                pass
+            raise RuntimeError("workflow blew up")
+
+        with patch.object(job_module.analysis_workflow_service, "create_analysis",
+                          side_effect=poison_then_fail):
+            await analysis_job_service.process_job("poisoned")
+
+        async with self.SessionLocal() as db:
+            result = await db.execute(select(AnalysisJob).where(AnalysisJob.job_id == "poisoned"))
+            job = result.scalars().first()
+            self.assertEqual(job.status, "failed")
+            self.assertIn("workflow blew up", job.error)
+
     async def test_unreachable_database_does_not_raise(self):
         """The drain runs from lifespan; raising there would break app shutdown."""
         def explode(*args, **kwargs):

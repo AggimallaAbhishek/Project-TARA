@@ -15,6 +15,7 @@ from app.services.auth_service import (
 )
 from app.models.user import User
 from app.services.rate_limit_service import HybridRateLimiter
+from app.utils.client_ip import client_ip
 
 router = APIRouter()
 settings = get_settings()
@@ -33,8 +34,7 @@ async def google_auth(
     Expects the Google ID token from frontend.
     """
     # Rate limit by client IP
-    client_ip = raw_request.client.host if raw_request.client else "unknown"
-    is_allowed, retry_after = auth_rate_limiter.is_allowed(f"auth:{client_ip}")
+    is_allowed, retry_after = auth_rate_limiter.is_allowed(f"auth:{client_ip(raw_request)}")
     if not is_allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

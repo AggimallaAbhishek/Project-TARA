@@ -35,9 +35,6 @@ class AuditService:
         except Exception:
             if nested_transaction is not None and nested_transaction.is_active:
                 await nested_transaction.rollback()
-            if event in db:
-                await db.refresh(event)
-                db.expunge(event)
             logger.warning(
                 "Audit event commit failed action=%s user_id=%s analysis_id=%s project_id=%s",
                 action,

@@ -2,7 +2,14 @@
 
 AI-powered security threat analysis using STRIDE methodology, powered by Ollama (local LLM).
 
-**🚀 Live Deployment:** [https://project-tara-rwo6.vercel.app](https://project-tara-rwo6.vercel.app)
+**🚀 Live Deployment:** [https://project-tara-rwo6.vercel.app](https://project-tara-rwo6.vercel.app) (frontend)
+
+> **Backend deployment:** the backend requires a **long-lived process** and is deployed
+> from `backend/Dockerfile`, not as serverless functions. It keeps in-process state that
+> does not survive per-invocation runtimes: queued analysis jobs are dispatched in-process
+> and drained on startup, and rate limits and diagram-extraction sessions fall back to
+> process memory when Redis is absent. Run it behind a proxy with `--proxy-headers`
+> (already set in the Dockerfile) so per-client rate limiting sees the real client IP.
 
 > **Course**: Data Security and Privacy (DS308)
 > **Institute**: Indian Institute of Information Technology, Dharwad

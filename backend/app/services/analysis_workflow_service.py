@@ -14,6 +14,7 @@ from app.services.email_service import email_service
 from app.services.llm_service import llm_service
 from app.services.project_service import project_service
 from app.services.risk_service import risk_service
+from app.utils.errors import safe_detail
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +222,7 @@ class AnalysisWorkflowService:
             )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Analysis failed: {str(exc)}",
+                detail=safe_detail(exc, "Analysis failed because the threat-analysis provider is unavailable."),
             )
         except Exception:
             await db.rollback()

@@ -25,6 +25,7 @@ from app.services.diagram_render_service import DiagramRenderError, DiagramRende
 from app.services.extract_session_service import extract_session_service
 from app.services.llm_service import llm_service
 from app.services.rate_limit_service import diagram_analyze_rate_limiter, diagram_extract_rate_limiter
+from app.utils.errors import UserFacingError
 
 
 class DiagramApiTest(unittest.TestCase):
@@ -547,7 +548,7 @@ class DiagramApiTest(unittest.TestCase):
             diagram_extract_service,
             "extract_from_upload",
             new=AsyncMock(
-                side_effect=RuntimeError(
+                side_effect=UserFacingError(
                     "Ollama vision model is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
                 )
             ),

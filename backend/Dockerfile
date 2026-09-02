@@ -39,4 +39,8 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers so request.client reflects the real peer behind a load
+# balancer; --forwarded-allow-ips limits which peer may assert it. Widen this to
+# the actual proxy address when deploying behind one outside the compose network.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips", "*"]

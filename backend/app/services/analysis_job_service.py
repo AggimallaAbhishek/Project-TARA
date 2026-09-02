@@ -419,6 +419,15 @@ class AnalysisJobService:
 
     @staticmethod
     async def _mark_failed(db: AsyncSession, job_id: str, error: str) -> None:
+        # The caller reaches here from an exception that may have failed mid-flush,
+        # which leaves the session unusable until it is rolled back - the query
+        # below would otherwise raise PendingRollbackError and the job would stay
+        # stuck at "running" forever.
+        try:
+            await db.rollback()
+        except Exception:
+            logger.warning("Could not roll back before failing job job_id=%s", job_id, exc_info=True)
+
         result = await db.execute(select(AnalysisJob).where(AnalysisJob.job_id == job_id))
         job = result.scalars().first()
         if not job:

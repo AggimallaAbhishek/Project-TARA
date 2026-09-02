@@ -2,6 +2,8 @@ import asyncio
 import base64
 from typing import Any, Awaitable, Callable
 
+from app.utils.errors import UserFacingError
+
 
 async def extract_from_image(
     *,
@@ -14,7 +16,7 @@ async def extract_from_image(
     error_cls,
 ) -> str:
     if not settings.ollama_vision_model:
-        raise RuntimeError("OLLAMA_VISION_MODEL is not configured.")
+        raise UserFacingError("OLLAMA_VISION_MODEL is not configured.")
 
     message = {
         "role": "user",
@@ -43,7 +45,7 @@ async def extract_from_image(
             settings.ollama_host,
             str(exc),
         )
-        raise RuntimeError(
+        raise UserFacingError(
             "Ollama vision model is unreachable. Start Ollama and verify OLLAMA_HOST is reachable from the backend runtime."
         ) from exc
     except response_error_cls as exc:
@@ -55,10 +57,10 @@ async def extract_from_image(
             str(getattr(exc, "error", "") or str(exc)),
         )
         if status_code == 404:
-            raise RuntimeError(
+            raise UserFacingError(
                 f"Ollama vision model '{settings.ollama_vision_model}' is unavailable. Pull it or set OLLAMA_VISION_MODEL."
             ) from exc
-        raise RuntimeError("Diagram vision extraction provider error from Ollama.") from exc
+        raise UserFacingError("Diagram vision extraction provider error from Ollama.") from exc
 
     message_payload = response.get("message", {}) if isinstance(response, dict) else {}
     extracted = str(message_payload.get("content", "") or "").strip()

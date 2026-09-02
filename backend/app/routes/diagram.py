@@ -30,6 +30,7 @@ from app.services.diagram_extract_service import DiagramExtractionError, diagram
 from app.services.extract_session_service import extract_session_service
 from app.services.rate_limit_service import diagram_analyze_rate_limiter, diagram_extract_rate_limiter
 from app.services.source_context_service import build_source_context
+from app.utils.errors import safe_detail
 from app.utils.uploads import read_upload_capped
 
 router = APIRouter()
@@ -169,7 +170,7 @@ async def extract_diagram(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=safe_detail(exc, "Diagram extraction is temporarily unavailable."),
         )
     except Exception:
         logger.exception(
