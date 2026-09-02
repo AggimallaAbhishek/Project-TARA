@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
 
+// Requests that reached no mock route, reset per test. The catch-all still
+// answers 500 so the app's own error handling is exercised, but the test that
+// triggered it now fails with the exact method and path.
+let unhandledRoutes = [];
+
+test.beforeEach(() => {
+  unhandledRoutes = [];
+});
+
+test.afterEach(() => {
+  expect(
+    unhandledRoutes,
+    'requests reached no mock route - the mocks have drifted from the API',
+  ).toEqual([]);
+});
+
 const user = {
   id: 1,
   email: 'e2e@example.com',
@@ -518,6 +534,7 @@ async function mockApi(
         has_more: false,
       });
     }
+    unhandledRoutes.push(`${method} ${path}`);
     return fulfillJson(route, { detail: `Unhandled mock route: ${method} ${path}` }, 500);
   });
 }
