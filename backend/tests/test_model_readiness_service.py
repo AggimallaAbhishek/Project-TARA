@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import patch
 from types import SimpleNamespace
 
@@ -27,8 +28,8 @@ def test_model_readiness_reports_available_models_and_uses_cache():
 
     with patch("app.services.model_readiness_service.ollama.Client", FakeClient):
         with patch("app.services.model_readiness_service.get_settings", return_value=settings):
-            first = service.check(force_refresh=True)
-            second = service.check()
+            first = asyncio.run(service.check(force_refresh=True))
+            second = asyncio.run(service.check())
 
     assert first["text"]["available"] is True
     assert second["text"]["available"] is True
@@ -46,7 +47,7 @@ def test_model_readiness_reports_unreachable_provider():
 
     with patch("app.services.model_readiness_service.ollama.Client", side_effect=ConnectionError("down")):
         with patch("app.services.model_readiness_service.get_settings", return_value=settings):
-            payload = service.check(force_refresh=True)
+            payload = asyncio.run(service.check(force_refresh=True))
 
     assert payload["status"] == "degraded"
     assert payload["text"]["available"] is False

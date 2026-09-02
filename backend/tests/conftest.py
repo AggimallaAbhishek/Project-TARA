@@ -21,8 +21,17 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture(autouse=True)
-def disable_rate_limits():
-    """Globally disable rate limiters in tests to prevent 429 errors."""
+def disable_rate_limits(request):
+    """Disable rate limiters so incidental 429s do not break unrelated tests.
+
+    Tests that exist to verify rate limiting itself must opt out with
+    ``@pytest.mark.real_rate_limits``; without that escape hatch this fixture
+    would guarantee they can never observe a 429.
+    """
+    if request.node.get_closest_marker("real_rate_limits"):
+        yield
+        return
+
     from unittest.mock import patch
     with patch(
         "app.services.rate_limit_service.HybridRateLimiter.is_allowed",

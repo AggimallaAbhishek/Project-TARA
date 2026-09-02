@@ -35,7 +35,10 @@ def test_parse_llm_response_deduplicates_and_keeps_quality_fields():
         "likelihood": 3,
         "impact": 4,
         "mitigation": "Bind tokens to sessions; rotate tokens",
-        "evidence": ["API Gateway accepts bearer tokens"],
+        "evidence": [
+            "API Gateway accepts bearer tokens",
+            "No token binding or rotation described for the gateway",
+        ],
         "assumptions": ["Tokens are bearer credentials"],
         "confidence": 0.8,
         "owasp_tags": ["A07:2021"],
@@ -45,7 +48,10 @@ def test_parse_llm_response_deduplicates_and_keeps_quality_fields():
     parsed = parse_llm_response(json.dumps([threat, threat]), logging.getLogger(__name__))
 
     assert len(parsed) == 1
-    assert parsed[0]["evidence"] == ["API Gateway accepts bearer tokens"]
+    assert parsed[0]["evidence"] == [
+        "API Gateway accepts bearer tokens",
+        "No token binding or rotation described for the gateway",
+    ]
     assert parsed[0]["confidence"] == pytest.approx(0.8)
     assert parsed[0]["owasp_tags"] == ["A07:2021"]
     assert parsed[0]["cwe_tags"] == ["CWE-287"]
